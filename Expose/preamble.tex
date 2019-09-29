@@ -1,0 +1,98 @@
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}																								
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{multirow}
+\usepackage[citestyle=numeric,bibstyle=alphabetic,backend=bibtex]{biblatex}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{listings}
+\usepackage[]{diagbox}
+\usepackage[font={scriptsize,it}]{caption}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{multimedia}
+\usepackage{tcolorbox}
+\usepackage{gensymb}
+
+\addbibresource{mybib.bib}
+\let\vec\mathbf
+\usetikzlibrary{fit,positioning,arrows,automata}
+\usetikzlibrary{backgrounds}
+\usepackage{adjustbox}
+%\usepackage[active,tightpage]{preview}
+%\PreviewEnvironment{tikzpicture}
+%\setlength\PreviewBorder{5pt}%
+\newcommand{\vect}[1]{\boldsymbol{#1}} % For BOLD vectors.
+% Quotation marks
+\newcommand{\enqq}[1]{``#1''\xspace}	%english double quotation
+\include{colors}
+\usetheme[hideothersubsections]{Hannover}
+\useoutertheme{infolines}
+\include{beamerDefs}
+
+%\setbeamersize{sidebar width left=38pt}
+\setbeamercolor{section in sidebar}{fg=black}
+\setbeamercolor{section in sidebar shaded}{fg=gray}
+\setbeamercolor{sidebar}{bg=TUlightgreen}
+
+\usepackage[noend]{algpseudocode}
+\usepackage[ruled, vlined]{algorithm2e}
+
+\usepackage{subfigure}
+
+\usepackage{mathtools}
+
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}%
+
+% Swap the definition of \abs* and \norm*, so that \abs
+% and \norm resizes the size of the brackets, and the 
+% starred version does not.
+\makeatletter
+\let\oldabs\abs
+\def\abs{\@ifstar{\oldabs}{\oldabs*}}
+%
+\let\oldnorm\norm
+\def\norm{\@ifstar{\oldnorm}{\oldnorm*}}
+\makeatother
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+\usefonttheme{professionalfonts}
+\title[]{Data Driven Synthesis of Smoke Flows with CNN-based Feature Descriptors}
+\author{Danny Heinrich}
+\institute[TU Dortmund] {
+  Dept. of Computer Science\\
+  TU Dortmund University,\\
+  Seminar: Aktuellen Themen der Graphischen Datenverarbeitung
+}
+
+\setlength{\marginparwidth}{2cm}
+\date{\today}
+\logo{\includegraphics[height=0.5cm]{img/TUDortmund_logo}}
+\setbeamertemplate{frametitle}[default][center]
+
+\newcommand\blurredimage[3]{
+	\node[opacity=0.3] at (#1) {\includegraphics[scale=0.4]{#3}};
+}
+
+\usetikzlibrary{tikzmark,decorations.pathreplacing,calc}
+
+\newcommand\MyText[4][0pt]{%
+	\begin{tikzpicture}[overlay, remember picture]
+	\draw [decoration={brace},decorate,thick]
+	( $ ({pic cs:#3}|-{pic cs:#2}) + (#1,1.3ex) $ ) --  
+	node[anchor=west,xshift=5pt,text width=5cm] {#4} 
+	( $ (pic cs:#3) + (#1,0) $ );
+	\end{tikzpicture}%
+}
+
+\usepackage{caption}
+\captionsetup[figure]{labelformat=empty}% redefines the caption setup of the figures environment in the beamer class.
