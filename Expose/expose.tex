@@ -1,0 +1,53 @@
+\begin{abstract}
+   Yada Yada
+\end{abstract}
+    
+    \section{Introduction}
+    Probabilistic Graphical Models are a powerful tool used to represent conditional independencies between random variables.
+    While estimating parameters for a given distribution on such a structure is NP-Hard, there are cases where the graph structure allows us to estimate the parameters with reduced complexity, i.e. in polynomial time.
+    Such graphs are usually trees or graphs with bounded treewidth.
+    When estimating parameters, i.e. learning, we usually assume the data being available at some central computation node.
+    However, there are cases where we either can not or do not want to communicate the data to a central node.
+    Consider a system of distributed clients collecting horizontally distributed data, i.e., only a subset is available to each node, but the data on each node is complete that is all features are available to every node.
+    In such a case we might want to consider computing individual models on each device and then aggregating the models to match the performance of a model obtained from the data computed on a single, central device.
+    
+    \section{Existing Work}
+    Several research articles have dealt with distributed model aggregation and communication. 
+    Most of them attempt to deal with issues such as reducing communication overhead, computing some global function value based on distributed computational results or a way to more efficiently create a global model from local models.
+
+    \paragraph{Undirected Integer Exponential Family Models}
+    Piatkowski \cite{piatkowskidistributed} introduces distributed probabilistic graphical models with integer parameters. 
+    Using a simple averaging method computed over all distributed models already yields a promising model, which has a sublinear communication cost and reaches a competetive accuracy compared to the global model. 
+    
+    \paragraph{Radon Machines}
+    Radon Machines and Radon Points as presented by Kamp et.al \cite{kamp2017effective} are another way to create a global model from local models only. By aggregating hypotheses (the parameter vectors) by computing their radon points, they obtain a more refined version of a simple averaging scheme.
+
+    \paragraph{Wasserstein-Barycenter}
+
+    \paragraph{Distributed Thresholding} 
+    Distributed Thresholding featured by Wolff \cite{wolff2013local} allows us to compute thresholds for a global thresholding functions by using local function values only. Propagating the average between nodes we are able to reliably compute the global average, without being too heavy on communication.
+    \section{Challenges}
+   Creating a modular framework for distributed parallel computation of (integer) probabilistic graphical models. 
+   Devising an aggregation scheme or applying state-of-the-art existing aggregation schemes to (integer) PGMs.
+
+    \section{Thesis Structure}
+    We propose the following thesis structure.
+    
+    \paragraph{Introduction and Related Work}
+    First we will introduce the problem, its challenges and possible application in real life e.g. industry. We will then based on state-of-the-art methods present related and existing work that may be useful for creating a framework or other methods that may be used to compare it to our method.
+
+    \paragraph{Theoretical Baseline}
+    We will introduce the general theory of probabilistic graphical models as well as its differences when using a distributed system. Furthermore we will introduce techniques or algorithms that are used in our framework.a
+
+    \paragraph{Model Aggregation methods and algorithm for distributed PGMs}
+    Here we will introduce algorithms for distributed learning.
+    Experiments
+    Results and Conclusion
+    \section{Roadmap}
+    \begin{enumerate}
+       \item First 
+       \item Second
+       \item Third
+       \item Fourth
+       \item Fifth
+    \end{enumerate}
