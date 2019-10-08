@@ -1,53 +1,97 @@
-\begin{abstract}
-   Yada Yada
-\end{abstract}
-    
+   
     \section{Introduction}
-    Probabilistic Graphical Models are a powerful tool used to represent conditional independencies between random variables.
-    While estimating parameters for a given distribution on such a structure is NP-Hard, there are cases where the graph structure allows us to estimate the parameters with reduced complexity, i.e. in polynomial time.
-    Such graphs are usually trees or graphs with bounded treewidth.
-    When estimating parameters, i.e. learning, we usually assume the data being available at some central computation node.
-    However, there are cases where we either can not or do not want to communicate the data to a central node.
-    Consider a system of distributed clients collecting horizontally distributed data, i.e., only a subset is available to each node, but the data on each node is complete that is all features are available to every node.
-    In such a case we might want to consider computing individual models on each device and then aggregating the models to match the performance of a model obtained from the data computed on a single, central device.
+    With an increasing amount of data collected on end-user devices, communicating this data to a central node to perform machine learning tasks on a full data set becomes increasingly inefficient.
+    The amount of communication necessary to transfer the data increases as more data is available on these devices.
+    Furthermore, due to privacy concerns we may not want to communicate and thus share possibly personal data with a central node.
+    Instead we aim to perform machine learning tasks "on edge", i.e., on the devices themselves.
+
+    <Ultra Low Power Devices - Mobile Devices>
+
+    We then aggregate these models using different mechanisms to create a more accurate and robust model, which performs as well as  or as close as possible to the global model in terms of accuracy, robustness and generalisation capability.
+    While one can argue, that with a sufficient amount of data on each device, we are able to create a reasonably well performing model, we usually do not have the required amount of data available to achieve a sufficiently well performing model.
     
+    Performing the task on a set of devices allows us to significantly reduce the communication cost between each device or a central node.
+    Instead of transferring the data we are only required to send to model or its parameters, which are then aggregated to create a compound model.
+    Depending on the model's runtime scaling with respect to the data we may also reduce time-complexity by using only the data available on each device.
+    %Processor or increase in processing capability is gained from threading i.e. parallel computing. Processing power of a single core did not improve significantly over the past few years.
+    
+    Probabilistic Graphical Models are a powerful tool to model conditional independencies between random variables. We usually express each random variable as a node in a graph and each edge between two nodes is a dependency. 
+    With the expection of trees and graphs with bounded treewidth performing exact inference in such a Graph is NP-Hard.
+    This is a result from having to compute the marginal distribution, i.e., summing over all possible states of all maximum cliques inside the graph.
+    However, methods exist, such as loopy belief propagation to perform approximate inference.
+    We may also apply a junction tree algorithm to turn the graph into a tree, where exact inference is possible in polynomial time.
+
+   
+
+    When dealing with Probabilistic Graphical Models we usually employ a certain set of parametric distributions - the exponential family. 
+    Our goal is to estimate the parameters of such a distribution, which optimizes some criterion e.g. Maximum Likelihood or Maximum Entropy on each device using probabilistic graphical models.
+
+    Once we have obtained the parameters for each distribution on each device we employ some aggregation mechanic to create a compound model from all available models. 
+    Various existing techniques are discussed in section \ref{sec:ew}.
+    Furthermore we need to define a stopping criterion where every device will stop sending messages to other devices, i.e., a convergences criterion.
+    This is usually the case when most devices "agree" on their parameters.
+
     \section{Existing Work}
+    \label{sec:ew}
     Several research articles have dealt with distributed model aggregation and communication. 
     Most of them attempt to deal with issues such as reducing communication overhead, computing some global function value based on distributed computational results or a way to more efficiently create a global model from local models.
 
+    \subsection{Aggregation Mechanics}
+
+    Several aggregation mechanics have been proposed to increase the performance of the aggregated model. 
+
     \paragraph{Undirected Integer Exponential Family Models}
     Piatkowski \cite{piatkowskidistributed} introduces distributed probabilistic graphical models with integer parameters. 
-    Using a simple averaging method computed over all distributed models already yields a promising model, which has a sublinear communication cost and reaches a competetive accuracy compared to the global model. 
+    Using a simple averaging method computed over all distributed models already yields a promising model, which has a sublinear communication cost with respect to teh data and achieves a competetive accuracy compared to the global model. 
     
     \paragraph{Radon Machines}
-    Radon Machines and Radon Points as presented by Kamp et.al \cite{kamp2017effective} are another way to create a global model from local models only. By aggregating hypotheses (the parameter vectors) by computing their radon points, they obtain a more refined version of a simple averaging scheme.
-
+    Radon Machines and Radon Points as presented by Kamp et.al \cite{kamp2017effective} are another way to create a single global model aggregated from local models. New hypotheses (models) are generated by computing the radon points of hypotheses' subsets. Where radon-points are obtained by computing the non-empty intersection between two convex hulls spanned by the subsets, where the intersection between bots sets is empty.
+    We are guaranteed to obtain a non-empty intesection between the convex hulls, as the number of hypotheses necessary for each set is directly tied to the radon number. 
+    The radon number indicates the smallest amount of scalars/points/vectors necessary such that the intersection between two every equally sized subsets is empty and the intersection of their convex hulls is not.
+    
     \paragraph{Wasserstein-Barycenter}
+
+    \subsection{Stopping Criterion}
+    When computing models on distributed devices we have to define some stopping mechanism.
+    Once this mechanism holds for all devices we have obtained a global solution that all nodes agree on, with respect the the criterion.
 
     \paragraph{Distributed Thresholding} 
     Distributed Thresholding featured by Wolff \cite{wolff2013local} allows us to compute thresholds for a global thresholding functions by using local function values only. Propagating the average between nodes we are able to reliably compute the global average, without being too heavy on communication.
-    \section{Challenges}
-   Creating a modular framework for distributed parallel computation of (integer) probabilistic graphical models. 
-   Devising an aggregation scheme or applying state-of-the-art existing aggregation schemes to (integer) PGMs.
+    This allows to define a stopping criterion, which holds when the local solution does not deviate too far from the current global solution. 
+    As long as this holds the device does not send additional messages.
+    Devices that do not fulfill the criterion keep sending messages until every device, that is every node agrees on the solution to a certain extent.
 
+    \subsection{Tools}
+
+    \paragraph{Open MPI}
+
+    \section{Challenges}
+      Creating a modular framework for distributed parallel computation of (integer) probabilistic graphical models. 
+      Devising an aggregation scheme or applying state-of-the-art existing aggregation schemes to (integer) PGMs.
+
+   
     \section{Thesis Structure}
     We propose the following thesis structure.
     
-    \paragraph{Introduction and Related Work}
+    \subsection{Introduction and Related Work}
     First we will introduce the problem, its challenges and possible application in real life e.g. industry. We will then based on state-of-the-art methods present related and existing work that may be useful for creating a framework or other methods that may be used to compare it to our method.
 
-    \paragraph{Theoretical Baseline}
-    We will introduce the general theory of probabilistic graphical models as well as its differences when using a distributed system. Furthermore we will introduce techniques or algorithms that are used in our framework.a
+    \subsection{Theoretical Baseline}
+    We will introduce the general theory of probabilistic graphical models as well as differences when using a distributed system. Furthermore we will introduce sevral aggregation mechanisms, which will be used to create the compound model.
+    Furhtermore we introduce stopping criteria as presented in section \ref{sec:ew}.
 
-    \paragraph{Model Aggregation methods and algorithm for distributed PGMs}
-    Here we will introduce algorithms for distributed learning.
-    Experiments
-    Results and Conclusion
+    \subsection{Model Aggregation methods and algorithm for distributed PGMs}
+    Here we will introduce algorithms for distributed learning, aggregation techniques and stopping criteria.
+
+    \subsection{Experiments}
+    Experiments, where we estimate the parameters of the exponential family distributions and employ the model aggregation mechanics to create a global model. 
+    \subsection{Results and Conclusion}
+    Evaluation of experimental results 
     \section{Roadmap}
     \begin{enumerate}
-       \item First 
-       \item Second
-       \item Third
-       \item Fourth
-       \item Fifth
+       \item Researching the theoretical approaches of different aggregation techniques and stopping criteria obtaining an overview of the state-of-the-art techniques used to perform this tasks.
+       \item Reading up on modules and framworks for message passing interfaces, parallelisation and distributed computation such as OpenMPI, OpenMP and CUDA.
+       \item Preparation of a framework capable of distributed computation of parametric distributions based on incoming data and communication between devices (threads) to employ model aggregation mechanisms.
+       \item Experiments for different aggregation techniques and stopping criteria, which includes data preprocessing, model estimation and aggregation.
+       \item Comparing and evaluating experimental results in terms of performance (accuracy generalisation) and speed.
     \end{enumerate}
