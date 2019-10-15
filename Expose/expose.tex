@@ -1,27 +1,27 @@
-   
   \section{Introduction}
   With an increasing amount of data gathered on distributed devices, e.g. mobile phones, sending this data to a central processing unit in order to perform machine learning tasks becomes increasingly time-consuming.
   The amount of communication necessary to transfer the data increases as more data is available on these devices.
   Furthermore, due to privacy concerns we may not want to transmit and thus share possibly personal or sensitive data.
   Hence we are looking for alternatives that alleviate these issues.
   One possible solution is performing machine learning tasks "on edge", i.e. at the data source (e.g. mobile phones).
-  Distributed machine learning has been successfully applied to a variety of research areas such as Astrophysics \cite{panousopoulou2017distributed}, Medicine \cite{deist2017infrastructure} or Economics \cite{kreitlein2015green}.
+  Distributed machine learning has been successfully applied in a variety of research areas such as Astrophysics \cite{panousopoulou2017distributed}, Medicine \cite{deist2017infrastructure} or Economics \cite{kreitlein2015green}.
 
   \paragraph{Distributed Learning}
 
-  Transitioning from a central computing node to a set of distributed nodes requires careful planning and execution, even moreso when considering mobile devices, as limited processing power and power conservation have to be considered.
+  Transitioning from a central computing device to a set of distributed devices requires careful planning and execution, even moreso when considering mobile devices, as limited processing power and power conservation have to be taken into account.
   Depending on the data distribution type, either horizontally or vertically, we need to approach this task differently. 
-  Consider for example a dsitributed network of sensors.
+  Consider for example a distributed network of sensors.
   Here we would assume the data to be vertically distributed as each sensor gathers data associated with a certain subset of features.
-  Instead, for this work we assume the former, that is all features associated with the data are available on each device, with each device only containing a small subset of the data.
-  For each device we peform the intended machine learning task with respect to the underlying problem.
-  We will then aggregate these models using different mechanisms to create a more accurate and robust local or global model, which performs as well as or as close as possible to the model obtained by a central computing node that has access to the whole data set.
+  Instead, for this work we assume the former, which implies that all features are available on each device, with each device only containing a small subset of the data.
+  For each device we perform the intended machine learning task with respect to the underlying problem.
+  We will then aggregate these models using different mechanisms to create a more accurate and robust local or global model, which performs as well as or as close as possible to the model obtained by a central computing node that has access to the complete data.
+  Here local model refers to an individual model for each device.
   We measure model performance by defining suitable statistics such as classification accuracy, robustness, generalisation capability or some error function.
   While one can argue, that with a sufficient amount of data on each device, we are able to create a reasonably well performing model, we usually do not have the required amount of data available to achieve a sufficiently well performing model.
     
   Performing the task on a set of devices allows us to significantly reduce the communication cost as we are not required to transfer data.
   Instead, we are only required to send the model parameters or certain statistics, which are then aggregated to create a composite model.
-  Depending on the overall structure we may only be able create these composite models on the local divice, i.e. we have to aggregate models individually by only taking into account messages from neighbouring nodes.
+  Depending on the overall structure we may only be able create these composite models on the local device, i.e. we are limited to aggregating models individually by receiving information from connected (neighbouring) devices.
   For this work we will focus on distributed probabilistic graphical models as our structure of choice for the distributed environment.
   %Processor or increase in processing capability is gained from threading i.e. parallel computing. Processing power of a single core did not improve significantly over the past few years.
   \paragraph{Probabilistic Graphical Models}  
@@ -29,7 +29,7 @@
 
   When estimating parameters of a distribution we may consider each feature a random variable and the data generated a result of a stochastic process based on this random variables.
   Probabilistic Graphical Models (PGM) are a powerful tool to model conditional independencies between random variables. 
-  We usually express each random variable as a node in a graph and each edge between two nodes represents a dependency. 
+  We express each random variable as a node in a graph and each edge between two nodes represents a dependency. 
   With the exception of trees and graphs with bounded treewidth performing exact inference in such a Graph is NP-Hard.
   This is a result from having to compute the marginal distribution, i.e., summing over all possible states of all maximum cliques inside the graph.
   However, methods exist, such as loopy belief propagation to perform approximate inference.
@@ -39,11 +39,11 @@
   Our goal is to estimate the parameters of such a distribution, which optimizes some criterion e.g. Maximum Likelihood or Maximum Entropy.
   
 
-  Having obtained the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
+  After estimating the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
   Existing aggregation mechanics are discussed in section \ref{sec:ew}.
-  Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, i.e., a convergences criterion.
-  This is usually the case when most devices "agree" on their parameters.
-  In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the proposed thesis.
+  Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, which means we require some kind of convergence.
+  This is usually the case when most devices have a similar local model.
+  In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
 
     \section{Existing Work}
     \label{sec:ew}
@@ -58,16 +58,16 @@
 
     \paragraph{Undirected Integer Exponential Family Models}
     Piatkowski \cite{piatkowskidistributed} considers distributed undirected probabilistic graphical models with integer parameters. 
-    Using the average sufficient statistics for each node to estimate the model parameters already yields a promising model, which has a sublinear communication cost with respect to the data and achieves a competetive accuracy compared to the global model.
+    Using the average sufficient statistics for each node to estimate the model parameters already yields a promising model, which has a sublinear communication cost with respect to the data and achieves a competitive accuracy compared to the global model.
     %We propose to use this work as a baseline and plan to improve the model by using weighted averages, estimating the weights with an additional maximum likelihood step.
     
     \paragraph{Radon Machines}
     Radon Machines and Radon Points as presented by Kamp et.al \cite{kamp2017effective} are another way to create a single global model aggregated from local models. New hypotheses (models) are generated by computing the radon points of hypotheses' subsets. Where radon-points are obtained by computing the non-empty intersection between two convex hulls spanned by the subsets, where the intersection between bots sets is empty.
-    We are guaranteed to obtain a non-empty intesection between the convex hulls, as the number of hypotheses necessary for each set is directly tied to the radon number. 
+    We are guaranteed to obtain a non-empty intersection between the convex hulls, as the number of hypotheses necessary for each set is directly tied to the radon number. 
     The radon number indicates the smallest amount of vectors necessary, such that the intersection between every two equally sized subsets is empty and the intersection of their convex hulls is not.
     
     \paragraph{Wasserstein-Barycenter}
-      Using Wasserstein Barycenters, as shown by Dognin et. al. \cite{dognin2019wasserstein} is another possible approch to model ensembling or aggregation. When aggregating the models we additionally include semantic information about for exmaple class topology to create model better suited for the task.
+      Using Wasserstein Barycenters, as shown by Dognin et. al. \cite{dognin2019wasserstein} is another possible approach to model ensembling or aggregation. When aggregating the models we additionally include semantic information about for example class topology to create model better suited for the task.
    
     %\subsection{Stopping Criterion}
     %Where are we sending messages ? 
@@ -92,18 +92,24 @@
    % \paragraph{Open MPI}
    %Open Message Passing Interface (OpenMPI \cite{gabriel04:_open_mpi}) is a tool, that allows us to create such distributed processes and enables us to easily send messages between two or more processes. 
 
-  \section{Challenges}
-  Researching different aggregation mechanics involves research of different state-of-the-art techniques.
-  Since we are proposing to use probabilistic graphical models we have to transfer and adapt the aggregation mechanics to be suitable for our model.
+   \section{Challenges}
+  Distributed and parallel computing in and of itself are already difficult tasks, that need to be carefully approached.
+  Depending on the application, a distributed framework may not lead to the desired results if the communication overhead between devices is greather than the benefit by distributing the tasks.
+
+  Applying probabilistic graphical model theory to a distributed environment and aggregating models poses challenges such as the question for convergence, optimality (either locally or globally) and time-complexity especially compared to a single model.
+  When considering general network graphs, i.e. with cycles and possibly large cliques, the task is even more challenging.
+
+  Furthermore, the different techniques presented in section \ref{sec:ew} may not be directly suited for use with probabilistic graphical models.
+  Here, it is required to modify these mechanics at be applicable to our proposed structure and model.
 
   Depending on the use-case communication overhead and power consumption are of great concern. 
-  Therefore, having a framework that reduces these factors as much as possible, while also performing reasonably well, is desired.
-  Furthermore, for comparsion between different aggregation and thresholding mechanics it is advantageous to keep the framework as flexible as possible.
+  Therefore, creating a framework that reduces these factors as much as possible, while also performing reasonably well, is desired.
+  Furthermore, for comparison between different aggregation and thresholding mechanics it will be beneficial to keep the framework as flexible as possible.
   This will allow the effortless comparison between aggregation and thresholding mechanics. 
 
    
   \section{Thesis Structure}
-    We propose the following thesis structure.
+    We propose the following structure.
     
   \subsection{Introduction and Related Work}
     First we will introduce the problem, its challenges and possible application in real life e.g. medicine, economics or genetics. We will then, based on state-of-the-art methods present related and existing work that may be useful for creating a framework or other methods that may be used in comparison to our method.
@@ -113,12 +119,12 @@
     Furthermore, we will introduce several aggregation mechanisms, which will be compared to each other based on their performance.
     Additionally, the thresholding mechanism necessary for the  stopping criterion will be discussed. 
 
-  \subsection{Model Aggregation methods and algorithm for distributed PGMs}
-    Here, we propose a general algorithm used for the distributed systems.
-    This includes model estimation on each devices as well as communication between devices, aggregation mechanics and the stopping criterion.
+  \subsection{Model Aggregation methods and algorithms for distributed PGMs}
+    Here, we propose an algorithmic framework, which can be applied to distributed systems.
+    This includes model parameter estimation on each device as well as communication between devices, aggregation mechanics and the stopping criterion.
 
   \subsection{Experiments}
-  Based on the algorithms introduced we will run experiments on several available datasets using the proposed aggregation and thresholding mechanics.
+  Based on the algorithms introduced we will run experiments on several available data sets using the proposed aggregation and thresholding mechanics.
 
   \subsection{Results and Conclusion}
   Here, we will evaluate and compare experimental results based on the different aggregation mechanics. 
@@ -128,8 +134,8 @@
   \section{Roadmap}
   \begin{enumerate}
        \item Researching the theoretical approaches of different aggregation mechanics and stopping criteria obtaining an overview of the state-of-the-art techniques used to perform this tasks.
-       \item Researching tools and frameworks for message passing interfaces, parallelisation and distributed computation such as OpenMPI\cite{gabriel04:_open_mpi} and OpenMP.
+       \item Researching tools and frameworks for message passing interfaces, parallelization and distributed computation such as OpenMPI\cite{gabriel04:_open_mpi} and OpenMP.
        \item Preparation and creation of a framework capable of distributed computation for parametric distributions based on incoming data and communication between devices employ model aggregation mechanisms.
        \item Performing experiments for different aggregation techniques and stopping criteria, which includes data preprocessing, model estimation and aggregation.
-       \item Comparing and evaluating experimental results in terms of performance (accuracy generalisation) and speed and finding the mechanics best suited for probabilistic graphical models and exponential families.
+       \item Comparing and evaluating experimental results in terms of performance (accuracy generalization) and speed and finding the mechanics best suited for probabilistic graphical models and exponential families.
     \end{enumerate}

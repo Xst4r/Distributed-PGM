@@ -23,6 +23,8 @@ expose:
 	pdflatex $(SRC_Expose)
 	pdflatex $(SRC_Expose)
 	pdflatex $(SRC_Expose)
+	rm expose.pdf
+	mv template.pdf expose.pdf
 
 thesis:
 	pdflatex $(SRC_THESIS)
