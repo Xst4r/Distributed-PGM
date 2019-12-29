@@ -1,5 +1,6 @@
 SRC_Expose=template
 SRC_THESIS=Thesis/main.tex
+SRC_Short=template_short
 # Figure out which machine we're running on.
 UNAME=$(shell uname -s)
 DIR=$(shell pwd)
@@ -23,6 +24,18 @@ expose:
 	pdflatex $(SRC_Expose)
 	pdflatex $(SRC_Expose)
 	pdflatex $(SRC_Expose)
+	mv template.pdf expose.pdf
+
+expose-short:
+	pdflatex $(SRC_Short)
+	bibtex8 -B $(SRC_Short) || if [ $$? -ne 1 ] ; then $$?; fi
+
+	pdflatex $(SRC_Short)
+	pdflatex $(SRC_Short)
+	pdflatex $(SRC_Short)
+	rm expose-short.pdf
+	mv template_short.pdf expose-short.pdf
+
 
 thesis:
 	pdflatex $(SRC_THESIS)

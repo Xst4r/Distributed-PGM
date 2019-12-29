@@ -1,6 +1,5 @@
   \section{Introduction}
   With an increasing amount of data gathered on distributed devices, e.g. mobile phones, sending this data to a central processing unit in order to perform machine learning tasks becomes increasingly time-consuming.
-  The amount of communication necessary to transfer the data increases as more data is available on these devices.
   Furthermore, due to privacy concerns we may not want to transmit and thus share possibly personal or sensitive data.
   Hence we are looking for alternatives that alleviate these issues.
   One possible solution is performing machine learning tasks "on edge", i.e. at the data source (e.g. mobile phones).
@@ -8,24 +7,15 @@
 
   \paragraph{Distributed Learning}
 
-  Transitioning from a central computing device to a set of distributed devices requires careful planning and execution, even moreso when considering mobile devices, as limited processing power and power conservation have to be taken into account.
-  This task has also been explored using the term \textit{federated learning}.
-  McMahan et al. \cite{mcmahan2016communication} introduced federated learning for dealing with distributed data.
-  Here, the data is usually distributed on several devices and can not be communicated between these or a central node. 
-  Therefore, the models have to be learned on each device and then sent to a central node to compute an aggregate.
-  Depending on the data distribution type, either horizontally or vertically, we need to approach this task differently. 
-  Consider for example a distributed network of sensors.
-  Here we would assume the data to be vertically distributed as each sensor gathers data associated with a certain subset of features.
-  Instead, for this work we assume the former, which implies that all features are available on each device, with each device only containing a small subset of the data.
+  Transitioning from a central computing device to a set of distributed devices requires careful planning and execution.
+  We assume all devices holding a small subset of the data, with each device knowing all features.
   For each device we perform the intended machine learning task with respect to the underlying problem.
   We will then aggregate these models using different mechanisms to create a more accurate and robust local or global model, which performs as well as or as close as possible to the model obtained by a central computing node that has access to the complete data.
   Here local model refers to an individual model for each device.
   We measure model performance by defining suitable statistics such as classification accuracy, robustness, generalisation capability or some error function.
-  While one can argue, that with a sufficient amount of data on each device, we are able to create a reasonably well performing model, we usually do not have the required amount of data available to achieve a sufficiently well performing model.
-    
+
   Performing the task on a set of devices allows us to significantly reduce the communication cost as we are not required to transfer data.
   Instead, we are only required to send the model parameters or certain statistics, which are then aggregated to create a composite model.
-  Depending on the overall structure we may only be able create these composite models on the local device, i.e. we are limited to aggregating models individually by receiving information from connected (neighbouring) devices.
   For this work we will focus on distributed probabilistic graphical models as our structure of choice for the distributed environment.
   %Processor or increase in processing capability is gained from threading i.e. parallel computing. Processing power of a single core did not improve significantly over the past few years.
   \paragraph{Probabilistic Graphical Models}  
@@ -45,36 +35,28 @@
 
   After estimating the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
   Distributed integer probabilistic graphical models \cite{piatkowskidistributed} have recently been considered by Piatkowski.
-  In this specific scenario the models were aggregated using the average over all local models.
-  Other existing aggregation mechanics are discussed in section \ref{sec:ew}.
-  Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, which means we require some kind of convergence.
-  This is usually the case when most devices have a similar local model.
-  In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
+  In this specific scenario the model was aggregated using the average over all local models.
+  Other existing aggregation mechanics are discussed in the next section.
 
     \section{Existing Work}
     \label{sec:ew}
-    Several research publications have dealt with distributed model aggregation and communication between devices. 
+    Several research publications feature  distributed model aggregation.
     The topic remains prominent in current literature and many articles expand upon or introduce new techniques that deal with the issues that arise in a distributed environment.
-    They attempt to deal with issues such as reducing communication overhead, computing some function value based on distributed computational results or a way to more efficiently create local models based on messages from neighbouring nodes. 
+    They attempt to deal with issues such as reducing communication overhead, computing some function value based on distributed computational results or a way to more efficiently create local models based on messages from neighbouring devices. 
 
-    \subsection{Aggregation Mechanics}
-
-    When locally aggregating models using techniques such as a weighted average or radon points we additionally have to consider the complexity of these techniques and the benefit they provide compared to the increased complexity, which may be introduced to the system.
-    Several aggregation mechanics have been proposed to increase local model performance.
-
-    \paragraph{Model Averaging and Bayesian Models}
+    \subsection{Model Averaging and Bayesian Models}
     When considering local models we may obtain an aggregate by simply averaging over all models. We then obtain a model where each local model contributes with equal weight (one divided by the number of models) to the aggregate. 
     Instead of having equal weights we may consider the weights for the (weighted) average unknown. This introduced an intermediate step where we are required to estimate the weights for each local model first.
     Generally for Bayesian Models, various aggregation mechanics have been explored and introduced.
     Given the model priors as described in \cite{hoeting1999bayesian} we may sum over all viable models to create an aggregate model.
     %We propose to use this work as a baseline and plan to improve the model by using weighted averages, estimating the weights with an additional maximum likelihood step.
     
-    \paragraph{Radon Machines}
+    \subsection{Radon Machines}
     Radon Machines and Radon Points as presented by Kamp et.al \cite{kamp2017effective} are another way to create a single global model aggregated from local models. New hypotheses (models) are generated by computing the radon points of hypotheses' subsets. Where radon-points are obtained by computing the non-empty intersection between two convex hulls spanned by the subsets, where the intersection between bots sets is empty.
     We are guaranteed to obtain a non-empty intersection between the convex hulls, as the number of hypotheses necessary for each set is directly tied to the radon number. 
     The radon number indicates the smallest amount of vectors necessary, such that the intersection between every two equally sized subsets is empty and the intersection of their convex hulls is not.
     
-    \paragraph{Wasserstein-Barycenter}
+    \subsection{Wasserstein-Barycenter}
       Using Wasserstein Barycenters, as shown by Dognin et. al. \cite{dognin2019wasserstein} is another possible approach to model ensembling or aggregation. When aggregating the models we additionally include semantic information about for example class topology to create model better suited for the task.
    
     %\subsection{Stopping Criterion}
@@ -106,9 +88,6 @@
 
   Applying probabilistic graphical model theory to a distributed environment and aggregating models poses challenges such as the question for convergence, optimality (either locally or globally) and time-complexity especially compared to a single model.
   When considering general network graphs, i.e. with cycles and possibly large cliques, the task is even more challenging.
-
-  Furthermore, the different techniques presented in section \ref{sec:ew} may not be directly suited for use with probabilistic graphical models.
-  Here, it is required to modify these mechanics at be applicable to our proposed structure and model.
 
   Depending on the use-case communication overhead and power consumption are of great concern. 
   Therefore, creating a framework that reduces these factors as much as possible, while also performing reasonably well, is desired.
