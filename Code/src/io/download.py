@@ -50,5 +50,7 @@ class Download:
 
         if not os.path.exists(os.path.join(ROOT_DIR, "data" ,name)):
             os.makedirs(os.path.join(ROOT_DIR, "data" ,name))
-        with open(os.path.join(ROOT_DIR, "data" ,name, fname), 'wb') as file:
-            file.write(writeable)
+            with open(os.path.join(ROOT_DIR, "data" ,name, fname), 'wb') as file:
+                file.write(writeable)
+        else:
+            print("Directory for that Data Set already exists. Please check the containing files and remove the directory to proceed: \n" + os.path.join(ROOT_DIR, "data" ,name))
