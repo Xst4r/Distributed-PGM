@@ -39,6 +39,7 @@ class Data:
                 self.load()
             except FileNotFoundError as e:
                 logging.debug("This is an Exception" + str(e))
+
     def load(self):
         data_dir = os.path.join(self.path, self.name)
         os.chdir(data_dir)
@@ -48,6 +49,7 @@ class Data:
             except Exception as e:
                 logging.debug("This is an Exception" + str(e))
         os.chdir(ROOT_DIR)
+
     def set_path(self):
         pass
 
