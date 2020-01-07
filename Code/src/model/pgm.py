@@ -1,12 +1,18 @@
+import os
+
 import pandas as pd
 import numpy as np
-
+import networkx as nx
 
 from src.data.dataset import Data
 from src.util.bijective_dict import BijectiveDict
+from src.util.chow_liu_tree import build_chow_liu_tree
+from src.util.conf import ROOT_DIR
+
+
 class PGM:
 
-    def __init__(self, data, weights=None, states=None, statespace=None):
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
         """
             Parameters
             ----------
@@ -39,7 +45,7 @@ class PGM:
         self.vertices = None
         self.state_space = None
 
-        self.edgelist = np.empty(shape=(0, 2))
+        self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
         self.state_mapping = BijectiveDict
 
@@ -49,9 +55,13 @@ class PGM:
             self.vertices = self._states_from_data()
         if statespace is None:
             self.state_space = self._statespace_from_data()
+        if path is not None:
+            self.root_dir = os.path.join(ROOT_DIR, "data", path, "model")
+            if not os.path.exists(self.root_dir):
+                os.makedirs(self.root_dir)
 
     def _statespace_from_data(self):
-        statespace = np.arange(self.data_set.shape[0])
+        statespace = np.arange(self.data_set.shape[0], dtype=np.uint64)
         for i, column in enumerate(self.data_set.columns):
             self.state_mapping[column] = i
             statespace[i] = np.unique(self.data_set.data[column]).shape[0]
@@ -71,5 +81,17 @@ class PGM:
     def add_edge(self, edges):
         if edges.shape[1] != 2:
             raise AttributeError("Invalid Edgelist: Edgelist has to be a 2-Column Matrix of Type np.array")
-        np.vstack(self.edgelist, edges)
+        self.edgelist = np.vstack((self.edgelist, edges))
 
+    def gen_chow_liu_tree(self):
+        try:
+            graph = nx.read_edgelist(os.path.join(self.root_dir, "chow_liu.graph"))
+            self.chow_liu_tree = np.array([e for e in graph.edges], dtype=np.uint64)
+            return
+        except FileNotFoundError as fnf:
+            print(str(fnf))
+            print("Can not find edgelist in folder, generating new chow liu tree - this may take some time.")
+        chow_liu_tree = build_chow_liu_tree(self.data.train.to_numpy(), self.vertices)
+        nx.write_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu.graph"))
+        nx.write_weighted_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu_weighted.graph"))
+        return chow_liu_tree.edges

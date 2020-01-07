@@ -5,7 +5,7 @@ from src.util.bijective_dict import BijectiveDict
 
 class Dota2(PGM):
 
-    def __init__(self, data, weights=None, states=None, statespace=None):
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
 
         self.data = data
 
@@ -14,7 +14,7 @@ class Dota2(PGM):
         if statespace is None:
             self.state_space = self._statespace_from_data()
 
-        super(Dota2, self).__init__(data, weights, states, statespace)
+        super(Dota2, self).__init__(data, weights, states, statespace, path)
 
         self.state_mapping = self._set_state_mapping()
 
@@ -22,7 +22,7 @@ class Dota2(PGM):
         return len(self.data.train.columns)
 
     def _statespace_from_data(self):
-        statespace = np.arange(self.states)
+        statespace = np.arange(self.states, dtype=np.uint64)
         for i, column in enumerate(self.data.train.columns):
             statespace[i] = np.unique(self.data.train[column]).shape[0]
 
