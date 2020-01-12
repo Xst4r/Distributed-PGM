@@ -4,7 +4,7 @@ import numpy as np
 from os.path import join
 
 from src.data.dataset import Data
-from src.conf.modes import ROOT_DIR
+from src.conf.settings import ROOT_DIR
 
 
 class Dota2(Data):
@@ -16,9 +16,6 @@ class Dota2(Data):
 
         self.load_json()
         self.data_header()
-
-        self.train = self.data['dota2Train.csv']
-        self.test = self.data['dota2Test.csv']
 
     def load_json(self):
         with open(join(ROOT_DIR, 'data', 'DOTA2', 'heroes.json')) as file:
@@ -33,15 +30,18 @@ class Dota2(Data):
 
     def data_header(self):
         header = ['Result', 'ClusterID', 'GameMode', 'GameType'] + self.hero_list
-        for name, data in self.data.items():
-            data.reset_index()
-            data.columns = header
+        self.data.reset_index()
+        self.train.reset_index()
+        self.test.reset_index()
+        self.data.columns = header
+        self.test.columns = header
+        self.train.columns = header
 
     def sample_match(self):
-        matches = self.data['dota2Train.csv'].shape[0]
+        matches = self.data.shape[0]
         match_id = np.random.randint(0, high=matches - 1)
 
-        match = self.data['dota2Train.csv'].iloc[match_id]
+        match = self.data.iloc[match_id]
 
         result = match['Result']
         clusterid = match['ClusterID']

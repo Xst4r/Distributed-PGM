@@ -1,4 +1,4 @@
-from src.conf.modes import ROOT_DIR
+from src.conf.settings import ROOT_DIR
 
 import os, zipfile, gzip, shutil, tarfile
 import logging

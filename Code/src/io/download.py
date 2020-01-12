@@ -8,7 +8,7 @@
 from queue import  Queue
 import os
 from urllib import request
-from src.conf.modes import ROOT_DIR, URLS
+from src.conf.settings import ROOT_DIR, URLS
 
 class Download:
 

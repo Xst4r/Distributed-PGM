@@ -3,10 +3,8 @@ import logging
 
 import pandas as pd
 import numpy as np
-import networkx as nx
 
-from src.conf.modes import ROOT_DIR, LOG_LEVEL
-from src.data.util.chow_liu_tree import build_chow_liu_tree
+from src.conf.settings import ROOT_DIR, LOG_LEVEL
 from src.io.download import Download
 from src.io.extract import Extract
 
@@ -30,9 +28,6 @@ class Data:
         self.data = None
         self.train = None
         self.test = None
-
-        # Graph Defs
-        self.chowliu = None
 
         if data_dir is None:
             print("No data directory provided defaulting to " + os.path.join(ROOT_DIR, 'data'))
@@ -69,7 +64,8 @@ class Data:
         os.chdir(data_dir)
         for file in os.listdir(data_dir):
             try:
-                self.data[file] = pd.read_csv(file, header=None)
+                chunk = pd.read_csv(file, header=None)
+                self.data = pd.DataFrame(chunk) if self.data is None else self.data.append(chunk)
             except Exception as e:
                 logging.debug("This is an Exception" + str(e))
         os.chdir(ROOT_DIR)
@@ -92,16 +88,3 @@ class Data:
         if self.data is not None:
             vertices = self.data.columns
             return vertices
-
-    def gen_chow_liu_tree(self):
-        try:
-            graph = nx.read_edgelist(os.path.join(self.root_dir, "chow_liu.graph"))
-            self.chowliu = np.array([e for e in graph.edges], dtype=np.uint64)
-            return
-        except FileNotFoundError as fnf:
-            print(str(fnf))
-            print("Can not find edgelist in folder, generating new chow liu tree - this may take some time.")
-        chow_liu_tree = build_chow_liu_tree(self.train.to_numpy(), len(self.vertices()))
-        nx.write_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu.graph"))
-        nx.write_weighted_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu_weighted.graph"))
-        return chow_liu_tree.edges
