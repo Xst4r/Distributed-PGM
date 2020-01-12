@@ -1,16 +1,13 @@
 import os
 
-import pandas as pd
 import numpy as np
-import networkx as nx
 
 from src.data.dataset import Data
-from src.util.bijective_dict import BijectiveDict
-from src.util.chow_liu_tree import build_chow_liu_tree
-from src.util.conf import ROOT_DIR
+from src.conf.bijective_dict import BijectiveDict
+from src.conf.modes import ROOT_DIR
 
 
-class PGM:
+class Model:
 
     def __init__(self, data, weights=None, states=None, statespace=None, path=None):
         """
@@ -83,15 +80,17 @@ class PGM:
             raise AttributeError("Invalid Edgelist: Edgelist has to be a 2-Column Matrix of Type np.array")
         self.edgelist = np.vstack((self.edgelist, edges))
 
-    def gen_chow_liu_tree(self):
-        try:
-            graph = nx.read_edgelist(os.path.join(self.root_dir, "chow_liu.graph"))
-            self.chow_liu_tree = np.array([e for e in graph.edges], dtype=np.uint64)
-            return
-        except FileNotFoundError as fnf:
-            print(str(fnf))
-            print("Can not find edgelist in folder, generating new chow liu tree - this may take some time.")
-        chow_liu_tree = build_chow_liu_tree(self.data.train.to_numpy(), self.vertices)
-        nx.write_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu.graph"))
-        nx.write_weighted_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu_weighted.graph"))
-        return chow_liu_tree.edges
+    def train(self, iter=100):
+        for i in range(iter):
+            self._distribute()
+            self._gather()
+            self._aggregate()
+
+    def _distribute(self):
+        pass
+
+    def _gather(self):
+        pass
+
+    def _aggregate(self):
+        pass

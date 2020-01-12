@@ -1,9 +1,9 @@
 import numpy as np
 
-from src.model.pgm import PGM
-from src.util.bijective_dict import BijectiveDict
+from src.model.model import Model
+from src.conf.bijective_dict import BijectiveDict
 
-class Dota2(PGM):
+class Dota2(Model):
 
     def __init__(self, data, weights=None, states=None, statespace=None, path=None):
 

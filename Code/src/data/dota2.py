@@ -4,7 +4,7 @@ import numpy as np
 from os.path import join
 
 from src.data.dataset import Data
-from src.util.conf import ROOT_DIR
+from src.conf.modes import ROOT_DIR
 
 
 class Dota2(Data):
@@ -58,7 +58,7 @@ class Dota2(Data):
                 list(radiant.index)))
         else:
             winner = "Radiant"
-            print(winner + " won the match with \n" + str(list(radiant.index)) + " against the radiant with \n" + str(
+            print(winner + " won the match with \n" + str(list(radiant.index)) + " against the dire with \n" + str(
                 list(dire.index)))
 
     def to_csv(self, path):
