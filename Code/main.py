@@ -9,11 +9,11 @@ import numpy as np
 
 def main():
     print("Hello World")
-    downloader = Download()
-    # downloader.start()
-    extrator = Extract()
+    #downloader = Download()
+    #downloader.start()
+    #extrator = Extract()
 
-    # extrator.extract_all()
+    #extrator.extract_all()
 
     dota_two = Dota2(name="DOTA2")
     dota_two.sample_match()

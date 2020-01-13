@@ -7,6 +7,7 @@
 # .data.gz
 from queue import  Queue
 import os
+import io
 from urllib import request
 from src.conf.settings import ROOT_DIR, URLS
 
@@ -28,7 +29,7 @@ class Download:
         pass
 
     def start(self):
-        while self.dl_queue.not_empty:
+        while not self.dl_queue.empty():
             self.next = self.dl_queue.get()
             self._download()
 
@@ -43,14 +44,39 @@ class Download:
 
     def _download(self):
         name, url = self.next
-        print("Dowloading " + name)
-        data = request.urlopen(url)
-        writeable = data.read()
-        fname = url.split("/")[-1]
+        if not os.path.exists(os.path.join(ROOT_DIR, "data", name)):
+            print("Dowloading " + name)
+            data = request.urlopen(url)
+            length = data.getheader('content-length')
+            fname = url.split("/")[-1]
+            if length:
+                length = int(length)
+                blocksize = max(4096, length//100)
+                print(str(length))
+
+                writeable = io.BytesIO()
+                size = 0
+                while True:
+                    buf1 = data.read(blocksize)
+                    if not buf1:
+                        break
+                    writeable.write(buf1)
+                    size += len(buf1)
+                    if length:
+                        print('{:.2f}\r % done'.format(size/length))
+            else:
+                writeable = data.read()
+
+
 
         if not os.path.exists(os.path.join(ROOT_DIR, "data" ,name)):
             os.makedirs(os.path.join(ROOT_DIR, "data" ,name))
             with open(os.path.join(ROOT_DIR, "data" ,name, fname), 'wb') as file:
-                file.write(writeable)
+                if isinstance(writeable, io.BytesIO):
+                    print("Writing Bytes")
+                    file.write(writeable.getvalue())
+                else:
+                    print("Writing File")
+                    file.write(writeable)
         else:
             print("Directory for that Data Set already exists. Please check the containing files and remove the directory to proceed: \n" + os.path.join(ROOT_DIR, "data" ,name))

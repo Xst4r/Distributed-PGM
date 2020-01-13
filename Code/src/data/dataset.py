@@ -59,6 +59,8 @@ class Data:
         if not os.path.exists(self.root_dir):
             os.makedirs(self.root_dir)
 
+        self.prepare_data(self.train)
+
     def load(self):
         data_dir = os.path.join(self.path, self.name)
         os.chdir(data_dir)
@@ -88,3 +90,31 @@ class Data:
         if self.data is not None:
             vertices = self.data.columns
             return vertices
+
+    def prepare_data(self, data):
+        if isinstance(data, pd.DataFrame):
+            data = data.to_numpy()
+
+        mask = np.ones(data.shape, dtype=bool)
+        transformation_array = np.zeros(data.shape[1])
+        for i in range(data.shape[1]):
+            features = np.unique(data[:,i])
+
+            transformation_array[i] = np.min(data[:,i])
+            new_col = data[:,i] - np.min(data[:,i])
+            features = np.unique(new_col)
+            np.sort(features)
+            gap = 0
+            for j in range(features.shape[0]-1):
+                gap += features[j+1] - features[j]
+                if gap > j:
+                    new_col[new_col == features[j+1]] -= (gap-j-1)
+
+            data[:,i] = new_col
+
+
+
+        for i in range(data.shape[1]):
+            print(np.unique(data[:,i]).shape[0] ==  np.max(data[:,i]) + 1)
+
+        return data

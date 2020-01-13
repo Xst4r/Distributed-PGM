@@ -76,7 +76,11 @@ class Model:
         self.edgelist = np.vstack((self.edgelist, edges))
 
     def train(self, iter=100):
-        self.px_model = px.train(graph=self.graph, data=self.data_set.train.to_numpy()[0:200] , in_model=self.px_model)
+        data = self.data_set.train.to_numpy()[0:1000]
+        #data = self.data_set.train.to_numpy()[0:5000]
+        self.px_model = px.train(graph=px.GraphType.chain, data=data[:,4:], iters=5, shared_states=False)
+        #self.px_model = px.train(data=data, iters=5, in_model=self.px_model)
+
 
     def _create_graph(self):
         self.edgelist = self._gen_chow_liu_tree()
@@ -105,10 +109,10 @@ class Model:
         pass
 
     def _px_create_graph(self):
-        return px.create_graph(self.edgelist, nodes=self.state_space)
+        return px.create_graph(self.edgelist)
 
     def _px_create_model(self):
-        return px.Model(weights=self.weights, graph=self.graph, states=self.state_space, stats=px.StatisticsType.overcomplete)
+        return px.Model(weights=self.weights, graph=self.graph, states=self.state_space.reshape(self.state_space.shape[0],1), stats=px.StatisticsType.overcomplete)
 
     def _px_create_dist_models(self):
         pass
@@ -120,7 +124,7 @@ class Model:
         except FileNotFoundError as fnf:
             print(str(fnf))
             print("Can not find edgelist in folder, generating new chow liu tree - this may take some time.")
-        chow_liu_tree = build_chow_liu_tree(self.train.to_numpy(), len(self.data_set.vertices()))
+        chow_liu_tree = build_chow_liu_tree(self.data_set.train.to_numpy(), len(self.data_set.vertices()))
         nx.write_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu.graph"))
         nx.write_weighted_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu_weighted.graph"))
         return chow_liu_tree.edges
