@@ -15,6 +15,15 @@ logging.basicConfig(filename='data.log', level=LOG_LEVEL)
 class Data:
 
     def __init__(self, url=None, path=None, name=None, data_dir=None):
+        """
+
+        Parameters
+        ----------
+        url :
+        path :
+        name :
+        data_dir :
+        """
         # Path Defs
         self.name = None
         self.url = None
@@ -62,6 +71,9 @@ class Data:
         self.prepare_data(self.train)
 
     def load(self):
+        """
+
+        """
         data_dir = os.path.join(self.path, self.name)
         os.chdir(data_dir)
         for file in os.listdir(data_dir):
@@ -73,15 +85,43 @@ class Data:
         os.chdir(ROOT_DIR)
 
     def set_path(self, path):
+        """
+
+        Parameters
+        ----------
+        path :
+        """
         self.path = path
 
     def set_name(self, name):
+        """
+
+        Parameters
+        ----------
+        name :
+        """
         self.name = name
 
     def set_url(self, url):
+        """
+
+        Parameters
+        ----------
+        url :
+        """
         self.url = url
 
     def _train_test_split(self, ratio=0.8):
+        """
+
+        Parameters
+        ----------
+        ratio :
+
+        Returns
+        -------
+
+        """
         n_data = self.data.shape[0]
         mask = np.random.rand(n_data) < ratio
         return self.data[mask], self.data[~mask]

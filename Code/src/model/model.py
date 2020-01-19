@@ -16,7 +16,7 @@ class Model:
         """
             Parameters
             ----------
-            data : :class:`pandas.DataFrame`
+            data : :class:`data`
                 Model weights
             weights : :class:`numpy.ndarray`
                 Model weights
@@ -30,7 +30,7 @@ class Model:
             Notes
             -----
             We aim to keep Model and Data separate and as such we incorporate the data as an independent object into the PGM.
-            For specific Models we may enforce the Data to be a certain child class of Data.
+            For specific Models we may enforce the data to be an inherited class of the :class:``src.data.dataset.Data`.
 
             Examples
             --------
@@ -71,23 +71,49 @@ class Model:
         pass
 
     def add_edge(self, edges):
+        """
+        Adds an edge to the class internal edgelist. Array provided has to contain at least one edge as numpy.ndarray with shape (,2)
+        The edgelist is usually of shape (n,2), where n is the total number of edges in the graph.
+        Parameters
+        ----------
+        edges : :class:`numpy.ndarray`
+            Array of edges to append to edgelist.
+        """
         if edges.shape[1] != 2:
             raise AttributeError("Invalid Edgelist: Edgelist has to be a 2-Column Matrix of Type np.array")
         self.edgelist = np.vstack((self.edgelist, edges))
 
-    def train(self, iter=100):
-        data = self.data_set.train.to_numpy()[0:1000]
-        #data = self.data_set.train.to_numpy()[0:5000]
-        self.px_model = px.train(graph=px.GraphType.chain, data=data[:,4:], iters=5, shared_states=False)
-        #self.px_model = px.train(data=data, iters=5, in_model=self.px_model)
+    def train(self, iter=100, split=None):
+        """
+
+        Parameters
+        ----------
+        iter :
+        """
+        models  = []
+        train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
+        for idx in split.split():
+            data = np.ascontiguousarray(train[idx.flatten()])
+            models.append(px.train(graph=self.graph, data=data, iters=100, shared_states=False))
+        self.px_model = models
 
 
     def _create_graph(self):
+        """
+            Creates an independency structure (graph) from data. The specified mode for the independency structure is used,
+            when creating this object.
+        """
         self.edgelist = self._gen_chow_liu_tree()
         self.graph = self._px_create_graph()
         self.weights = self.init_weights()
 
     def _statespace_from_data(self):
+        """
+        Generates an array with the number of states for each feature in the order provided through the data.
+        Returns
+        -------
+        :class:`numpy.ndarray` containing the state space for each feature.
+        """
         statespace = np.arange(self.data_set.shape[0], dtype=np.uint64)
         for i, column in enumerate(self.data_set.columns):
             self.state_mapping[column] = i

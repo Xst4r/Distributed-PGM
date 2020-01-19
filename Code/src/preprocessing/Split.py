@@ -7,7 +7,7 @@ from src.conf.modes.splits import Splits
 
 class Split:
 
-    def __init__(self, devices=10):
+    def __init__(self, data, devices=10):
         """
             Parameters
             ----------
@@ -35,6 +35,8 @@ class Split:
         self.devices = devices
         self.split_mode = Splits.random
         self.split_idx = None
+
+        self.create_split(data.train.shape, data.train)
 
     def set_mode(self, mode=Splits.random):
         """
@@ -76,10 +78,13 @@ class Split:
             logging.info("Invalid or Unknown Split Type. Falling back to random split")
             self._split_random(shape)
 
+    def split(self):
+        yield from self.split_idx
+
     def _split_random(self, shape):
         split = np.arange(shape[0])
         np.random.shuffle(split)
-        self.split_idx = np.split(split, self.devices)
+        self.split_idx = np.array_split(split, self.devices)
 
     def _split_corr(self, data):
         pass
