@@ -18,7 +18,8 @@ def main():
 
     data = Dota2(name="DOTA2")
     data.sample_match()
-    split = Split(data, devices=100)
+    split = Split(data, devices=10)
+    split.radon_number()
     for arr in split.split():
         print(arr)
     model = Dota(data, path="DOTA2")

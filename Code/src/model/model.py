@@ -94,7 +94,10 @@ class Model:
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
         for idx in split.split():
             data = np.ascontiguousarray(train[idx.flatten()])
-            models.append(px.train(graph=self.graph, data=data, iters=100, shared_states=False))
+            states = np.ascontiguousarray(np.array(self.state_space, copy=True))
+            model = px.Model(np.ascontiguousarray(self.init_weights()), self.graph, states=states)
+            models.append(model)
+            px.train(data=data, iters=100, shared_states=False, in_model=model)
         self.px_model = models
 
 
