@@ -9,7 +9,6 @@ import numpy as np
 
 
 def main():
-    print("Hello World")
     #downloader = Download()
     #downloader.start()
     #extrator = Extract()
@@ -17,13 +16,11 @@ def main():
     #extrator.extract_all()
 
     data = Dota2(name="DOTA2")
-    data.sample_match()
-    split = Split(data, devices=10)
-    split.radon_number()
-    for arr in split.split():
-        print(arr)
     model = Dota(data, path="DOTA2")
-    model.train(split=split)
+    data.sample_match()
+    d, r, h, n = data.radon_number(r=model.weights.shape[0]+2)
+    split = Split(data, devices=r**h)
+    model.parallel_train(split=split)
     """
     test = Dota(dota_two, path="DOTA2")
     dota_pgm.edges_from_file("edges.graph")

@@ -64,7 +64,7 @@ def radon_machine(weights, radon_number, h):
 
     See Tukey Depth or Geometric Median.
 
-    Compute the System of Linear Equations SUM_i^r lambda_i s_i = 0     s.t. SUM_i^r lambda_i = 0
+    Compute the solution to the system of linear equations SUM_i^r lambda_i s_i = 0     s.t. SUM_i^r lambda_i = 0
     Parameters
     ----------
     weights :
@@ -76,22 +76,40 @@ def radon_machine(weights, radon_number, h):
     """
 
     # Coefficient Matrix Ax = b
-    A = np.array(weights, dtype=np.float64)
+    r = radon_number
+    aggregation_weights = weights
+    for i in range(h, 0, -1):
+        new_weights = None
+        if i > 1:
+            splits = np.split(aggregation_weights, r, axis=1)
+        else:
+            splits = [aggregation_weights]
+        for split in splits:
+            A = split
 
-    b = np.zeros(radon_number)
-    b[b.shape[0] - 1] = 1
+            b = np.zeros(split.shape[1])
+            b[b.shape[0] - 1] = 1
 
-    sum_zero_constraint = np.ones(radon_number)
-    fix_variable_constraint = np.zeros(radon_number)
-    fix_variable_constraint[0] = 1
+            sum_zero_constraint = np.ones(split.shape[1])
+            fix_variable_constraint = np.zeros(split.shape[1])
+            fix_variable_constraint[0] = 1
 
-    A = np.vstack(np.vstack(A, sum_zero_constraint), fix_variable_constraint)
+            A = np.vstack((np.vstack((A, sum_zero_constraint)), fix_variable_constraint))
+            new_weights= _radon_point(A, b) if new_weights is None else np.vstack((new_weights, _radon_point(A, b)))
+        aggregation_weights = np.array(new_weights).T
+    return aggregation_weights
 
 
 def _radon_point(A=None, b=None):
     if A is None and b is None:
         print_help()
         return
+    sol= np.linalg.solve(A, b)
+    pos = sol >= 0
+    normalization_constant = np.sum(sol[pos]) # Lambda
+    radon_point = np.sum(sol[pos]/normalization_constant * A[:-2:,pos], axis=1)
+
+    return radon_point
 
 
 def wasserstein_barycenter(weights):
@@ -125,6 +143,6 @@ def tukey_depth():
 options = {AggregationType.Mean: average,
            AggregationType.MaximumLikelihood: weighted_average,
            AggregationType.RadonPoints: radon_machine,
-           AggregationType.TukeyDepth: tukey_depth(),
-           AggregationType.WassersteinBarycenter: wasserstein_barycenter()
+           AggregationType.TukeyDepth: tukey_depth,
+           AggregationType.WassersteinBarycenter: wasserstein_barycenter
            }

@@ -3,11 +3,14 @@ import os
 import numpy as np
 import pxpy as px
 import networkx as nx
+import time
 
 from src.data.dataset import Data
 from src.conf.bijective_dict import BijectiveDict
-from src.conf.settings import ROOT_DIR
+from src.conf.settings import ROOT_DIR, get_logger
 from src.model.util.chow_liu_tree import build_chow_liu_tree
+
+logger = get_logger()
 
 
 class Model:
@@ -92,14 +95,68 @@ class Model:
         """
         models  = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
-        for idx in split.split():
+
+        # Timing
+        start = time.time()
+        update = None
+        iter_time = None
+        total_models = len(split.split_idx)
+
+        for i, idx in enumerate(split.split()):
+            if update is None and iter_time is not None:
+                if iter_time - start > 60:
+                    update = time.time()
+                    logger.info("Training Models: "+
+                                "{:.2%}".format(float(i)/float(total_models)))
+            if update is not None and iter_time is not None:
+                if iter_time - update > 60:
+                    update = time.time()
+                    logger.info("Training Models: " +
+                                "{:.2%}".format(float(i) / float(total_models)))
+
             data = np.ascontiguousarray(train[idx.flatten()])
             states = np.ascontiguousarray(np.array(self.state_space, copy=True))
             model = px.Model(np.ascontiguousarray(self.init_weights()), self.graph, states=states)
             models.append(model)
             px.train(data=data, iters=100, shared_states=False, in_model=model)
+            iter_time = time.time()
+        self.px_model = models
+        end = time.time()
+
+    def parallel_train(self, split=None):
+        from multiprocessing import Process
+
+        models = []
+        processes = []
+        train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
+        states = np.ascontiguousarray(np.array(self.state_space, copy=True))
+        weights = np.ascontiguousarray(self.init_weights())
+        for i in range(len(split.split_idx)):
+            model = px.Model(weights, self.graph, states=states)
+            models.append(model)
+
+        for model, idx in zip(models, split.split()):
+            data = np.ascontiguousarray(train[idx.flatten()])
+            p = Process(target=self._parallel_train, args=(data, model))
+            processes.append(p)
+
+        count = 0
+        n_proc = 4
+        while count < len(processes):
+            if count == len(processes):
+                break
+            for i in range(count, n_proc):
+                processes[i].start()
+
+            for i in range(count, n_proc):
+                processes[i].join()
+
+            count += n_proc
+
         self.px_model = models
 
+    def _parallel_train(self, data, model):
+        px.train(data=data, iters=100, shared_states=False, in_model=model)
 
     def _create_graph(self):
         """
