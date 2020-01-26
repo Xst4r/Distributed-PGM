@@ -3,8 +3,8 @@ from math import log
 
 import numpy as np
 
-from src.conf.modes.aggregation_type import AggregationType
-from src.conf.modes.split_type import SplitType
+from enum import Enum
+from src.model.aggregation import AggregationType
 
 
 class Split:
@@ -102,3 +102,10 @@ class Split:
 
     def _split_corr(self, data):
         pass
+
+
+
+class SplitType(Enum):
+    Random = 1
+    Correlation = 2
+    GroupByFeature = 3

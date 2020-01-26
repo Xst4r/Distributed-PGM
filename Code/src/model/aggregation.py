@@ -1,6 +1,7 @@
+from enum import Enum
+
 import numpy as np
 
-from src.conf.modes.aggregation_type import AggregationType
 
 
 def aggregate(opt, **kwargs):
@@ -140,9 +141,21 @@ def tukey_depth():
     pass
 
 
+class AggregationType(Enum):
+    Mean = 1
+    MaximumLikelihood = 2
+    RadonPoints = 3
+    WassersteinBarycenter = 4
+    GeometricMedian = 5
+    TukeyDepth = 6
+
+
 options = {AggregationType.Mean: average,
            AggregationType.MaximumLikelihood: weighted_average,
            AggregationType.RadonPoints: radon_machine,
            AggregationType.TukeyDepth: tukey_depth,
            AggregationType.WassersteinBarycenter: wasserstein_barycenter
            }
+
+
+

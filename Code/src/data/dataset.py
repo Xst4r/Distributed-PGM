@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 
 from math import log
+from enum import Enum
 
 from src.conf.settings import ROOT_DIR, get_logger
 from src.io.download import Download
@@ -216,3 +217,11 @@ class Data:
                 print("This does not work")
 
         return d, r, h, n
+
+
+class GraphType(Enum):
+    ChowLiu = 1
+    JunctionTree = 2
+    Chain = 3
+    FullyConnected = 4
+

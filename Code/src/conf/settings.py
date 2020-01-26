@@ -63,6 +63,8 @@ from .modes.split_type import SplitType
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+DEBUG = True
+
 LOG_LEVEL = logging.DEBUG
 
 URLS = {"DOTA2":"https://archive.ics.uci.edu/ml/machine-learning-databases/00367/dota2Dataset.zip",

@@ -1,8 +1,11 @@
 from src.io.download import Download
 from src.io.extract import Extract
 from src.data.dota2 import Dota2
-from src.preprocessing.Split import Split
+from src.preprocessing.split import Split
 from src.model.dota2 import  Dota2 as Dota
+from src.data.susy import Susy
+
+from src.data.susy import Discretization
 
 import pxpy as px
 import numpy as np
@@ -16,6 +19,8 @@ def main():
     #extrator.extract_all()
 
     data = Dota2(name="DOTA2")
+    susy = Susy(name="SUSY")
+    susy.discretize(Discretization.Quantile)
     model = Dota(data, path="DOTA2")
     data.sample_match()
     d, r, h, n = data.radon_number(r=model.weights.shape[0]+2)
