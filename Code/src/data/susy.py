@@ -4,6 +4,7 @@
 TODO: Description Here
 """
 import os
+from enum import Enum
 
 import pandas as pd
 import numpy as np
@@ -15,6 +16,12 @@ from src.conf.settings import ROOT_DIR, DEBUG, get_logger
 
 # Logger Setup
 logger = get_logger()
+
+
+class Discretization(Enum):
+    Quantile = 1
+    KMeans = 2
+    Distance = 3
 
 
 class Susy(Data):
@@ -71,13 +78,5 @@ class Susy(Data):
     def _distance(self, col):
         pass
 
-
-from enum import Enum
-
-
-class Discretization(Enum):
-    Quantile = 1
-    KMeans = 2
-    Distance = 3
 
 

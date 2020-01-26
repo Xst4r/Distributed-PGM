@@ -2,6 +2,13 @@ from enum import Enum
 
 import numpy as np
 
+class AggregationType(Enum):
+    Mean = 1
+    MaximumLikelihood = 2
+    RadonPoints = 3
+    WassersteinBarycenter = 4
+    GeometricMedian = 5
+    TukeyDepth = 6
 
 
 def aggregate(opt, **kwargs):
@@ -139,15 +146,6 @@ def print_help(aggtype=None):
 
 def tukey_depth():
     pass
-
-
-class AggregationType(Enum):
-    Mean = 1
-    MaximumLikelihood = 2
-    RadonPoints = 3
-    WassersteinBarycenter = 4
-    GeometricMedian = 5
-    TukeyDepth = 6
 
 
 options = {AggregationType.Mean: average,

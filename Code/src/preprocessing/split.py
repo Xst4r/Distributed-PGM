@@ -7,6 +7,12 @@ from enum import Enum
 from src.model.aggregation import AggregationType
 
 
+class SplitType(Enum):
+    Random = 1
+    Correlation = 2
+    GroupByFeature = 3
+
+
 class Split:
 
     def __init__(self, data, devices=10):
@@ -50,7 +56,6 @@ class Split:
 
     def dummy(self):
         return None
-
 
     def set_mode(self, mode=SplitType.Random):
         """
@@ -103,9 +108,3 @@ class Split:
     def _split_corr(self, data):
         pass
 
-
-
-class SplitType(Enum):
-    Random = 1
-    Correlation = 2
-    GroupByFeature = 3
