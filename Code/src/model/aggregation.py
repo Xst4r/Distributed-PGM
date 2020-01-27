@@ -84,6 +84,9 @@ def radon_machine(weights, radon_number, h):
     """
 
     # Coefficient Matrix Ax = b
+    print("Calculating Radon Point for Radon Number: " + str(radon_number) + "\n" +
+          "For Matrix with Shape: " + str(weights.shape) + "\n" +
+          "using " + str(h) + "aggregation layers.")
     r = radon_number
     aggregation_weights = weights
     for i in range(h, 0, -1):

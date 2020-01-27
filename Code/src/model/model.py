@@ -5,6 +5,9 @@ import pxpy as px
 import networkx as nx
 import time
 
+from multiprocessing import Process
+from multiprocessing import cpu_count
+
 from src.data.dataset import Data
 from src.conf.bijective_dict import BijectiveDict
 from src.conf.settings import ROOT_DIR, get_logger
@@ -118,14 +121,16 @@ class Model:
             states = np.ascontiguousarray(np.array(self.state_space, copy=True))
             model = px.Model(np.ascontiguousarray(self.init_weights()), self.graph, states=states)
             models.append(model)
-            px.train(data=data, iters=100, shared_states=False, in_model=model)
+            px.train(data=data, iters=iter, shared_states=False, in_model=model)
             iter_time = time.time()
         self.px_model = models
         end = time.time()
 
-    def parallel_train(self, split=None):
-        from multiprocessing import Process
+        logger.info("Finished Training Models: " +
+                    "{:.2f} s".format(end - start))
 
+    def parallel_train(self, split=None):
+        # This is slow and bad, maybe distribute processes among devices.
         models = []
         processes = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
@@ -141,15 +146,19 @@ class Model:
             processes.append(p)
 
         count = 0
-        n_proc = 4
+        n_proc = cpu_count() - 2
         while count < len(processes):
             if count == len(processes):
                 break
             for i in range(count, n_proc):
-                processes[i].start()
+                if i < len(processes):
+                    processes[i].start()
 
             for i in range(count, n_proc):
-                processes[i].join()
+                if i < len(processes):
+                    processes[i].join()
+                    logger.info("Training Models: " +
+                            "{:.2%}".format(float(count) / float(len(processes))))
 
             count += n_proc
 

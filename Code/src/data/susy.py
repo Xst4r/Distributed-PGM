@@ -40,7 +40,7 @@ class Susy(Data):
         for (col_name, col) in self.train.iteritems():
             if self._is_numeric(col):
                 #self.train[col_name] = self._disc_opts[opt](col)
-                self.train[col_name] = self._quantile(col)
+                self.train = self.train.assign(col_name=self._quantile(col))
 
     def load(self):
         """

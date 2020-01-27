@@ -154,8 +154,8 @@ class Data:
                     new_col[new_col == features[j+1]] -= (gap-j-1)
 
             data[:,i] = new_col
-        for i in range(data.shape[1]):
-            print(np.unique(data[:,i]).shape[0] ==  np.max(data[:,i]) + 1)
+        #for i in range(data.shape[1]):
+        #    print(np.unique(data[:,i]).shape[0] ==  np.max(data[:,i]) + 1)
 
         return data
 
