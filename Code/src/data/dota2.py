@@ -9,10 +9,10 @@ from src.conf.settings import ROOT_DIR
 
 class Dota2(Data):
 
-    def __init__(self, url=None, path=None, name=None, data_dir=None):
+    def __init__(self, url=None, path=None):
         self.heroes = {}
         self.hero_list = None
-        super(Dota2, self).__init__(url, path, name, data_dir)
+        super(Dota2, self).__init__(path, url)
 
         self.load_json()
         self.data_header()
@@ -63,3 +63,7 @@ class Dota2(Data):
 
     def to_csv(self, path):
         self.train.to_csv(path)
+
+    def __name__(self):
+        return self.__class__.__name__
+

@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 import pandas as pd
 import numpy as np
@@ -9,6 +10,7 @@ from enum import Enum
 from src.conf.settings import ROOT_DIR, get_logger
 from src.io.download import Download
 from src.io.extract import Extract
+from src.conf.bijective_dict import BijectiveDict
 
 # Logger Setup
 logger = get_logger()
@@ -16,7 +18,7 @@ logger = get_logger()
 
 class Data:
 
-    def __init__(self, url=None, path=None, name=None, data_dir=None):
+    def __init__(self, path=None, url=None):
         """
 
         Parameters
@@ -27,57 +29,61 @@ class Data:
         data_dir :
         """
         # Path Defs
-        self.name = None
         self.url = None
         self.path = None
 
-        if url is None and path is None and name is None:
+        if path is None:
             print(
-                "Creating an Empty Data Set with no path or root information. Please specify either url, name or path to proceed.")
+                "Creating an Empty Data Set with no path or root information. "
+                "Please specify either url, name or path to proceed.")
 
         # Data Defs
         self.data = None
         self.train = None
         self.test = None
 
-        if data_dir is None:
-            print("No data directory provided defaulting to " + os.path.join(ROOT_DIR, 'data'))
-            self.path = os.path.join(ROOT_DIR, 'data')
+        if not os.path.isdir(path):
+            print("No data directory provided defaulting to " +
+                  os.path.join(ROOT_DIR, 'data'))
+            self.path = os.path.join(ROOT_DIR, path)
+            if not os.path.isdir(self.path):
+                os.makedirs(self.path)
         else:
-            self.path = data_dir
+            if os.path.isabs(path):
+                self.path = path
+            else:
+                self.path = os.path.join(ROOT_DIR, path)
         if url:
             self.url = url
             self.downloader = Download()
         elif path:
             self.extractor = Extract()
-        elif name:
-            self.name = name
-            if not os.path.isdir(os.path.join(self.path, name)):
-                os.makedirs(os.path.join(self.path, name))
-            try:
-                self.load()
-            except FileNotFoundError as e:
-                logger.debug("This is an Exception" + str(e))
+
+        try:
+            self.load()
+        except FileNotFoundError as e:
+            logger.debug("This is an Exception" + str(e))
 
         if self.train is None:
             # TODO:Generate Splits
             self.train = self.data
             self.train, self.test = self._train_test_split()
 
-        if name is not None:
-            self.root_dir = os.path.join(ROOT_DIR, "data", name, "model")
-        else:
-            self.root_dir = os.path.join(ROOT_DIR, "data", "NONAME", "model")
+        self.root_dir = os.path.join(path, "model")
+
         if not os.path.exists(self.root_dir):
             os.makedirs(self.root_dir)
 
-        self.prepare_data(self.train)
+        self.mapping = self.prepare_data(self.train)
+
+        for (i, (col_name, col)) in enumerate(self.test.iteritems()):
+            self.test[col_name] = col.replace(self.mapping[i])
 
     def load(self):
         """
 
         """
-        data_dir = os.path.join(self.path, self.name)
+        data_dir = self.path
         os.chdir(data_dir)
         for file in os.listdir(data_dir):
             try:
@@ -95,15 +101,6 @@ class Data:
         path :
         """
         self.path = path
-
-    def set_name(self, name):
-        """
-
-        Parameters
-        ----------
-        name :
-        """
-        self.name = name
 
     def set_url(self, url):
         """
@@ -135,14 +132,12 @@ class Data:
             return vertices
 
     def prepare_data(self, data):
+        mapping = []
         if isinstance(data, pd.DataFrame):
             data = data.to_numpy()
 
-        mask = np.ones(data.shape, dtype=bool)
         transformation_array = np.zeros(data.shape[1])
         for i in range(data.shape[1]):
-            features = np.unique(data[:,i])
-
             transformation_array[i] = np.min(data[:,i])
             new_col = data[:,i] - np.min(data[:,i])
             features = np.unique(new_col)
@@ -153,11 +148,12 @@ class Data:
                 if gap > j:
                     new_col[new_col == features[j+1]] -= (gap-j-1)
 
+            mapping.append(BijectiveDict(zip(np.unique(data[:,i]),np.unique(new_col))))
             data[:,i] = new_col
         #for i in range(data.shape[1]):
         #    print(np.unique(data[:,i]).shape[0] ==  np.max(data[:,i]) + 1)
 
-        return data
+        return mapping
 
     def radon_number(self, d=None, r=None, h=None, n=None):
         """

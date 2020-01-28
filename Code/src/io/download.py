@@ -9,18 +9,24 @@ from queue import  Queue
 import os
 import io
 from urllib import request
-from src.conf.settings import ROOT_DIR, URLS
+from src.conf.settings import ROOT_DIR, URLS, get_logger
+
+logger = get_logger()
+
 
 class Download:
 
-    def __init__(self):
+    def __init__(self, url=None):
         self.dl_queue = Queue()
         self.dest = ""
         self.status = 0
         self.next = None
 
-        for key, value in URLS.items():
-            self.dl_queue.put((key, value))
+        if url is None:
+            for key, value in URLS.items():
+                self.dl_queue.put((key, value))
+        else:
+            self.dl_queue.put((' ',url))
 
     def progress(self):
         pass
@@ -45,7 +51,7 @@ class Download:
     def _download(self):
         name, url = self.next
         if not os.path.exists(os.path.join(ROOT_DIR, "data", name)):
-            print("Dowloading " + name)
+            print("Downloading " + name)
             data = request.urlopen(url)
             length = data.getheader('content-length')
             fname = url.split("/")[-1]
@@ -63,15 +69,12 @@ class Download:
                     writeable.write(buf1)
                     size += len(buf1)
                     if length:
-                        print('{:.2f}\r % done'.format(size/length))
+                        logger.info('{:.2f}%\r  done'.format(size/length))
             else:
                 writeable = data.read()
 
-
-
-        if not os.path.exists(os.path.join(ROOT_DIR, "data" ,name)):
-            os.makedirs(os.path.join(ROOT_DIR, "data" ,name))
-            with open(os.path.join(ROOT_DIR, "data" ,name, fname), 'wb') as file:
+            os.makedirs(os.path.join(ROOT_DIR, "data", name))
+            with open(os.path.join(ROOT_DIR, "data", name, fname), 'wb') as file:
                 if isinstance(writeable, io.BytesIO):
                     print("Writing Bytes")
                     file.write(writeable.getvalue())

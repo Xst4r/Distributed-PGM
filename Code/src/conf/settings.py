@@ -87,40 +87,47 @@ def reset_config():
 
 def get_logger(
         LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-        LOG_NAME       = '',
-        LOG_FILE_INFO  = 'info.log',
-        LOG_FILE_WARN  = 'warn.log',
-        LOG_FILE_ERROR = 'err.log',
-        LOG_FILE_DEBUG = 'dbg.log'):
+        LOG_NAME       = 'default_logger',
+        LOG_FILE_INFO  = os.path.join('logs', 'info.log'),
+        LOG_FILE_WARN  = os.path.join('logs', 'warn.log'),
+        LOG_FILE_ERROR = os.path.join('logs', 'err.log'),
+        LOG_FILE_DEBUG = os.path.join('logs', 'dbg.log')):
 
     log = logging.getLogger(LOG_NAME)
-    log_formatter = logging.Formatter(LOG_FORMAT)
 
-    max_bytes = 2048
-    backup_count = 6
     # comment this to suppress console output
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(log_formatter)
-    log.addHandler(stream_handler)
+    if not log.hasHandlers():
+        log_formatter = logging.Formatter(LOG_FORMAT)
+        loglevel = logging.DEBUG
 
-    file_handler_info = RotatingFileHandler(LOG_FILE_INFO, mode='w', maxBytes=max_bytes, backupCount=backup_count)
-    file_handler_info.setFormatter(log_formatter)
-    file_handler_info.setLevel(logging.INFO)
-    log.addHandler(file_handler_info)
+        max_bytes = 2**24
+        backup_count = 6
+        log.setLevel(loglevel)
+        handler = logging.StreamHandler()
+        handler.setFormatter(log_formatter)
+        log.addHandler(handler)
+        log.setLevel(loglevel)
+        log.handler_set = True
 
-    file_handler_warning = RotatingFileHandler(LOG_FILE_WARN, mode='w', maxBytes=max_bytes, backupCount=backup_count)
-    file_handler_warning.setFormatter(log_formatter)
-    file_handler_info.setLevel(logging.WARNING)
-    log.addHandler(file_handler_warning)
+        file_handler_info = RotatingFileHandler(LOG_FILE_INFO, mode='w', maxBytes=max_bytes, backupCount=backup_count)
+        file_handler_info.setFormatter(log_formatter)
+        file_handler_info.setLevel(logging.INFO)
+        log.addHandler(file_handler_info)
 
-    file_handler_error = RotatingFileHandler(LOG_FILE_ERROR, mode='w', maxBytes=max_bytes, backupCount=backup_count)
-    file_handler_error.setFormatter(log_formatter)
-    file_handler_error.setLevel(logging.ERROR)
-    log.addHandler(file_handler_error)
+        file_handler_warning = RotatingFileHandler(LOG_FILE_WARN, mode='w', maxBytes=max_bytes, backupCount=backup_count)
+        file_handler_warning.setFormatter(log_formatter)
+        file_handler_warning.setLevel(logging.WARNING)
+        log.addHandler(file_handler_warning)
 
-    file_handler_debug = RotatingFileHandler(LOG_FILE_DEBUG, mode='w', maxBytes=max_bytes, backupCount=backup_count)
+        file_handler_error = RotatingFileHandler(LOG_FILE_ERROR, mode='w', maxBytes=max_bytes, backupCount=backup_count)
+        file_handler_error.setFormatter(log_formatter)
+        file_handler_error.setLevel(logging.ERROR)
+        log.addHandler(file_handler_error)
 
-    log.setLevel(logging.INFO)
+        file_handler_debug = RotatingFileHandler(LOG_FILE_DEBUG, mode='w', maxBytes=max_bytes, backupCount=backup_count)
+        file_handler_debug.setFormatter(log_formatter)
+        file_handler_debug.setLevel(logging.DEBUG)
+        log.addHandler(file_handler_debug)
 
     return log
 
