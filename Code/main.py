@@ -1,5 +1,5 @@
-from src.data.dota2 import Dota2
-from src.model.aggregation import radon_machine
+from src.data.dataset import Dota2
+from src.model.aggregation import radon_machine, _radon_point
 from src.model.dota2 import Dota2 as Dota
 from src.preprocessing.split import Split
 
@@ -8,7 +8,9 @@ from time import time
 import numpy as np
 import pxpy as px
 
+
 def main():
+
     # Create Data and Model
     data = Dota2(path="data/DOTA2")
 
@@ -20,7 +22,7 @@ def main():
 
     # Prepare Radon Number and Splits
     d, r, h, n = data.radon_number(r=model.weights.shape[0] + 2)
-    split = Split(data, devices=r ** h)
+    split = Split(data, n_splits=r ** h)
     print("Weights: " + str(model.weights.shape) + "\n" +
           "Radon Number " + str(r) + "\n")
 
@@ -37,7 +39,10 @@ def main():
     print(str(weights.shape))
 
     # Radon Machines
-    radon_point = radon_machine(weights, int(r), int(h))
+    try:
+        radon_point = radon_machine(weights, int(r), int(h))
+    except ValueError or TypeError as e:
+        print("bla")
 
     # Create new model with radon point and predict labels
     aggregate_model = px.Model(radon_point, model.graph, model.state_space)

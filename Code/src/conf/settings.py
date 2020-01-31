@@ -96,6 +96,8 @@ def get_logger(
     log = logging.getLogger(LOG_NAME)
 
     # comment this to suppress console output
+    if not os.path.isdir(os.path.join(".", "logs")):
+        os.makedirs('logs')
     if not log.hasHandlers():
         log_formatter = logging.Formatter(LOG_FORMAT)
         loglevel = logging.DEBUG

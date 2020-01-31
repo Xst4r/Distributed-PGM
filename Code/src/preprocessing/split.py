@@ -15,11 +15,11 @@ class SplitType(Enum):
 
 class Split:
 
-    def __init__(self, data, devices=10):
+    def __init__(self, data, n_splits=10):
         """
             Parameters
             ----------
-            devices : Integer
+            n_splits : Integer
                 Number of Devices to distribute the data onto, i.e., the number of Splits to be generated
 
             See Also
@@ -40,7 +40,7 @@ class Split:
             my_split.create_split()
 
         """
-        self.devices = devices
+        self.n_splits = n_splits
         self.split_mode = SplitType.Random
         self.split_idx = None
 
@@ -103,7 +103,7 @@ class Split:
     def _split_random(self, shape):
         split = np.arange(shape[0])
         np.random.shuffle(split)
-        self.split_idx = np.array_split(split, self.devices)
+        self.split_idx = np.array_split(split, self.n_splits)
 
     def _split_corr(self, data):
         pass

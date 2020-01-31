@@ -13,8 +13,14 @@ from src.conf.bijective_dict import BijectiveDict
 from src.conf.settings import ROOT_DIR, get_logger
 from src.model.util.chow_liu_tree import build_chow_liu_tree
 
-logger = get_logger()
+LOG_FORMAT = '%(message)s'
+LOG_NAME = 'model_logger'
+LOG_FILE_INFO = os.path.join('logs', 'model_output.log')
+LOG_FILE_WARN = os.path.join('logs', 'model_warn.log')
+LOG_FILE_ERROR = os.path.join('logs', 'model_err.log')
+LOG_FILE_DEBUG = os.path.join('logs', 'model_dbg.log')
 
+logger = get_logger()
 
 class Model:
 
@@ -42,6 +48,9 @@ class Model:
             --------
 
         """
+
+        self.model_logger = get_logger(LOG_FORMAT, LOG_NAME, LOG_FILE_INFO,
+                                       LOG_FILE_WARN, LOG_FILE_ERROR, LOG_FILE_DEBUG)
         if not isinstance(data, Data):
             raise TypeError("Data has to be an instance of Pandas Dataframe")
 
@@ -230,3 +239,58 @@ class Model:
             suff_stats += self.state_space[s] * self.state_space[t]
         suff_stats = int(suff_stats)
         return np.zeros(suff_stats)
+
+
+class Dota2(Model):
+
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
+
+        self.data = data
+
+        if states is None:
+            self.states = self._states_from_data()
+        if statespace is None:
+            self.state_space = self._statespace_from_data()
+
+        super(Dota2, self).__init__(data, weights, states, statespace, path)
+
+        self.state_mapping = self._set_state_mapping()
+
+    def _states_from_data(self):
+        return len(self.data.train.columns)
+
+    def _statespace_from_data(self):
+        statespace = np.arange(self.states, dtype=np.uint64)
+        for i, column in enumerate(self.data.train.columns):
+            statespace[i] = np.unique(self.data.train[column]).shape[0]
+
+        return statespace
+
+    def _set_state_mapping(self):
+        state_mapping = BijectiveDict()
+        for i, column in enumerate(self.data.train.columns):
+            state_mapping[str(column)] = i
+
+        return state_mapping
+
+    def edges_from_file(self, path):
+        with open(path) as edgelist:
+            n_edges = 0
+            edges = edgelist.read()
+            edges = edges.split(']')
+            edge = np.empty(shape=(0, 2), dtype=np.uint64)
+            for token in edges:
+                token = token.strip("[").split()
+                if len(token) < 2:
+                    pass
+                else:
+                    clique = []
+                    n_edges += (len(token) * (len(token) - 1))/2
+                    for vertex in token:
+                        clique.append(self.state_mapping[vertex])
+                    for i, source in enumerate(clique):
+                        for j in range(i, len(clique)):
+                            if i != j:
+                                edge = np.vstack((edge, np.array([source, clique[j]], dtype=np.uint64).reshape(1,2)))
+            assert edge.shape[0] == n_edges
+            self.add_edge(np.array(edge))

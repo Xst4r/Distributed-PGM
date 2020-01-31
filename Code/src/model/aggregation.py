@@ -2,6 +2,10 @@ from enum import Enum
 
 import numpy as np
 
+from src.conf.settings import get_logger
+
+logger = get_logger()
+
 class AggregationType(Enum):
     Mean = 1
     MaximumLikelihood = 2
@@ -111,12 +115,27 @@ def radon_machine(weights, radon_number, h):
     return aggregation_weights
 
 
-def _radon_point(A=None, b=None):
-    if A is None and b is None:
+def _radon_point(A=None, b=None, sol=None):
+    if A is None and b is None and sol is None:
         print_help()
         return
-    sol= np.linalg.solve(A, b)
-    pos = sol >= 0
+
+    if sol is None:
+        if np.rank(A) < A.shape[0]:
+            logger.warn("MATRIX IS SINGULAR")
+            sol, resid, rank, s = np.linalg.lstsq(A,b)
+            np.save("lstsq_sol", sol[0])
+            pos = sol >= 0
+        else:
+            sol = np.linalg.solve(A, b)
+            np.save("lgs_sol", sol)
+            pos = sol >= 0
+    else:
+        pos = sol >= 0
+
+    np.save("coefs", A)
+    residue = np.sum(sol[pos]) + np.sum(sol[~pos])
+    logger.info("Residue is :" + str(residue))
     normalization_constant = np.sum(sol[pos]) # Lambda
     radon_point = np.sum(sol[pos]/normalization_constant * A[:-2:,pos], axis=1)
 

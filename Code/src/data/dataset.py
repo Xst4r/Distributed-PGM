@@ -1,4 +1,5 @@
 import os
+import json
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -7,13 +8,26 @@ import numpy as np
 from math import log
 from enum import Enum
 
-from src.conf.settings import ROOT_DIR, get_logger
+from src.conf.settings import ROOT_DIR, DEBUG, get_logger
 from src.io.download import Download
 from src.io.extract import Extract
 from src.conf.bijective_dict import BijectiveDict
 
 # Logger Setup
 logger = get_logger()
+
+
+class Discretization(Enum):
+    Quantile = 1
+    KMeans = 2
+    Distance = 3
+
+
+class GraphType(Enum):
+    ChowLiu = 1
+    JunctionTree = 2
+    Chain = 3
+    FullyConnected = 4
 
 
 class Data:
@@ -25,8 +39,6 @@ class Data:
         ----------
         url :
         path :
-        name :
-        data_dir :
         """
         # Path Defs
         self.url = None
@@ -62,7 +74,7 @@ class Data:
         try:
             self.load()
         except FileNotFoundError as e:
-            logger.debug("This is an Exception" + str(e))
+            logger.debug("Couldn't load a file in the folder: " + str(e))
 
         if self.train is None:
             # TODO:Generate Splits
@@ -90,26 +102,8 @@ class Data:
                 chunk = pd.read_csv(file, header=None)
                 self.data = pd.DataFrame(chunk) if self.data is None else self.data.append(chunk)
             except Exception as e:
-                logger.debug("This is an Exception" + str(e))
+                logger.debug("Unable to load file : " + str(file) + "\nException :" + str(e))
         os.chdir(ROOT_DIR)
-
-    def set_path(self, path):
-        """
-
-        Parameters
-        ----------
-        path :
-        """
-        self.path = path
-
-    def set_url(self, url):
-        """
-
-        Parameters
-        ----------
-        url :
-        """
-        self.url = url
 
     def _train_test_split(self, ratio=0.8):
         """
@@ -131,26 +125,45 @@ class Data:
             vertices = self.data.columns
             return vertices
 
-    def prepare_data(self, data):
+    def set_path(self, path):
+        """
+
+        Parameters
+        ----------
+        path :
+        """
+        self.path = path
+
+    def set_url(self, url):
+        """
+
+        Parameters
+        ----------
+        url :
+        """
+        self.url = url
+
+    @staticmethod
+    def prepare_data(data):
         mapping = []
         if isinstance(data, pd.DataFrame):
             data = data.to_numpy()
 
         transformation_array = np.zeros(data.shape[1])
         for i in range(data.shape[1]):
-            transformation_array[i] = np.min(data[:,i])
-            new_col = data[:,i] - np.min(data[:,i])
+            transformation_array[i] = np.min(data[:, i])
+            new_col = data[:, i] - np.min(data[:, i])
             features = np.unique(new_col)
             np.sort(features)
             gap = 0
-            for j in range(features.shape[0]-1):
-                gap += features[j+1] - features[j]
+            for j in range(features.shape[0] - 1):
+                gap += features[j + 1] - features[j]
                 if gap > j:
-                    new_col[new_col == features[j+1]] -= (gap-j-1)
+                    new_col[new_col == features[j + 1]] -= (gap - j - 1)
 
-            mapping.append(BijectiveDict(zip(np.unique(data[:,i]),np.unique(new_col))))
-            data[:,i] = new_col
-        #for i in range(data.shape[1]):
+            mapping.append(BijectiveDict(zip(np.unique(data[:, i]), np.unique(new_col))))
+            data[:, i] = new_col
+        # for i in range(data.shape[1]):
         #    print(np.unique(data[:,i]).shape[0] ==  np.max(data[:,i]) + 1)
 
         return mapping
@@ -215,9 +228,116 @@ class Data:
         return d, r, h, n
 
 
-class GraphType(Enum):
-    ChowLiu = 1
-    JunctionTree = 2
-    Chain = 3
-    FullyConnected = 4
+class Dota2(Data):
 
+    def __init__(self, url=None, path=None):
+        self.heroes = {}
+        self.hero_list = None
+        super(Dota2, self).__init__(path, url)
+
+        self.load_json()
+        self.data_header()
+
+    def load_json(self):
+        with open(os.path.join(ROOT_DIR, 'data', 'DOTA2', 'heroes.json')) as file:
+            data = json.load(file)
+
+            heroes = list(data.values())
+            self.heroes = {i['id']: i['name'] for i in heroes[0]}
+            ordered_heroes = list(range(len(self.heroes) + 1))
+            for i, (id, name) in enumerate(self.heroes.items()):
+                ordered_heroes[id - 1] = name
+            self.hero_list = ordered_heroes
+
+    def data_header(self):
+        header = ['Result', 'ClusterID', 'GameMode', 'GameType'] + self.hero_list
+        self.data.reset_index()
+        self.train.reset_index()
+        self.test.reset_index()
+        self.data.columns = header
+        self.test.columns = header
+        self.train.columns = header
+
+    def sample_match(self):
+        matches = self.data.shape[0]
+        match_id = np.random.randint(0, high=matches - 1)
+
+        match = self.data.iloc[match_id]
+
+        result = match['Result']
+        clusterid = match['ClusterID']
+        gamemode = match['GameMode']
+        gametype = match['GameType']
+
+        picks = match.drop(labels=['Result', 'ClusterID', 'GameMode', 'GameType'])
+        radiant = picks.where(lambda x: x == -1).dropna()
+        dire = picks.where(lambda x: x == 1).dropna()
+
+        if result == 1:
+            winner = "Dire"
+            print(winner + " won the match with \n" + str(list(dire.index)) + " against the radiant with \n" + str(
+                list(radiant.index)))
+        else:
+            winner = "Radiant"
+            print(winner + " won the match with \n" + str(list(radiant.index)) + " against the dire with \n" + str(
+                list(dire.index)))
+
+    def to_csv(self, path):
+        self.train.to_csv(path)
+
+    def __name__(self):
+        return self.__class__.__name__
+
+
+class Susy(Data):
+
+    def __init__(self, url=None, path=None):
+
+        self._disc_opts = {Discretization.Quantile: self._quantile,
+                           Discretization.KMeans: self._kmeans,
+                           Discretization.Distance: self._distance
+
+                           }
+
+        super(Susy, self).__init__(url, path)
+
+    def discretize(self, opt):
+        for (col_name, col) in self.train.iteritems():
+            if self._is_numeric(col):
+                #self.train[col_name] = self._disc_opts[opt](col)
+                self.train = self.train.assign(col_name=self._quantile(col))
+
+    def load(self):
+        """
+
+        """
+        data_dir = self.path
+        os.chdir(data_dir)
+        for file in os.listdir(data_dir):
+            try:
+                dataframe_generator = pd.read_csv(file, header=None, chunksize=10000)
+                for chunk in dataframe_generator:
+                    self.data = pd.DataFrame(chunk) if self.data is None else self.data.append(chunk)
+                    if DEBUG:
+                        break
+            except Exception as e:
+                logger.debug("This is an Exception" + str(e))
+        os.chdir(ROOT_DIR)
+
+    def _is_numeric(self, col):
+        return True
+
+    def _quantile(self, col):
+        data = col.to_numpy()
+        arr = np.linspace(0,1,10)
+        quantiles = np.quantile(col, arr)
+        dist = np.zeros(shape=(data.shape[0]))
+        for i, point in enumerate(data):
+            dist[i] = quantiles[np.argmin(np.abs(quantiles - point))]
+        return pd.Series(dist)
+
+    def _kmeans(self, col):
+        pass
+
+    def _distance(self, col):
+        pass
