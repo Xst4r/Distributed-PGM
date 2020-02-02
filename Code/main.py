@@ -1,6 +1,6 @@
 from src.data.dataset import Dota2
-from src.model.aggregation import radon_machine, _radon_point
-from src.model.dota2 import Dota2 as Dota
+from src.model.aggregation import RadonMachine
+from src.model.model import Dota2 as Dota
 from src.preprocessing.split import Split
 
 from time import time
@@ -10,7 +10,15 @@ import pxpy as px
 
 
 def main():
+    """
+        data = Data(params)
+        split = Split(params)
 
+        model = Model(data, split)
+        model.train()
+        agg = Aggregation()
+        agg.aggregate()
+    """
     # Create Data and Model
     data = Dota2(path="data/DOTA2")
 
@@ -27,7 +35,7 @@ def main():
           "Radon Number " + str(r) + "\n")
 
     # Train Models
-    model.train(split=split, iter=20)
+    model.train(split=split, iter=5)
 
     # Creating Coefficients for Linear Equations Ax = b
     # Each Theta (Parameter Vector) is a Column
@@ -40,7 +48,9 @@ def main():
 
     # Radon Machines
     try:
-        radon_point = radon_machine(weights, int(r), int(h))
+        rm = RadonMachine(model, r, h)
+        rm.aggregate(None)
+        radon_point = rm.aggregate_models[0]
     except ValueError or TypeError as e:
         print("bla")
 

@@ -63,7 +63,7 @@ class Model:
 
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
-        self.state_mapping = BijectiveDict
+        self.state_mapping = BijectiveDict()
 
         if weights is not None and isinstance(weights, np.ndarray):
             self.weights = weights
@@ -77,7 +77,9 @@ class Model:
                 os.makedirs(self.root_dir)
 
         self._create_graph()
-        self.px_model = self._px_create_model()
+        self.px_model = None
+
+        self.trained = False
 
     def get_node_id(self, colname):
         pass
@@ -138,6 +140,9 @@ class Model:
         logger.info("Finished Training Models: " +
                     "{:.2f} s".format(end - start))
 
+        if not self.trained:
+            self.trained = True
+
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute processes among devices.
         models = []
@@ -192,8 +197,8 @@ class Model:
         -------
         :class:`numpy.ndarray` containing the state space for each feature.
         """
-        statespace = np.arange(self.data_set.shape[0], dtype=np.uint64)
-        for i, column in enumerate(self.data_set.columns):
+        statespace = np.arange(self.data_set.train.shape[0], dtype=np.uint64)
+        for i, column in enumerate(self.data_set.train.columns):
             self.state_mapping[column] = i
             statespace[i] = np.unique(self.data_set.data[column]).shape[0]
 
@@ -240,6 +245,16 @@ class Model:
         suff_stats = int(suff_stats)
         return np.zeros(suff_stats)
 
+    def get_weights(self):
+        if self.trained:
+            weights = []
+            for px_model in self.px_model:
+                weights.append(px_model.weights)
+            weights = np.array(weights).T
+            np.ascontiguousarray(weights.T)
+            return weights
+        else:
+            logger.info("No models have been trained yet, call the train() function to start training.")
 
 class Dota2(Model):
 
