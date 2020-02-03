@@ -21,31 +21,21 @@ def main():
     """
     # Create Data and Model
     data = Dota2(path="data/DOTA2")
-
-    test = data.test
-    labels = np.copy(test['Result'].to_numpy())
-    test['Result'] = -1
-    test = np.ascontiguousarray(test.to_numpy().astype(np.uint16))
+    data.drop([23, 'ClusterID', 'GameMode', 'GameType'])
     model = Dota(data, path="DOTA2")
 
     # Prepare Radon Number and Splits
     d, r, h, n = data.radon_number(r=model.weights.shape[0] + 2)
-    split = Split(data, n_splits=r ** h)
+    split = Split(data, n_splits=1)
     print("Weights: " + str(model.weights.shape) + "\n" +
           "Radon Number " + str(r) + "\n")
 
     # Train Models
-    model.train(split=split, iter=5)
+    model.train(split=split, epochs=40, iters=2)
 
-    # Creating Coefficients for Linear Equations Ax = b
-    # Each Theta (Parameter Vector) is a Column
-    weights = []
-    for px_model in model.px_model:
-        weights.append(px_model.weights)
-    weights = np.array(weights).T
-    np.ascontiguousarray(weights.T)
-    print(str(weights.shape))
-
+    predictions = model.predict()
+    accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
+    return model, None, predictions, accuracy
     # Radon Machines
     try:
         rm = RadonMachine(model, r, h)
@@ -57,13 +47,15 @@ def main():
     # Create new model with radon point and predict labels
     aggregate_model = px.Model(radon_point, model.graph, model.state_space)
 
-    predictions = aggregate_model.predict(test)
-    accuracy = np.where(np.equal(predictions[:,0], labels))[0].shape[0] / labels.shape[0]
+    predictions = model.predict(aggregate_model)
+    accuracy = np.where(np.equal(predictions[:,0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
     return model, radon_point, predictions, accuracy
 
 
 if __name__ == '__main__':
     result, agg, labels, acc = main()
-    np.save("aggregate_model", agg)
+    print(str(acc))
+    if agg is not None:
+        np.save("aggregate_model", agg)
     np.save("radon_predictions", labels[:,0])
     print(str(acc))

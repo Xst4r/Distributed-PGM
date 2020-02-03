@@ -22,6 +22,7 @@ LOG_FILE_DEBUG = os.path.join('logs', 'model_dbg.log')
 
 logger = get_logger()
 
+
 class Model:
 
     def __init__(self, data, weights=None, states=None, statespace=None, path=None):
@@ -100,12 +101,23 @@ class Model:
             raise AttributeError("Invalid Edgelist: Edgelist has to be a 2-Column Matrix of Type np.array")
         self.edgelist = np.vstack((self.edgelist, edges))
 
-    def train(self, iter=100, split=None):
+    def predict(self, px_model=None):
+        test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
+        if px_model is None:
+            if self.trained:
+                for px_model in self.px_model:
+                    return px_model.predict(test)
+        else:
+            return px_model.predict(test)
+
+    def train(self, epochs=1, iters=100, split=None):
         """
 
         Parameters
         ----------
-        iter :
+        epochs:
+        iters :
+        split :
         """
         models  = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
@@ -128,11 +140,28 @@ class Model:
                     logger.info("Training Models: " +
                                 "{:.2%}".format(float(i) / float(total_models)))
 
-            data = np.ascontiguousarray(train[idx.flatten()])
+            #data = np.ascontiguousarray(train[idx.flatten()])
+            data = np.ascontiguousarray(train[0:1000])
             states = np.ascontiguousarray(np.array(self.state_space, copy=True))
-            model = px.Model(np.ascontiguousarray(self.init_weights()), self.graph, states=states)
+            model = None
+            prev = None
+            obj_delta = None
+            for epoch in range(epochs):
+                if model is None:
+                    model = px.train(data=data, graph=self.graph, iters=iters, shared_states=False, initial_stepsize=1)
+                else:
+                    model = px.train(data=data, iters=iters, shared_states=False, in_model=model)
+
+                if prev is not None:
+                    print((prev == model.weights).all())
+                    print(str(np.sum(prev - model.weights)))
+                    print(str(model.obj - obj_delta))
+
+                prev = np.copy(model.weights)
+                obj_delta = model.obj
+
+                self.model_logger.info("OBJECTIVE::::" + str(model.obj) + "===" + str(type(model.obj)))
             models.append(model)
-            px.train(data=data, iters=iter, shared_states=False, in_model=model)
             iter_time = time.time()
         self.px_model = models
         end = time.time()
@@ -144,7 +173,7 @@ class Model:
             self.trained = True
 
     def parallel_train(self, split=None):
-        # This is slow and bad, maybe distribute processes among devices.
+        # This is slow and bad, maybe distribute proc   esses among devices.
         models = []
         processes = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
@@ -227,16 +256,17 @@ class Model:
         pass
 
     def _gen_chow_liu_tree(self):
-        try:
-            graph = nx.read_edgelist(os.path.join(self.root_dir, "chow_liu.graph"))
-            return np.array([e for e in graph.edges], dtype=np.uint64)
-        except FileNotFoundError as fnf:
-            print(str(fnf))
-            print("Can not find edgelist in folder, generating new chow liu tree - this may take some time.")
-        chow_liu_tree = build_chow_liu_tree(self.data_set.train.to_numpy(), len(self.data_set.vertices()))
+        if not self.data_set.features_dropped:
+            try:
+                graph = nx.read_edgelist(os.path.join(self.root_dir, "chow_liu.graph"))
+                return np.array([e for e in graph.edges], dtype=np.uint64)
+            except FileNotFoundError as fnf:
+                logger.error(str(fnf))
+                logger.info("Can not find edgelist in folder, generating new chow liu tree - this may take some time.")
+        chow_liu_tree = build_chow_liu_tree(self.data_set.holdout.to_numpy(), len(self.data_set.vertices()))
         nx.write_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu.graph"))
         nx.write_weighted_edgelist(chow_liu_tree, os.path.join(self.root_dir, "chow_liu_weighted.graph"))
-        return chow_liu_tree.edges
+        return np.array([e for e in chow_liu_tree.edges], dtype=np.uint64)
 
     def init_weights(self):
         suff_stats = 0
@@ -255,6 +285,7 @@ class Model:
             return weights
         else:
             logger.info("No models have been trained yet, call the train() function to start training.")
+
 
 class Dota2(Model):
 

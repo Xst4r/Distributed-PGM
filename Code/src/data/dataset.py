@@ -53,6 +53,7 @@ class Data:
         self.data = None
         self.train = None
         self.test = None
+        self.features_dropped = False
 
         if not os.path.isdir(path):
             print("No data directory provided defaulting to " +
@@ -79,7 +80,7 @@ class Data:
         if self.train is None:
             # TODO:Generate Splits
             self.train = self.data
-            self.train, self.test = self._train_test_split()
+            self.train, self.test, self.holdout = self._train_test_split()
 
         self.root_dir = os.path.join(path, "model")
 
@@ -105,7 +106,7 @@ class Data:
                 logger.debug("Unable to load file : " + str(file) + "\nException :" + str(e))
         os.chdir(ROOT_DIR)
 
-    def _train_test_split(self, ratio=0.8):
+    def _train_test_split(self, ratio=0.75, holdout_size=10000):
         """
 
         Parameters
@@ -118,7 +119,7 @@ class Data:
         """
         n_data = self.data.shape[0]
         mask = np.random.rand(n_data) < ratio
-        return self.data[mask], self.data[~mask]
+        return self.data[mask], self.data[~mask][holdout_size:], self.data[~mask][0:holdout_size]
 
     def vertices(self):
         if self.data is not None:
@@ -238,6 +239,9 @@ class Dota2(Data):
         self.load_json()
         self.data_header()
 
+        self.test_labels = np.copy(self.test['Result'].to_numpy())
+        self.test['Result'] = -1
+
     def load_json(self):
         with open(os.path.join(ROOT_DIR, 'data', 'DOTA2', 'heroes.json')) as file:
             data = json.load(file)
@@ -249,14 +253,23 @@ class Dota2(Data):
                 ordered_heroes[id - 1] = name
             self.hero_list = ordered_heroes
 
+    def drop(self, cols):
+        self.data = self.data.drop(columns=cols)
+        self.train = self.train.drop(columns=cols)
+        self.test = self.test.drop(columns=cols)
+        self.holdout = self.holdout.drop(columns=cols)
+       # self.features_dropped = True
+
     def data_header(self):
         header = ['Result', 'ClusterID', 'GameMode', 'GameType'] + self.hero_list
         self.data.reset_index()
         self.train.reset_index()
         self.test.reset_index()
+        self.holdout.reset_index()
         self.data.columns = header
         self.test.columns = header
         self.train.columns = header
+        self.holdout.columns = header
 
     def sample_match(self):
         matches = self.data.shape[0]
