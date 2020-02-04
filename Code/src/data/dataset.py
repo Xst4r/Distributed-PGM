@@ -258,7 +258,7 @@ class Dota2(Data):
         self.train = self.train.drop(columns=cols)
         self.test = self.test.drop(columns=cols)
         self.holdout = self.holdout.drop(columns=cols)
-       # self.features_dropped = True
+        #self.features_dropped = True
 
     def data_header(self):
         header = ['Result', 'ClusterID', 'GameMode', 'GameType'] + self.hero_list

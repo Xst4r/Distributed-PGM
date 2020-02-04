@@ -4,6 +4,7 @@ import numpy as np
 import pxpy as px
 import networkx as nx
 import time
+from copy import deepcopy
 
 from multiprocessing import Process
 from multiprocessing import cpu_count
@@ -61,6 +62,10 @@ class Model:
         self.vertices = None
         self.state_space = None
         self.graph = None
+
+        self.hook_counter = 0
+        self.stepsize = 1e-1
+        self.best_obj = np.finfo(np.float64).max
 
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
@@ -140,27 +145,23 @@ class Model:
                     logger.info("Training Models: " +
                                 "{:.2%}".format(float(i) / float(total_models)))
 
-            #data = np.ascontiguousarray(train[idx.flatten()])
-            data = np.ascontiguousarray(train[0:1000])
+            data = np.ascontiguousarray(train[idx.flatten()])
+            #data = np.ascontiguousarray(train[0:200])
             states = np.ascontiguousarray(np.array(self.state_space, copy=True))
             model = None
             prev = None
             obj_delta = None
             for epoch in range(epochs):
                 if model is None:
-                    model = px.train(data=data, graph=self.graph, iters=iters, shared_states=False, initial_stepsize=1)
+                    model = px.train(data=data, graph=self.graph, iters=iters, shared_states=False, initial_stepsize=1e-1)
                 else:
-                    model = px.train(data=data, iters=iters, shared_states=False, in_model=model)
+                    px.train(data=data, iters=iters, shared_states=False, in_model=model, opt_progress_hook=self.myHook)
 
-                if prev is not None:
-                    print((prev == model.weights).all())
-                    print(str(np.sum(prev - model.weights)))
-                    print(str(model.obj - obj_delta))
+                #self.model_logger.info("HOOK COUNT  = " + str(self.hook_counter))
+                #self.model_logger.info("STEPSIZE  = " + str(self.stepsize))
+                #self.model_logger.info("OBJECTIVE =" + str(self.best_obj))
+                #self.model_logger.info("===============")
 
-                prev = np.copy(model.weights)
-                obj_delta = model.obj
-
-                self.model_logger.info("OBJECTIVE::::" + str(model.obj) + "===" + str(type(model.obj)))
             models.append(model)
             iter_time = time.time()
         self.px_model = models
@@ -171,6 +172,14 @@ class Model:
 
         if not self.trained:
             self.trained = True
+
+    def myHook(self, state_p):
+        self.hook_counter +=1
+        if self.hook_counter % 10 == 0:
+            contents = state_p.contents
+            self.best_weights = np.copy(contents.best_weights)
+            self.best_obj = np.copy(contents.best_obj)
+            self.stepsize = np.copy(contents.stepsize)
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.

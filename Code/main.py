@@ -21,21 +21,21 @@ def main():
     """
     # Create Data and Model
     data = Dota2(path="data/DOTA2")
-    data.drop([23, 'ClusterID', 'GameMode', 'GameType'])
+    #data.drop([23])
     model = Dota(data, path="DOTA2")
 
     # Prepare Radon Number and Splits
     d, r, h, n = data.radon_number(r=model.weights.shape[0] + 2)
-    split = Split(data, n_splits=1)
+    split = Split(data, n_splits=r**h)
     print("Weights: " + str(model.weights.shape) + "\n" +
           "Radon Number " + str(r) + "\n")
 
     # Train Models
-    model.train(split=split, epochs=40, iters=2)
+    model.train(split=split, epochs=1, iters=2)
 
-    predictions = model.predict()
-    accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
-    return model, None, predictions, accuracy
+    #predictions = model.predict()
+    #accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
+    #return model, None, predictions, accuracy
     # Radon Machines
     try:
         rm = RadonMachine(model, r, h)
@@ -45,7 +45,7 @@ def main():
         print("bla")
 
     # Create new model with radon point and predict labels
-    aggregate_model = px.Model(radon_point, model.graph, model.state_space)
+    aggregate_model = px.Model(weights=radon_point, graph=model.graph, states=model.state_space)
 
     predictions = model.predict(aggregate_model)
     accuracy = np.where(np.equal(predictions[:,0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]

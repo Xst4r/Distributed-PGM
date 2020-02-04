@@ -135,7 +135,10 @@ class RadonMachine(Aggregation):
         -------
 
         """
-        weights = self.model.get_weights()
+        if not isinstance(self.model, np.ndarray):
+            weights = self.model.get_weights()
+        else:
+            weights = self.model
         # Coefficient Matrix Ax = b
         print("Calculating Radon Point for Radon Number: " + str(self.radon_number) + "\n" +
               "For Matrix with Shape: " + str(weights.shape) + "\n" +
