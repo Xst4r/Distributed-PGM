@@ -21,6 +21,7 @@ LOG_FILE_WARN = os.path.join('logs', 'model_warn.log')
 LOG_FILE_ERROR = os.path.join('logs', 'model_err.log')
 LOG_FILE_DEBUG = os.path.join('logs', 'model_dbg.log')
 
+from time import sleep
 logger = get_logger()
 
 
@@ -70,6 +71,8 @@ class Model:
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
         self.state_mapping = BijectiveDict()
+
+        self.global_weights = []
 
         if weights is not None and isinstance(weights, np.ndarray):
             self.weights = weights
@@ -146,21 +149,12 @@ class Model:
                                 "{:.2%}".format(float(i) / float(total_models)))
 
             data = np.ascontiguousarray(train[idx.flatten()])
-            #data = np.ascontiguousarray(train[0:200])
-            states = np.ascontiguousarray(np.array(self.state_space, copy=True))
             model = None
-            prev = None
-            obj_delta = None
             for epoch in range(epochs):
                 if model is None:
-                    model = px.train(data=data, graph=self.graph, iters=iters, shared_states=False, initial_stepsize=1e-1)
+                    model = px.train(data=data, graph=self.graph, iters=iters, shared_states=False)
                 else:
                     px.train(data=data, iters=iters, shared_states=False, in_model=model, opt_progress_hook=self.myHook)
-
-                #self.model_logger.info("HOOK COUNT  = " + str(self.hook_counter))
-                #self.model_logger.info("STEPSIZE  = " + str(self.stepsize))
-                #self.model_logger.info("OBJECTIVE =" + str(self.best_obj))
-                #self.model_logger.info("===============")
 
             models.append(model)
             iter_time = time.time()
@@ -173,12 +167,42 @@ class Model:
         if not self.trained:
             self.trained = True
 
+        self.merge_weights()
+
+    def merge_weights(self):
+
+        if len(self.px_model) == 1:
+            self.global_weights.append(self.px_model[0].weights)
+            return
+
+        global_states = self.merge_states()
+        global_cliques = [global_states[i] * global_states[j] for i, j in self.edgelist]
+        model_size = np.sum(global_cliques)
+
+        for model in self.px_model:
+            local_states = model.states
+            local_cliques = [local_states[i] * local_states[j] for i, j in self.edgelist]
+            weights = np.copy(model.weights)
+            missing_states = np.array(global_cliques) - np.array(local_cliques)
+            offset = 0
+            for j, idx in enumerate(global_cliques):
+                if missing_states[j] > 0:
+                    inserts = np.zeros(missing_states[j])
+                    weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
+                offset += idx
+
+            self.global_weights.append(weights)
+
+    def merge_states(self):
+        local_states = np.array([model.states for model in self.px_model])
+        return np.max(local_states, axis=0)
+
     def myHook(self, state_p):
         self.hook_counter +=1
         if self.hook_counter % 10 == 0:
             contents = state_p.contents
             self.best_weights = np.copy(contents.best_weights)
-            self.best_obj = np.copy(contents.best_obj)
+            self.best_obj = np.copy(contents.obj)
             self.stepsize = np.copy(contents.stepsize)
 
     def parallel_train(self, split=None):
@@ -224,7 +248,8 @@ class Model:
             Creates an independency structure (graph) from data. The specified mode for the independency structure is used,
             when creating this object.
         """
-        self.edgelist = self._gen_chow_liu_tree()
+        holdout = np.ascontiguousarray(self.data_set.holdout.to_numpy().astype(np.uint16))
+        self.edgelist = px.train(data=holdout, graph=px.GraphType.auto_tree, iters=1).graph.edgelist
         self.graph = self._px_create_graph()
         self.weights = self.init_weights()
 
@@ -235,10 +260,10 @@ class Model:
         -------
         :class:`numpy.ndarray` containing the state space for each feature.
         """
-        statespace = np.arange(self.data_set.train.shape[0], dtype=np.uint64)
+        statespace = np.arange(self.data_set.train.shape[1], dtype=np.uint64)
         for i, column in enumerate(self.data_set.train.columns):
             self.state_mapping[column] = i
-            statespace[i] = np.unique(self.data_set.data[column]).shape[0]
+            statespace[i] = np.unique(self.data_set.data[column].to_numpy().astype(np.uint64)).shape[0]
 
         return statespace
 
@@ -256,7 +281,7 @@ class Model:
         pass
 
     def _px_create_graph(self):
-        return px.create_graph(self.edgelist)
+        return px.create_graph(self.edgelist, self.state_space)
 
     def _px_create_model(self):
         return px.Model(weights=self.weights, graph=self.graph, states=self.state_space.reshape(self.state_space.shape[0],1), stats=px.StatisticsType.overcomplete)
@@ -285,15 +310,7 @@ class Model:
         return np.zeros(suff_stats)
 
     def get_weights(self):
-        if self.trained:
-            weights = []
-            for px_model in self.px_model:
-                weights.append(px_model.weights)
-            weights = np.array(weights).T
-            np.ascontiguousarray(weights.T)
-            return weights
-        else:
-            logger.info("No models have been trained yet, call the train() function to start training.")
+        return np.stack(self.global_weights, axis=0).T
 
 
 class Dota2(Model):
@@ -349,3 +366,28 @@ class Dota2(Model):
                                 edge = np.vstack((edge, np.array([source, clique[j]], dtype=np.uint64).reshape(1,2)))
             assert edge.shape[0] == n_edges
             self.add_edge(np.array(edge))
+
+
+class Susy(Model):
+
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
+
+        self.data = data
+
+        super(Susy, self).__init__(data, weights, states, statespace, path)
+
+        if states is None:
+            self.states = self._states_from_data()
+        if statespace is None and self.state_space is None:
+            self.state_space = self._statespace_from_data()
+
+    def predict(self, px_model=None):
+        test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
+        test[:,0] = -1
+        if px_model is None:
+            if self.trained:
+                for px_model in self.px_model:
+                    return px_model.predict(test)
+        else:
+            return px_model.predict(test)
+

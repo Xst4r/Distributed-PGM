@@ -67,7 +67,7 @@ class Mean(Aggregation):
 
         """
         weights = self.model.get_weights()
-        return 1 / weights.shape(0) * np.sum(weights, axis=0)
+        self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=0))
 
 
 class MaximumLikelihood(Aggregation):
@@ -178,7 +178,7 @@ class RadonMachine(Aggregation):
                 sol = np.linalg.solve(A, b)
                 np.save("leq_sol", sol)
                 pos = sol >= 0
-            except ValueError as e:
+            except (ValueError, np.linalg.LinAlgError) as e:
                 print(e)
                 logger.warn("MATRIX IS SINGULAR")
                 sol, resid, rank, s = np.linalg.lstsq(A, b, rcond=None)

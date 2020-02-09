@@ -50,9 +50,7 @@ class Data:
                 "Please specify either url, name or path to proceed.")
 
         # Data Defs
-        self.data = None
-        self.train = None
-        self.test = None
+
         self.features_dropped = False
 
         if not os.path.isdir(path):
@@ -72,25 +70,21 @@ class Data:
         elif path:
             self.extractor = Extract()
 
-        try:
-            self.load()
-        except FileNotFoundError as e:
-            logger.debug("Couldn't load a file in the folder: " + str(e))
+        if self.data is None:
+            try:
+                self.load()
+            except FileNotFoundError as e:
+                logger.debug("Couldn't load a file in the folder: " + str(e))
 
         if self.train is None:
             # TODO:Generate Splits
             self.train = self.data
-            self.train, self.test, self.holdout = self._train_test_split()
+            self.mask , self.train, self.test, self.holdout = self._train_test_split()
 
         self.root_dir = os.path.join(path, "model")
 
         if not os.path.exists(self.root_dir):
             os.makedirs(self.root_dir)
-
-        self.mapping = self.prepare_data(self.train)
-
-        for (i, (col_name, col)) in enumerate(self.test.iteritems()):
-            self.test[col_name] = col.replace(self.mapping[i])
 
     def load(self):
         """
@@ -119,7 +113,7 @@ class Data:
         """
         n_data = self.data.shape[0]
         mask = np.random.rand(n_data) < ratio
-        return self.data[mask], self.data[~mask][holdout_size:], self.data[~mask][0:holdout_size]
+        return mask, self.data[mask], self.data[~mask][holdout_size:], self.data[~mask][0:holdout_size]
 
     def vertices(self):
         if self.data is not None:
@@ -144,8 +138,7 @@ class Data:
         """
         self.url = url
 
-    @staticmethod
-    def prepare_data(data):
+    def prepare_data(self, data):
         mapping = []
         if isinstance(data, pd.DataFrame):
             data = data.to_numpy()
@@ -234,13 +227,24 @@ class Dota2(Data):
     def __init__(self, url=None, path=None):
         self.heroes = {}
         self.hero_list = None
+        self.data = None
+        self.train = None
+        self.test = None
         super(Dota2, self).__init__(path, url)
 
         self.load_json()
         self.data_header()
 
         self.test_labels = np.copy(self.test['Result'].to_numpy())
-        self.test['Result'] = -1
+        # self.test['Result'] = -1
+
+        self.mapping = self.prepare_data(self.train)
+
+        for (i, (col_name, col)) in enumerate(self.test.iteritems()):
+            self.test[col_name] = col.replace(self.mapping[i])
+
+        for (i, (col_name, col)) in enumerate(self.holdout.iteritems()):
+            self.holdout[col_name] = col.replace(self.mapping[i])
 
     def load_json(self):
         with open(os.path.join(ROOT_DIR, 'data', 'DOTA2', 'heroes.json')) as file:
@@ -312,13 +316,64 @@ class Susy(Data):
 
                            }
 
-        super(Susy, self).__init__(url, path)
+        if not os.path.isdir(path):
+            print("No data directory provided defaulting to " +
+                  os.path.join(ROOT_DIR, 'data'))
+            self.path = os.path.join(ROOT_DIR, path)
+            if not os.path.isdir(self.path):
+                os.makedirs(self.path)
+        else:
+            if os.path.isabs(path):
+                self.path = path
+            else:
+                self.path = os.path.join(ROOT_DIR, path)
+
+        self.quantiles = BijectiveDict()
+        self.label_column = 0
+        self.holdout_size = 10000
+
+        self.data = None
+        self.train = None
+        self.test = None
+
+        try:
+            self.load()
+        except FileNotFoundError as e:
+            logger.debug("Couldn't load a file in the folder: " + str(e))
+
+        self.mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.8)
+
+        self.discretize(Discretization.Quantile)
+        self.train = self.data[self.mask]
+        self.test = self.data[~self.mask][self.holdout_size:]
+        self.holdout = self.data[~self.mask][0:self.holdout_size]
+
+        self.test_labels = np.copy(self.test[0].to_numpy())
+
+        super(Susy, self).__init__(path, url)
 
     def discretize(self, opt):
+        quants = np.linspace(0, 1, 9)
         for (col_name, col) in self.train.iteritems():
+            if col_name != self.label_column:
+                _ , bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
+                self.data.loc[:, col_name] = np.digitize(self.data[col_name], bins)
+            """
+            
             if self._is_numeric(col):
-                #self.train[col_name] = self._disc_opts[opt](col)
-                self.train = self.train.assign(col_name=self._quantile(col))
+                if col.name != self.label_column:
+                    quantiles, dist = self._disc_opts[opt](col)
+                    self.data.loc[self.mask, col_name] = dist
+
+                    dist = np.zeros(shape=(self.test.shape[0] + self.holdout.shape[0]))
+                    for i, point in enumerate(self.test[col_name].to_numpy()):
+                        dist[i + self.holdout.shape[0]] = np.argmin(np.abs(quantiles - point))
+
+                    for i, point in enumerate(self.holdout[col_name].to_numpy()):
+                        dist[i] = np.argmin(np.abs(quantiles - point))
+                    self.data.loc[~self.mask, col_name] = dist
+                    print("Stuff")
+            """
 
     def load(self):
         """
@@ -328,11 +383,9 @@ class Susy(Data):
         os.chdir(data_dir)
         for file in os.listdir(data_dir):
             try:
-                dataframe_generator = pd.read_csv(file, header=None, chunksize=10000)
+                dataframe_generator = pd.read_csv(file, header=None, chunksize=1000000)
                 for chunk in dataframe_generator:
                     self.data = pd.DataFrame(chunk) if self.data is None else self.data.append(chunk)
-                    if DEBUG:
-                        break
             except Exception as e:
                 logger.debug("This is an Exception" + str(e))
         os.chdir(ROOT_DIR)
@@ -342,12 +395,12 @@ class Susy(Data):
 
     def _quantile(self, col):
         data = col.to_numpy()
-        arr = np.linspace(0,1,10)
+        arr = np.linspace(0, 1, 10)
         quantiles = np.quantile(col, arr)
         dist = np.zeros(shape=(data.shape[0]))
         for i, point in enumerate(data):
-            dist[i] = quantiles[np.argmin(np.abs(quantiles - point))]
-        return pd.Series(dist)
+            dist[i] = np.argmin(np.abs(quantiles - point))
+        return quantiles, pd.Series(dist)
 
     def _kmeans(self, col):
         pass
