@@ -116,8 +116,13 @@ class Sampler:
         choices = np.random.choice(a=data_idx , size=total_samples, replace=True).reshape(self.n_split, self.sample_complexity)
         self.split_idx = choices
 
-    def _model(self, data):
-        pass
+    def _model(self, models):
+        local_dist_samples = []
+        for model in models:
+            mu = np.mean(model, axis=0)
+            cov = np.cov(model)
+            samples = np.random.multivariate_normal(mu, cov, self.sample_complexity)
+            local_dist_samples.append(samples)
 
     def _split_corr(self, data):
         pass
