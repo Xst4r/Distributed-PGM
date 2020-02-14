@@ -15,7 +15,7 @@ class SplitType(Enum):
 
 class Sampler:
 
-    def __init__(self, data, n_splits=10):
+    def __init__(self, data, n_splits=10, sample_complexity=100):
         """
             Parameters
             ----------
@@ -47,6 +47,7 @@ class Sampler:
         if self.mode is None:
             self.mode = SplitType.Random
 
+        self.sample_complexity = sample_complexity
         self.split_idx = None
         self.create_split(data.train.shape, data.train)
 
@@ -110,7 +111,10 @@ class Sampler:
         self.split_idx = np.array_split(split, self.n_splits)
 
     def _bootstrap(self, data):
-        pass
+        total_samples = self.sample_complexity * self.n_splits
+        data_idx = np.arange(data.shape[0])
+        choices = np.random.choice(a=data_idx , size=total_samples, replace=True).reshape(self.n_split, self.sample_complexity)
+        self.split_idx = choices
 
     def _model(self, data):
         pass
@@ -124,15 +128,15 @@ class Random(Sampler):
     def __init__(self, data, n_splits=10):
         self.n_splits = n_splits
         self.mode = SplitType.Random
-        super(Random, self).__init__(data, n_splits)
+        super(Random, self).__init__(data, n_splits, sample_complexity)
 
 
 class Bootstrap(Sampler):
 
-    def __init__(self, data, n_splits=10):
+    def __init__(self, data, n_splits=10, sample_complexity=100):
         self.n_splits = n_splits
         self.mode = SplitType.Bootstrap
-        super(Bootstrap, self).__init__(data, n_splits)
+        super(Bootstrap, self).__init__(data, n_splits, sample_complexity)
 
 
 class Model(Sampler):
@@ -140,4 +144,5 @@ class Model(Sampler):
     def __init__(self, data, n_splits=10):
         self.n_splits = n_splits
         self.mode = SplitType.Model
-        super(Model, self).__init__(data, n_splits)
+
+        super(Model, self).__init__(data, n_splits, sample_complexity)
