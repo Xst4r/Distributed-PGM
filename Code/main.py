@@ -68,7 +68,7 @@ def dota():
     model = Dota(data, path="DOTA2")
 
     d, r, h, n = data.radon_number(r=model.weights.shape[0] + 2)
-    split = Sampler(data, n_splits=r ** h)
+    split = Random(data, n_splits=r ** h)
     print("Weights: " + str(model.weights.shape) + "\n" +
           "Radon Number " + str(r) + "\n")
 
