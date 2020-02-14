@@ -9,11 +9,11 @@ from src.model.aggregation import AggregationType
 
 class SplitType(Enum):
     Random = 1
-    Correlation = 2
-    GroupByFeature = 3
+    Bootstrap = 2
+    Model = 3
 
 
-class Split:
+class Sampler:
 
     def __init__(self, data, n_splits=10):
         """
@@ -40,10 +40,14 @@ class Split:
             my_split.create_split()
 
         """
-        self.n_splits = n_splits
-        self.split_mode = SplitType.Random
-        self.split_idx = None
 
+        if self.n_splits is None:
+            self.n_splits = n_splits
+
+        if self.mode is None:
+            self.mode = SplitType.Random
+
+        self.split_idx = None
         self.create_split(data.train.shape, data.train)
 
         self.data_dim = data.train.shape[1]
@@ -61,7 +65,7 @@ class Split:
         """
                 Set Split Mode according to existing Enum Members of src.conf.modes.Splits
         """
-        self.split_mode = mode
+        self.mode = mode
 
     def create_split(self, shape, data=None):
         """
@@ -85,26 +89,55 @@ class Split:
                 logging.error(
                     "Unable to create split, data was not provided in a valid format. Please use either Pandas Dataframes or Numpy Arrays")
 
-        if self.split_mode == SplitType.Random:
-            self._split_random(shape)
-        elif self.split_mode == SplitType.Correlation:
+        if self.mode == SplitType.Random:
+            self._random(shape)
+        elif self.mode == SplitType.Bootstrap:
             if data is None:
                 logging.info("Falling back to random split. Data needs to be provided for a data-based Split")
-                self._split_random(shape)
+                self._random(shape)
             else:
-                self._split_corr(data)
+                self._bootstrap(data)
         else:
             logging.info("Invalid or Unknown Split Type. Falling back to random split")
-            self._split_random(shape)
+            self._random(shape)
 
     def split(self):
         yield from self.split_idx
 
-    def _split_random(self, shape):
+    def _random(self, shape):
         split = np.arange(shape[0])
         np.random.shuffle(split)
         self.split_idx = np.array_split(split, self.n_splits)
 
+    def _bootstrap(self, data):
+        pass
+
+    def _model(self, data):
+        pass
+
     def _split_corr(self, data):
         pass
 
+
+class Random(Sampler):
+
+    def __init__(self, data, n_splits=10):
+        self.n_splits = n_splits
+        self.mode = SplitType.Random
+        super(Random, self).__init__(data, n_splits)
+
+
+class Bootstrap(Sampler):
+
+    def __init__(self, data, n_splits=10):
+        self.n_splits = n_splits
+        self.mode = SplitType.Bootstrap
+        super(Bootstrap, self).__init__(data, n_splits)
+
+
+class Model(Sampler):
+
+    def __init__(self, data, n_splits=10):
+        self.n_splits = n_splits
+        self.mode = SplitType.Model
+        super(Model, self).__init__(data, n_splits)

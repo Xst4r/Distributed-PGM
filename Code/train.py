@@ -6,7 +6,7 @@ from typing import List
 
 from src.data.dataset import Data
 from src.model.model import Model
-from src.preprocessing.split import Split
+from src.preprocessing.sampling import Sampler
 
 
 def run(args):
@@ -14,13 +14,13 @@ def run(args):
 
     while True:
         next_model = None
-        split = Split(next_model.train)
+        split = Sampler(next_model.train)
         train(next_model, split)
 
 
         write()
 
-def train(model:Model, split:Split, agg, *kwargs):
+def train(model:Model, split:Sampler, agg, *kwargs):
     """
 
     Parameters

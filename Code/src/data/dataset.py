@@ -358,22 +358,6 @@ class Susy(Data):
             if col_name != self.label_column:
                 _ , bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
                 self.data.loc[:, col_name] = np.digitize(self.data[col_name], bins)
-            """
-            
-            if self._is_numeric(col):
-                if col.name != self.label_column:
-                    quantiles, dist = self._disc_opts[opt](col)
-                    self.data.loc[self.mask, col_name] = dist
-
-                    dist = np.zeros(shape=(self.test.shape[0] + self.holdout.shape[0]))
-                    for i, point in enumerate(self.test[col_name].to_numpy()):
-                        dist[i + self.holdout.shape[0]] = np.argmin(np.abs(quantiles - point))
-
-                    for i, point in enumerate(self.holdout[col_name].to_numpy()):
-                        dist[i] = np.argmin(np.abs(quantiles - point))
-                    self.data.loc[~self.mask, col_name] = dist
-                    print("Stuff")
-            """
 
     def load(self):
         """
@@ -390,9 +374,6 @@ class Susy(Data):
                 logger.debug("This is an Exception" + str(e))
         os.chdir(ROOT_DIR)
 
-    def _is_numeric(self, col):
-        return True
-
     def _quantile(self, col):
         data = col.to_numpy()
         arr = np.linspace(0, 1, 10)
@@ -407,3 +388,17 @@ class Susy(Data):
 
     def _distance(self, col):
         pass
+
+
+class CoverType(Data):
+
+    def __init__(self):
+        pass
+        super(CoverType, self).__init__()
+
+
+class Fact(Data):
+
+    def __init__(self):
+        pass
+        super(Fact, self).__init__()

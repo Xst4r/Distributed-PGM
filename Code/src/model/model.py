@@ -25,6 +25,21 @@ from time import sleep
 logger = get_logger()
 
 
+def log_progress(start, update, iter_time, total_models, model_count):
+    if update is None and iter_time is not None:
+        if iter_time - start > 60:
+            update = time.time()
+            logger.info("Training Models: " +
+                        "{:.2%}".format(float(model_count) / float(total_models)))
+    if update is not None and iter_time is not None:
+        if iter_time - update > 60:
+            update = time.time()
+            logger.info("Training Models: " +
+                        "{:.2%}".format(float(model_count) / float(total_models)))
+
+    return update, iter_time
+
+
 class Model:
 
     def __init__(self, data, weights=None, states=None, statespace=None, path=None):
@@ -66,7 +81,7 @@ class Model:
 
         self.hook_counter = 0
         self.stepsize = 1e-1
-        self.best_obj = np.finfo(np.float64).max
+
 
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
@@ -89,6 +104,9 @@ class Model:
         self.px_model = None
 
         self.trained = False
+        self.curr_model = 0
+        self.best_objs = None
+        self.best_weights = None
 
     def get_node_id(self, colname):
         pass
@@ -110,7 +128,23 @@ class Model:
         self.edgelist = np.vstack((self.edgelist, edges))
 
     def predict(self, px_model=None):
-        test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
+        """
+        TODO
+
+        Parameters
+        ----------
+        px_model : `class:px.Model`
+            Model to predict the test data with.
+
+        Raises
+        ------
+        RuntimeError
+
+        Returns
+        -------
+            `class:np.array` with predicted test data (all -1 elements are predicted and replaced)
+        """
+        test = np.ascontiguousarray(self.data_set.test.to_numpy()[:10000].astype(np.uint16))
         if px_model is None:
             if self.trained:
                 for px_model in self.px_model:
@@ -120,12 +154,25 @@ class Model:
 
     def train(self, epochs=1, iters=100, split=None):
         """
+        TODO
 
         Parameters
         ----------
-        epochs:
-        iters :
-        split :
+        epochs : int
+            Number of outer iterations
+        iters: int
+            Number of inner iteration (per call of px.train)
+        split: Split
+            class:src.preprocessing.split.Split Contains the number of splits and thus the number of models to be trained.
+            Each split will be distributed to a single device/model.
+
+        Raises
+        ------
+        RuntimeError
+
+        Returns
+        -------
+            None
         """
         models  = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
@@ -134,33 +181,29 @@ class Model:
         start = time.time()
         update = None
         iter_time = None
+
+        # Initialization for best Params
         total_models = len(split.split_idx)
+        if self.best_weights is None:
+            self.best_weights = [0] * total_models
+        if self.best_objs is None:
+            self.best_objs = [0] * total_models
 
+        # Training
         for i, idx in enumerate(split.split()):
-            if update is None and iter_time is not None:
-                if iter_time - start > 60:
-                    update = time.time()
-                    logger.info("Training Models: "+
-                                "{:.2%}".format(float(i)/float(total_models)))
-            if update is not None and iter_time is not None:
-                if iter_time - update > 60:
-                    update = time.time()
-                    logger.info("Training Models: " +
-                                "{:.2%}".format(float(i) / float(total_models)))
-
+            self.curr_model = i
+            update, _ = log_progress(start, update, iter_time, total_models, i)
             data = np.ascontiguousarray(train[idx.flatten()])
-            model = None
+            init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
+            model = px.train(data=init_data, graph=self.graph,
+                             iters=1, shared_states=False)
             for epoch in range(epochs):
-                if model is None:
-                    model = px.train(data=data, graph=self.graph, iters=iters, shared_states=False)
-                else:
-                    px.train(data=data, iters=iters, shared_states=False, in_model=model, opt_progress_hook=self.myHook)
-
+                px.train(data=data, iters=iters, shared_states=False, in_model=model, opt_progress_hook=self.progress_hook)
             models.append(model)
             iter_time = time.time()
         self.px_model = models
-        end = time.time()
 
+        end = time.time()
         logger.info("Finished Training Models: " +
                     "{:.2f} s".format(end - start))
 
@@ -170,7 +213,8 @@ class Model:
         self.merge_weights()
 
     def merge_weights(self):
-
+        """
+        """
         if len(self.px_model) == 1:
             self.global_weights.append(self.px_model[0].weights)
             return
@@ -180,30 +224,47 @@ class Model:
         model_size = np.sum(global_cliques)
 
         for model in self.px_model:
-            local_states = model.states
-            local_cliques = [local_states[i] * local_states[j] for i, j in self.edgelist]
-            weights = np.copy(model.weights)
-            missing_states = np.array(global_cliques) - np.array(local_cliques)
-            offset = 0
-            for j, idx in enumerate(global_cliques):
-                if missing_states[j] > 0:
-                    inserts = np.zeros(missing_states[j])
-                    weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
-                offset += idx
+            weights = model.weights
+            if weights.shape[0] < model_size:
+                weights = np.copy(model.weights)
+                local_states = model.states
+                local_cliques = [local_states[i] * local_states[j] for i, j in self.edgelist]
 
+                missing_states = np.array(global_cliques) - np.array(local_cliques)
+                offset = 0
+                for j, idx in enumerate(global_cliques):
+                    if missing_states[j] > 0:
+                        inserts = np.zeros(missing_states[j])
+                        weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
+                    offset += idx
             self.global_weights.append(weights)
 
     def merge_states(self):
+        """
+
+        Returns
+        -------
+
+        """
         local_states = np.array([model.states for model in self.px_model])
         return np.max(local_states, axis=0)
 
-    def myHook(self, state_p):
+    def progress_hook(self, state_p):
+        """
+
+        Parameters
+        ----------
+        state_p :
+
+        Returns
+        -------
+
+        """
         self.hook_counter +=1
         if self.hook_counter % 10 == 0:
             contents = state_p.contents
-            self.best_weights = np.copy(contents.best_weights)
-            self.best_obj = np.copy(contents.obj)
-            self.stepsize = np.copy(contents.stepsize)
+            self.best_weights[self.curr_model] = np.copy(contents.best_weights)
+            self.best_objs[self.curr_model] = np.copy(contents.obj)
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
@@ -263,7 +324,7 @@ class Model:
         statespace = np.arange(self.data_set.train.shape[1], dtype=np.uint64)
         for i, column in enumerate(self.data_set.train.columns):
             self.state_mapping[column] = i
-            statespace[i] = np.unique(self.data_set.data[column].to_numpy().astype(np.uint64)).shape[0]
+            statespace[i] = np.max(self.data_set.data[column].to_numpy().astype(np.uint64))
 
         return statespace
 

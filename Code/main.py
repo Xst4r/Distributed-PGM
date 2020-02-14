@@ -2,7 +2,7 @@ from src.data.dataset import Dota2, Susy, Discretization
 from src.model.aggregation import RadonMachine, Mean
 from src.model.model import Dota2 as Dota
 from src.model.model import Susy as SusyModel
-from src.preprocessing.split import Split
+from src.preprocessing.sampling import Random
 
 from time import time
 
@@ -18,34 +18,44 @@ def susy():
 
 
 
-    full = Split(data, n_splits=1)
-    full_model.train(split=full, epochs=2, iters=100)
+    full = Random(data, n_splits=1)
+    full_model.train(split=full, epochs=2, iters=500)
+
+    global_preds = full_model.predict()
+    num_test = 10000
+    global_acc = np.where(np.equal(global_preds[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
+    print("GLOBAL " + str(global_acc))
 
     d, r, h, n = data.radon_number(r=full_model.global_weights[0].shape[0] + 2, h=1, d=data.train.shape[0])
-    split = Split(data, n_splits=r ** h)
+    split = Random(data, n_splits=r ** h)
 
 
-    model.train(split=split, epochs=2, iters=20)
+    model.train(split=split, epochs=1, iters=500)
 
+    # Radon Machines
     try:
         rm = RadonMachine(model, r, h)
         rm.aggregate(None)
         radon_point = rm.aggregate_models[0]
     except ValueError or TypeError as e:
-        print("bla")
+        print(e)
 
+    # Averaging at the end
     try:
         mean = Mean(model)
         mean.aggregate(None)
         mean_theta = mean.aggregate_models[0]
     except ValueError or TypeError as e:
-        print("bla")
+        print(e)
 
-    aggregate_model = px.Model(weights=radon_point, graph=model.graph, states=model.state_space)
-    mean_model = px.Model(weights=mean_theta, graph=model.graph, states=model.state_space)
+    aggregate_model = px.Model(weights=radon_point, graph=model.graph, states=model.state_space+1)
+    mean_model = px.Model(weights=mean_theta, graph=model.graph, states=model.state_space+1)
+
+
 
     predictions = model.predict(aggregate_model)
     avg_preds = model.predict(mean_model)
+
     accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
     avg_acc =  np.where(np.equal(avg_preds[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
     print("AVG " + str(avg_acc))
@@ -58,7 +68,7 @@ def dota():
     model = Dota(data, path="DOTA2")
 
     d, r, h, n = data.radon_number(r=model.weights.shape[0] + 2)
-    split = Split(data, n_splits=r ** h)
+    split = Sampler(data, n_splits=r ** h)
     print("Weights: " + str(model.weights.shape) + "\n" +
           "Radon Number " + str(r) + "\n")
 
@@ -112,7 +122,7 @@ if __name__ == '__main__':
     labels = result.data.test[0].to_numpy()
     test[:, 0] = -1
     local_acc = []
-    for i in range(20):
+    for i in range(200):
         model = result.px_model[idx[i]]
         loc_pred = model.predict(test.astype(np.uint16))
         loc_acc = np.where(labels == loc_pred[:, 0])[0].shape[0] / labels.shape[0]
