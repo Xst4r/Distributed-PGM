@@ -130,7 +130,7 @@ class Sampler:
 
 class Random(Sampler):
 
-    def __init__(self, data, n_splits=10):
+    def __init__(self, data, n_splits=10, sample_complexity=100):
         self.n_splits = n_splits
         self.mode = SplitType.Random
         super(Random, self).__init__(data, n_splits, sample_complexity)

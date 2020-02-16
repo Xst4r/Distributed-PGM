@@ -16,10 +16,8 @@ def susy():
     full_model = SusyModel(data, path="SUSY")
     model = SusyModel(data, path="SUSY")
 
-
-
     full = Random(data, n_splits=1)
-    full_model.train(split=full, epochs=2, iters=500)
+    full_model.train(split=full, epochs=1, iters=500)
 
     global_preds = full_model.predict()
     num_test = 10000
@@ -27,10 +25,9 @@ def susy():
     print("GLOBAL " + str(global_acc))
 
     d, r, h, n = data.radon_number(r=full_model.global_weights[0].shape[0] + 2, h=1, d=data.train.shape[0])
-    split = Random(data, n_splits=r ** h)
+    split = Random(data, n_splits=data.train.shape[0]/100)
 
-
-    model.train(split=split, epochs=1, iters=500)
+    model.train(split=split, epochs=1, iters=100)
 
     # Radon Machines
     try:

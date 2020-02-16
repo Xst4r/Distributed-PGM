@@ -145,7 +145,7 @@ class RadonMachine(Aggregation):
               "using " + str(self.h) + "aggregation layers.")
         r = self.radon_number
         h = self.h
-        aggregation_weights = weights
+        aggregation_weights = weights[:, :r**h]
         for i in range(h, 0, -1):
             new_weights = None
             if i > 1:
