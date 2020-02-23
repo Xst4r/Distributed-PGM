@@ -32,7 +32,7 @@ class GraphType(Enum):
 
 class Data:
 
-    def __init__(self, path=None, url=None):
+    def __init__(self, path=None, url=None, seed=None):
         """
 
         Parameters
@@ -40,6 +40,8 @@ class Data:
         url :
         path :
         """
+
+        self.random_state = np.random.RandomState(seed=seed)
         # Path Defs
         self.url = None
         self.path = None
@@ -70,16 +72,9 @@ class Data:
         elif path:
             self.extractor = Extract()
 
-        if self.data is None:
-            try:
-                self.load()
-            except FileNotFoundError as e:
-                logger.debug("Couldn't load a file in the folder: " + str(e))
+        self.data = None
 
-        if self.train is None:
-            # TODO:Generate Splits
-            self.train = self.data
-            self.mask , self.train, self.test, self.holdout = self._train_test_split()
+        self.train = None
 
         self.root_dir = os.path.join(path, "model")
 
@@ -112,7 +107,7 @@ class Data:
 
         """
         n_data = self.data.shape[0]
-        mask = np.random.rand(n_data) < ratio
+        mask = self.random_state.rand(n_data) < ratio
         return mask, self.data[mask], self.data[~mask][holdout_size:], self.data[~mask][0:holdout_size]
 
     def vertices(self):
@@ -190,10 +185,10 @@ class Data:
                 h = log(d, r) - log(n, r)
                 if h < 1:
                     logger.log(logger.ERROR, "Data is not sufficient for one split. Without additional data"
-                                               " or dimensionality reduction, no radon point can be determined.")
+                                             " or dimensionality reduction, no radon point can be determined.")
                 if np.floor(h) == 1:
                     logger.log(logger.WARNING, "Only one splt can be generated i.e. "
-                                                 "aggregated for the given amount of data per model.")
+                                               "aggregated for the given amount of data per model.")
                 return 'h', h
             elif r is None:
                 r = (float(d) / float(n)) ** (1 / float(h))
@@ -224,13 +219,13 @@ class Data:
 
 class Dota2(Data):
 
-    def __init__(self, url=None, path=None):
+    def __init__(self, url=None, path=None, seed=None):
         self.heroes = {}
         self.hero_list = None
         self.data = None
         self.train = None
         self.test = None
-        super(Dota2, self).__init__(path, url)
+        super(Dota2, self).__init__(path, url, seed)
 
         self.load_json()
         self.data_header()
@@ -262,7 +257,7 @@ class Dota2(Data):
         self.train = self.train.drop(columns=cols)
         self.test = self.test.drop(columns=cols)
         self.holdout = self.holdout.drop(columns=cols)
-        #self.features_dropped = True
+        # self.features_dropped = True
 
     def data_header(self):
         header = ['Result', 'ClusterID', 'GameMode', 'GameType'] + self.hero_list
@@ -308,7 +303,12 @@ class Dota2(Data):
 
 class Susy(Data):
 
-    def __init__(self, url=None, path=None):
+    def __init__(self, url=None, path=None, seed=None):
+
+        super(Susy, self).__init__(path, url, seed)
+
+        if self.random_state is None:
+            self.random_state = np.random.RandomState(seed=seed)
 
         self._disc_opts = {Discretization.Quantile: self._quantile,
                            Discretization.KMeans: self._kmeans,
@@ -341,7 +341,8 @@ class Susy(Data):
         except FileNotFoundError as e:
             logger.debug("Couldn't load a file in the folder: " + str(e))
 
-        self.mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.8)
+        if self.train is None:
+            self.mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.8)
 
         self.discretize(Discretization.Quantile)
         self.train = self.data[self.mask]
@@ -350,13 +351,11 @@ class Susy(Data):
 
         self.test_labels = np.copy(self.test[0].to_numpy())
 
-        super(Susy, self).__init__(path, url)
-
     def discretize(self, opt):
         quants = np.linspace(0, 1, 9)
         for (col_name, col) in self.train.iteritems():
             if col_name != self.label_column:
-                _ , bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
+                _, bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
                 self.data.loc[:, col_name] = np.digitize(self.data[col_name], bins)
 
     def load(self):

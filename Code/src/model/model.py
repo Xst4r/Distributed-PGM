@@ -1,11 +1,13 @@
 import os
+import io
 
 import numpy as np
 import pxpy as px
 import networkx as nx
 import time
-from copy import deepcopy
 
+from copy import deepcopy
+from shutil import copyfileobj
 from multiprocessing import Process
 from multiprocessing import cpu_count
 
@@ -16,7 +18,7 @@ from src.model.util.chow_liu_tree import build_chow_liu_tree
 
 LOG_FORMAT = '%(message)s'
 LOG_NAME = 'model_logger'
-LOG_FILE_INFO = os.path.join('logs', 'model_output.log')
+LOG_FILE_INFO = os.path.join('logs', 'model_output.csv')
 LOG_FILE_WARN = os.path.join('logs', 'model_warn.log')
 LOG_FILE_ERROR = os.path.join('logs', 'model_err.log')
 LOG_FILE_DEBUG = os.path.join('logs', 'model_dbg.log')
@@ -108,6 +110,9 @@ class Model:
         self.best_objs = None
         self.best_weights = None
 
+        self.csv_writer = io.StringIO("Model, Objective,")
+        print("Model, Objective,", file=self.csv_writer)
+
     def get_node_id(self, colname):
         pass
 
@@ -152,7 +157,7 @@ class Model:
         else:
             return px_model.predict(test)
 
-    def train(self, epochs=1, iters=100, split=None):
+    def train(self, epochs=1, iters=100, split=None, n_models=None):
         """
         TODO
 
@@ -183,7 +188,7 @@ class Model:
         iter_time = None
 
         # Initialization for best Params
-        total_models = len(split.split_idx)
+        total_models = len(split.split_idx) if n_models is None else n_models
         if self.best_weights is None:
             self.best_weights = [0] * total_models
         if self.best_objs is None:
@@ -191,6 +196,9 @@ class Model:
 
         # Training
         for i, idx in enumerate(split.split()):
+            if n_models is not None:
+                if i > n_models:
+                    break
             self.curr_model = i
             update, _ = log_progress(start, update, iter_time, total_models, i)
             data = np.ascontiguousarray(train[idx.flatten()])
@@ -260,11 +268,10 @@ class Model:
         -------
 
         """
-        self.hook_counter +=1
-        if self.hook_counter % 10 == 0:
-            contents = state_p.contents
-            self.best_weights[self.curr_model] = np.copy(contents.best_weights)
-            self.best_objs[self.curr_model] = np.copy(contents.obj)
+        contents = state_p.contents
+        self.best_weights[self.curr_model] = np.copy(contents.best_weights)
+        self.best_objs[self.curr_model] = np.copy(contents.obj)
+        print(str(self.curr_model) + "," + str(contents.obj), file=self.csv_writer)
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
@@ -300,6 +307,11 @@ class Model:
             count += n_proc
 
         self.px_model = models
+
+    def write_progress_hook(self, path):
+        with open(os.path.join(path, 'stats.csv'), "w+", encoding='utf-8') as f:
+            self.csv_writer.seek(0)
+            copyfileobj(self.csv_writer, f)
 
     def _parallel_train(self, data, model):
         px.train(data=data, iters=100, shared_states=False, in_model=model)
