@@ -50,26 +50,27 @@ def save_seed(path):
     return data_dir, seed
 
 
-def experiment_from_file(path):
-    models = np.load(os.path.join(path, path, "models"))
-    mask = np.load(os.path.join(path, path, "mask"))
+def load_experiment(path):
+    # models = np.load(os.path.join(path, "models.npy"))
+    models = None
+    mask = np.load(os.path.join(path, "mask.npy"))
     return models, mask
 
 
-def load_seed(path, experiment_identifier):
-    seed = np.load(os.path.join(path, experiment_identifier, "seed"))
+def load_seed(path):
+    seed = np.load(os.path.join(path, "seed.npy"))
     return seed
 
 
-def susy(load_experiment=None, n=100, iters=500, epochs=1, h=1):
+def susy(exp_loader=None, n=100, iters=500, epochs=1, h=1):
 
     save_path = os.path.join("experiments", "susy")
     seed = None
     model = None
-    if load_experiment is not None:
-        seed = load_seed(load_experiment)
-        model, mask = experiment_from_file(load_experiment)
-        experiment_path = load_experiment
+    if exp_loader is not None:
+        experiment_path = os.path.join(save_path, "_".join([str(n), str(iters), str(epochs)]) + "_" + str(exp_loader))
+        seed = load_seed(experiment_path)
+        model, mask = load_experiment(experiment_path)
     else:
         experiment_path, seed = save_seed(os.path.join(save_path, "_".join([str(n), str(iters), str(epochs)])))
 
@@ -83,8 +84,8 @@ def susy(load_experiment=None, n=100, iters=500, epochs=1, h=1):
         state_space = model.state_space + 1
         n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
         d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
-        split = Random(data, n_splits=data.train.shape[0] / 100)
-        model.train(split=split, epochs=1, iters=100, n_models=r)
+        split = Random(data, n_splits=data.train.shape[0] / 100, seed=seed)
+        model.train(split=split, epochs=1, iters=100, n_models=int(r))
     else:
         r = model.shape[0] + 2
         d, r, h, n = data.radon_number(r=r + 2, h=h, d=data.train.shape[0])
@@ -113,6 +114,9 @@ def susy(load_experiment=None, n=100, iters=500, epochs=1, h=1):
         except ValueError or TypeError as e:
             print(e)
 
+    if exp_loader is None:
+        np.save(os.path.join(save_path, 'mask'), data.mask)
+        np.save(os.path.join(save_path, 'splits'), split.split_idx)
     return model, aggregates, preds, acc
 
 
@@ -163,9 +167,9 @@ def main():
 
 
 if __name__ == '__main__':
-    loader = 1582371445
+    loader = 1582471048
     # radon_cv("susy_n_100_iter_100_random_split.npy", "susy_n_100_iter_100_splits.npy")
-    result, agg, labels, acc = susy()
+    result, agg, labels, acc = susy(exp_loader=loader)
     print(str(acc))
     if agg is not None:
         np.save("aggregate_model", agg)
