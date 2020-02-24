@@ -112,7 +112,7 @@ class Sampler:
         split = np.arange(shape[0])
         self.random_state.shuffle(split)
         cv_splits = np.array_split(split, self.k_fold)
-        self.split_idx = np.array_split(cv_splits, self.n_splits)
+        self.split_idx = [np.array_split(cv_split, self.n_splits) for cv_split in cv_splits]
 
     def _bootstrap(self, data):
         total_samples = self.sample_complexity * self.n_splits

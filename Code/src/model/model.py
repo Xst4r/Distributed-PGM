@@ -188,7 +188,7 @@ class Model:
         iter_time = None
 
         # Initialization for best Params
-        total_models = len(split.split_idx) * np.sum([i.shape[0] for i in split.split_idx]) if n_models is None else n_models
+        total_models = len(split.split_idx) * np.sum([len(i) for i in split.split_idx]) if n_models is None else n_models * len(split.split_idx)
         if self.best_weights is None:
             self.best_weights = [0] * total_models
         if self.best_objs is None:
@@ -196,11 +196,12 @@ class Model:
 
         # Training
         for i, cv_split in enumerate(split.split()):
+            split_len = np.sum([split.split_idx[k] for k in range(i)])
             for j, idx in enumerate(cv_split):
                 if n_models is not None:
-                    if j > n_models:
+                    if j >= n_models:
                         break
-                update, _ = log_progress(start, update, iter_time, total_models, i)
+                update, _ = log_progress(start, update, iter_time, total_models, i*len(idx)+j)
                 data = np.ascontiguousarray(train[idx.flatten()])
                 init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
                 model = px.train(data=init_data, graph=self.graph,
@@ -219,6 +220,7 @@ class Model:
         if not self.trained:
             self.trained = True
 
+        self.curr_model = 0
         self.merge_weights(split.k_fold)
 
     def merge_weights(self, k_fold):

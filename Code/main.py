@@ -78,14 +78,14 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     save_path = experiment_path
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
-    baseline(iters, epochs, "SUSY", save_path, seed)
+    #baseline(iters, epochs, "SUSY", save_path, seed)
     data = Susy(path="data/SUSY", seed=seed)
     if model is None:
         model = SusyModel(data, path="SUSY")
         state_space = model.state_space + 1
         n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
         d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
-        split = Random(data, n_splits=data.train.shape[0] / 100, k=10, seed=seed)
+        split = Random(data, n_splits=data.train.shape[0] / 1000, k=10, seed=seed)
         model.train(split=split, epochs=1, iters=100, n_models=int(r))
     else:
         r = model.shape[0] + 2
@@ -96,8 +96,8 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     predictions = None
     accuracy = None
 
-    rm = RadonMachine(model, r, h)
-    mean = Mean(model)
+    rm = RadonMachine(model, r, h, k=10)
+    mean = Mean(model, k=10)
     aggregation_methods = [rm, mean]
     aggregates = []
     preds = []
@@ -105,13 +105,14 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     for aggregation_method in aggregation_methods:
         try:
             aggregation_method.aggregate(None)
-            aggregate = aggregation_method.aggregate_models[0]
-            aggregate_model = px.Model(weights=aggregate, graph=model.graph, states=model.state_space + 1)
-            predictions = model.predict(aggregate_model)
-            accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
-            aggregates.append(aggregate)
-            preds.append(predictions)
-            acc.append(accuracy)
+            aggregate = aggregation_method.aggregate_models
+            for aggregate_weights in aggregate:
+                aggregate_model = px.Model(weights=aggregate_weights, graph=model.graph, states=model.state_space + 1)
+                predictions = model.predict(aggregate_model)
+                accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
+                aggregates.append(aggregate_weights)
+                preds.append(predictions)
+                acc.append(accuracy)
         except ValueError or TypeError as e:
             print(e)
 
