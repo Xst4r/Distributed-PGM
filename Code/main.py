@@ -27,13 +27,14 @@ def baseline(iters, epochs, dataset="SUSY", path=None, seed=None):
     if path is None or models is None:
         model.train(split=sampler, epochs=epochs, iters=iters)
         predictions = model.predict()
-        marginals, A = model.px_model[0].infer()
+        for i in range(sampler.k_fold * sampler.n_splits):
+            # marginals, A = model.px_model[0].infer()
 
-        accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
-        print("GLOBAL " + str(accuracy))
-        os.makedirs(os.path.join(path, 'baseline'))
-        model.px_model[0].save(os.path.join(path, 'baseline', 'px_model'))
-        model.write_progress_hook(os.path.join(path, 'baseline'))
+            accuracy = np.where(np.equal(predictions[i][:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
+            print("GLOBAL Model " + str(i) + ":" + str(accuracy))
+            os.makedirs(os.path.join(path, 'baseline'))
+            model.px_model[0].save(os.path.join(path, 'baseline', 'px_model' + str(i)))
+            model.write_progress_hook(os.path.join(path, 'baseline'))
     else:
         model = load_model(path)
 
@@ -62,7 +63,7 @@ def load_seed(path):
     return seed
 
 
-def susy(exp_loader=None, n=100, iters=500, epochs=1, h=1):
+def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
 
     save_path = os.path.join("experiments", "susy")
     seed = None
@@ -84,7 +85,7 @@ def susy(exp_loader=None, n=100, iters=500, epochs=1, h=1):
         state_space = model.state_space + 1
         n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
         d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
-        split = Random(data, n_splits=data.train.shape[0] / 100, seed=seed)
+        split = Random(data, n_splits=data.train.shape[0] / 100, k=10, seed=seed)
         model.train(split=split, epochs=1, iters=100, n_models=int(r))
     else:
         r = model.shape[0] + 2
@@ -169,7 +170,7 @@ def main():
 if __name__ == '__main__':
     loader = 1582471048
     # radon_cv("susy_n_100_iter_100_random_split.npy", "susy_n_100_iter_100_splits.npy")
-    result, agg, labels, acc = susy(exp_loader=loader)
+    result, agg, labels, acc = susy()
     print(str(acc))
     if agg is not None:
         np.save("aggregate_model", agg)

@@ -15,7 +15,7 @@ class SplitType(Enum):
 
 class Sampler:
 
-    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None):
+    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None, k=10):
         """
             Parameters
             ----------
@@ -44,6 +44,8 @@ class Sampler:
         self.random_state = np.random.RandomState(seed)
         if self.n_splits is None:
             self.n_splits = n_splits
+
+        self.k_fold = k
 
         if self.mode is None:
             self.mode = SplitType.Random
@@ -109,7 +111,8 @@ class Sampler:
     def _random(self, shape):
         split = np.arange(shape[0])
         self.random_state.shuffle(split)
-        self.split_idx = np.array_split(split, self.n_splits)
+        cv_splits = np.array_split(split, self.k_fold)
+        self.split_idx = np.array_split(cv_splits, self.n_splits)
 
     def _bootstrap(self, data):
         total_samples = self.sample_complexity * self.n_splits
@@ -131,24 +134,24 @@ class Sampler:
 
 class Random(Sampler):
 
-    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None):
+    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None, k=10):
         self.n_splits = n_splits
         self.mode = SplitType.Random
-        super(Random, self).__init__(data, n_splits, sample_complexity, seed)
+        super(Random, self).__init__(data, n_splits, sample_complexity, seed, k)
 
 
 class Bootstrap(Sampler):
 
-    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None):
+    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None, k=10):
         self.n_splits = n_splits
         self.mode = SplitType.Bootstrap
-        super(Bootstrap, self).__init__(data, n_splits, sample_complexity, seed)
+        super(Bootstrap, self).__init__(data, n_splits, sample_complexity, seed, k)
 
 
 class Model(Sampler):
 
-    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None):
+    def __init__(self, data, n_splits=10, sample_complexity=100, seed=None, k=10):
         self.n_splits = n_splits
         self.mode = SplitType.Model
 
-        super(Model, self).__init__(data, n_splits, sample_complexity, seed)
+        super(Model, self).__init__(data, n_splits, sample_complexity, seed, k)
