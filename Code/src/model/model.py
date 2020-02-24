@@ -210,7 +210,7 @@ class Model:
                     px.train(data=data, iters=iters, shared_states=False, in_model=model, opt_progress_hook=self.progress_hook)
                 models.append(model)
                 iter_time = time.time()
-                self.curr_model += 1
+                self.curr_model += int(split_len + j)
         self.px_model = models
 
         end = time.time()
@@ -220,7 +220,6 @@ class Model:
         if not self.trained:
             self.trained = True
 
-        self.curr_model = 0
         self.merge_weights(split.k_fold)
 
     def merge_weights(self, k_fold):
