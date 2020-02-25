@@ -18,7 +18,7 @@ class AggregationType(Enum):
 
 class Aggregation:
 
-    def __init__(self, model, k=1):
+    def __init__(self, model):
         self.options = {AggregationType.Mean: Mean,
                         AggregationType.MaximumLikelihood: MaximumLikelihood,
                         AggregationType.RadonPoints: RadonMachine,
@@ -27,7 +27,6 @@ class Aggregation:
 
         self.model = model
         self.aggregate_models = []
-        self.k = k
 
     def aggregate(self, opt, **kwargs):
         """
@@ -50,8 +49,8 @@ class Aggregation:
 
 class Mean(Aggregation):
 
-    def __init__(self, model, k=10):
-        super(Mean, self).__init__(model, k)
+    def __init__(self, model):
+        super(Mean, self).__init__(model)
 
     def aggregate(self, opt, **kwargs):
         self._average()
@@ -67,9 +66,8 @@ class Mean(Aggregation):
         -------
 
         """
-        weights = np.array_split(self.model.get_weights(), self.k, axis=1)
-        for model in weights:
-            self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=0))
+        weights = self.model.get_weights()
+        self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=0))
 
 
 class MaximumLikelihood(Aggregation):
@@ -109,9 +107,9 @@ class MaximumLikelihood(Aggregation):
 
 class RadonMachine(Aggregation):
 
-    def __init__(self, model, k, radon_number, h):
+    def __init__(self, model, radon_number, h):
 
-        super(RadonMachine, self).__init__(model, k=k)
+        super(RadonMachine, self).__init__(model)
 
         self.radon_number = int(radon_number)
         self.h = int(h)
@@ -149,30 +147,28 @@ class RadonMachine(Aggregation):
         h = self.h
         folds = []
         res = []
-        for i in range(1, self.k):
-            folds.append(weights[:, (i-1)*r**h:i*r**h])
-        for aggregation_weights in folds:
-            for i in range(h, 0, -1):
-                new_weights = None
-                if i > 1:
-                    splits = np.split(aggregation_weights, r, axis=1)
-                else:
-                    splits = [aggregation_weights]
-                for split in splits:
-                    A = split
+        aggregation_weights = weights
+        for i in range(h, 0, -1):
+            new_weights = None
+            if i > 1:
+                splits = np.split(aggregation_weights, r, axis=1)
+            else:
+                splits = [aggregation_weights]
+            for split in splits:
+                A = split
 
-                    b = np.zeros(split.shape[1])
-                    b[b.shape[0] - 1] = 1
+                b = np.zeros(split.shape[1])
+                b[b.shape[0] - 1] = 1
 
-                    sum_zero_constraint = np.ones(split.shape[1])
-                    fix_variable_constraint = np.zeros(split.shape[1])
-                    fix_variable_constraint[0] = 1
+                sum_zero_constraint = np.ones(split.shape[1])
+                fix_variable_constraint = np.zeros(split.shape[1])
+                fix_variable_constraint[0] = 1
 
-                    A = np.vstack((np.vstack((A, sum_zero_constraint)), fix_variable_constraint))
-                    new_weights= self._radon_point(A, b) if new_weights is None \
-                        else np.vstack((new_weights, self._radon_point(A, b)))
-                aggregate = np.array(new_weights).T
-                res.append(aggregate)
+                A = np.vstack((np.vstack((A, sum_zero_constraint)), fix_variable_constraint))
+                new_weights= self._radon_point(A, b) if new_weights is None \
+                    else np.vstack((new_weights, self._radon_point(A, b)))
+            aggregate = np.array(new_weights).T
+            res.append(aggregate)
         return res
 
     def _radon_point(self, A=None, b=None, sol=None):

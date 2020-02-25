@@ -3,7 +3,7 @@ from src.model.aggregation import RadonMachine, Mean
 from src.model.model import Dota2 as Dota
 from src.model.model import Susy as SusyModel
 from src.preprocessing.sampling import Random
-
+from src.conf.settings import get_logger
 from time import time
 import datetime
 import os
@@ -11,6 +11,8 @@ from shutil import copyfileobj
 
 import numpy as np
 import pxpy as px
+
+logger = get_logger()
 
 
 def baseline(iters, epochs, dataset="SUSY", path=None, seed=None):
@@ -22,19 +24,21 @@ def baseline(iters, epochs, dataset="SUSY", path=None, seed=None):
         data = Susy(path=os.path.join("data", dataset), seed=seed)
 
     sampler = Random(data, n_splits=1, seed=seed)
-    model = SusyModel(data, path=dataset)
-
     if path is None or models is None:
-        model.train(split=sampler, epochs=epochs, iters=iters)
-        predictions = model.predict()
-        for i in range(sampler.k_fold * sampler.n_splits):
+        models = []
+        for i, split in enumerate(sampler.split()):
+            model = SusyModel(data, path=dataset)
+            model.train(split=split, epochs=epochs, iters=iters)
+            #predictions = model.predict()
             # marginals, A = model.px_model[0].infer()
 
-            accuracy = np.where(np.equal(predictions[i][:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
-            print("GLOBAL Model " + str(i) + ":" + str(accuracy))
-            os.makedirs(os.path.join(path, 'baseline'))
+            #accuracy = np.where(np.equal(predictions[i][:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
+            #print("GLOBAL Model " + str(i) + ":" + str(accuracy))
+            if not os.path.isdir(os.path.join(path, 'baseline')):
+                os.makedirs(os.path.join(path, 'baseline'))
             model.px_model[0].save(os.path.join(path, 'baseline', 'px_model' + str(i)))
             model.write_progress_hook(os.path.join(path, 'baseline'))
+            models.append(model)
     else:
         model = load_model(path)
 
@@ -78,48 +82,52 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     save_path = experiment_path
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
-    #baseline(iters, epochs, "SUSY", save_path, seed)
+
+    baseline(iters, epochs, "SUSY", save_path, seed)
+
+    models = []
     data = Susy(path="data/SUSY", seed=seed)
     if model is None:
-        model = SusyModel(data, path="SUSY")
-        state_space = model.state_space + 1
-        n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
-        d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
-        split = Random(data, n_splits=data.train.shape[0] / 1000, k=10, seed=seed)
-        model.train(split=split, epochs=1, iters=100, n_models=int(r))
+        sampler = Random(data, n_splits=data.train.shape[0] / 1000, k=10, seed=seed)
+        for split in sampler.split():
+            model = SusyModel(data, path="SUSY")
+            state_space = model.state_space + 1
+            n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
+            d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
+            model.train(split=split, epochs=1, iters=2, n_models=int(r))
+            models.append(model)
     else:
         r = model.shape[0] + 2
         d, r, h, n = data.radon_number(r=r + 2, h=h, d=data.train.shape[0])
 
     # Radon Machines
-    radon_point = None
-    predictions = None
-    accuracy = None
-
-    rm = RadonMachine(model, r, h, k=10)
-    mean = Mean(model, k=10)
-    aggregation_methods = [rm, mean]
     aggregates = []
-    preds = []
-    acc = []
-    for aggregation_method in aggregation_methods:
-        try:
-            aggregation_method.aggregate(None)
-            aggregate = aggregation_method.aggregate_models
-            for aggregate_weights in aggregate:
-                aggregate_model = px.Model(weights=aggregate_weights, graph=model.graph, states=model.state_space + 1)
-                predictions = model.predict(aggregate_model)
-                accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
-                aggregates.append(aggregate_weights)
-                preds.append(predictions)
-                acc.append(accuracy)
-        except ValueError or TypeError as e:
-            print(e)
+    for i, model in enumerate(models):
+        logger.info("Aggregating Model No. " + str(i))
+        rm = RadonMachine(model, r, h)
+        mean = Mean(model)
+        aggregates.append(aggregation_helper(model, rm, data))
+        aggregates.append(aggregation_helper(model, mean, data))
 
     if exp_loader is None:
         np.save(os.path.join(save_path, 'mask'), data.mask)
         np.save(os.path.join(save_path, 'splits'), split.split_idx)
-    return model, aggregates, preds, acc
+    return models, aggregates
+
+
+def aggregation_helper(model, aggregator, data):
+    try:
+        aggregator.aggregate(None)
+        aggregate = aggregator.aggregate_models
+        for aggregate_weights in aggregate:
+            aggregate_model = px.Model(weights=aggregate_weights, graph=model.graph, states=model.state_space + 1)
+            predictions = model.predict(aggregate_model)
+            accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[
+                0]
+            logger.info(str(accuracy))
+            return aggregate_weights, predictions, accuracy
+    except ValueError or TypeError as e:
+        print(e)
 
 
 def dota():
@@ -170,22 +178,9 @@ def main():
 
 if __name__ == '__main__':
     loader = 1582471048
-    # radon_cv("susy_n_100_iter_100_random_split.npy", "susy_n_100_iter_100_splits.npy")
-    result, agg, labels, acc = susy()
-    print(str(acc))
-    if agg is not None:
-        np.save("aggregate_model", agg)
-    np.save("radon_predictions", labels[:,0])
-    print(str(acc))
-    n_models = len(result.px_model)
-    idx = np.arange(n_models)
-    np.random.shuffle(idx)
-    test = np.ascontiguousarray(result.data.test)
-    labels = result.data.test[0].to_numpy()
-    test[:, 0] = -1
-    local_acc = []
-    for i in range(200):
-        mod = result.px_model[idx[i]]
-        loc_pred = mod.predict(test.astype(np.uint16))
-        loc_acc = np.where(labels == loc_pred[:, 0])[0].shape[0] / labels.shape[0]
-        local_acc.append((idx[i], loc_acc))
+    result, agg = susy()
+
+    for aggregation_method in agg:
+        weights = aggregation_method[0]
+        predictions = aggregation_method[1]
+        acc = aggregation_method[2]
