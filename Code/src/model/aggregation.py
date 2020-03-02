@@ -1,6 +1,7 @@
 from enum import Enum
 
 import numpy as np
+import pxpy as px
 
 from src.conf.settings import get_logger
 
@@ -198,6 +199,77 @@ class RadonMachine(Aggregation):
         radon_point = np.sum(sol[pos]/normalization_constant * A[:-2:,pos], axis=1)
 
         return radon_point
+
+
+class KL(Aggregation):
+
+    def __init__(self, model):
+        super(KL, self).__init__(model)
+        pass
+
+    def aggregate(self, opt, **kwargs):
+        self._aggregate(opt, **kwargs)
+
+    def _aggregate(self, opt, **kwargs):
+        pass
+
+    def naive_kl(self, theta, phi, A, X, K):
+        def inner(theta, phi, A, X):
+            p_x = np.exp([theta * phi(x) - A for x in X])
+            return np.sum(p_x)
+        return np.sum([inner(theta, phi[k], A[k], X[k]) for k in K])
+
+    def fisher_information(self):
+        pass
+
+    def weighted_kl(self):
+        pass
+
+class Variance(Aggregation):
+
+    def __init__(self, model):
+        super(Variance, self).__init__(model)
+        self.edgelist = []
+        self.local_data = []
+
+    def aggregate(self, opt, **kwargs):
+        self._aggregate(opt, **kwargs)
+
+    def _aggregate(self, opt, **kwargs):
+        pass
+
+    def welford(self, count, mean):
+        """
+        Welford Algorithm for online variance
+        :param count:
+        :param mean:
+        :return:
+        """
+        def get_acc(predictions):
+            return 0.5
+
+        def update(count, mean, M2, node):
+            theta_new = self.model[node]
+            model = px.Model(weights=theta_new, graph=None, states=None)
+            predictions = model.predict(self.local_data[node])
+            acc = get_acc(predictions)
+            new_mean = (acc - mean)/count
+            M2 += (acc - mean)*(acc - new_mean)
+            return count, mean, M2
+
+        def finalize(count, mean, M2):
+            mean, variance = (mean, M2/count)
+            return mean, variance
+
+        scores = []
+        for i, theta in enumerate(self.model):
+            mean = theta
+            count = 1
+            M2 = theta
+            for node in self.edgelist[i]:
+                mean, count, M2 = update(count, mean, M2, node)
+            mean, variance = finalize(count, mean, M2, node)
+            scores.append((mean, variance))
 
 
 def wasserstein_barycenter(weights):
