@@ -206,7 +206,11 @@ g
             model = px.train(data=init_data, graph=self.graph,
                              iters=1, shared_states=False)
             for epoch in range(epochs):
-                px.train(data=data, iters=iters, shared_states=False, in_model=model, opt_progress_hook=self.progress_hook)
+                px.train(data=data,
+                         iters=iters,
+                         shared_states=False,
+                         in_model=model,
+                         opt_progress_hook=self.opt_progress_hook)
             models.append(model)
             iter_time = time.time()
 
@@ -258,7 +262,7 @@ g
         local_states = np.array([model.states for model in self.px_model])
         return np.max(local_states, axis=0)
 
-    def progress_hook(self, state_p):
+    def opt_progress_hook(self, state_p):
         """
 
         Parameters
@@ -273,6 +277,15 @@ g
         self.best_weights[self.curr_model] = np.copy(contents.best_weights)
         self.best_objs[self.curr_model] = np.copy(contents.obj)
         print(str(self.curr_model) + "," + str(contents.obj), file=self.csv_writer)
+
+    def progress_hook(self, state_p):
+        return
+
+    def opt_regularization_hook(self, state_p):
+        return
+
+    def opt_proximal_hook(self, state_p):
+        return
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
@@ -309,8 +322,8 @@ g
 
         self.px_model = models
 
-    def write_progress_hook(self, path):
-        with open(os.path.join(path, 'stats.csv'), "w+", encoding='utf-8') as f:
+    def write_progress_hook(self, path, fname="stats.csv"):
+        with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
             self.csv_writer.seek(0)
             copyfileobj(self.csv_writer, f)
 
@@ -384,7 +397,7 @@ g
         return np.zeros(suff_stats)
 
     def get_weights(self):
-        return np.stack(self.global_weights, axis=0).T
+        return np.stack(self.best_weights, axis=0).T
 
 
 class Dota2(Model):
@@ -455,12 +468,16 @@ class Susy(Model):
         if statespace is None and self.state_space is None:
             self.state_space = self._statespace_from_data()
 
-    def predict(self, px_model=None):
+    def predict(self, px_model=None, n_test=None):
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
         test[:,0] = -1
+        if n_test is None:
+            n_test = test.shape[0]-1
+        else:
+            np.min([n_test, test.shape[0]-1])
         if px_model is None:
             if self.trained:
-                return [px_model.predict(test) for px_model in self.px_model]
+                return [px_model.predict(test[:n_test]) for px_model in self.px_model]
         else:
-            return px_model.predict(test)
+            return px_model.predict(test[:n_test])
 
