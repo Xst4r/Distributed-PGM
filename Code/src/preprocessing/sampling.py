@@ -57,7 +57,7 @@ class Sampler:
         self.data_dim = data.train.shape[1]
 
         self.options = {AggregationType.Mean: self.dummy,
-                        AggregationType.MaximumLikelihood: self.dummy,
+                        AggregationType.WeightedAverage: self.dummy,
                         AggregationType.TukeyDepth: self.dummy,
                         AggregationType.WassersteinBarycenter: self.dummy
                         }

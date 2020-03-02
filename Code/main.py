@@ -1,5 +1,5 @@
 from src.data.dataset import Dota2, Susy, Discretization
-from src.model.aggregation import RadonMachine, Mean
+from src.model.aggregation import RadonMachine, Mean, WeightedAverage
 from src.model.model import Dota2 as Dota
 from src.model.model import Susy as SusyModel
 from src.preprocessing.sampling import Random
@@ -17,23 +17,23 @@ logger = get_logger()
 
 def baseline(iters, epochs, dataset="SUSY", path=None, seed=None):
     models = None
-
+    n_test = 10000
     if os.path.isabs(dataset):
         data = Susy(path=dataset, seed=seed)
     else:
         data = Susy(path=os.path.join("data", dataset), seed=seed)
 
-    sampler = Random(data, n_splits=1, seed=seed)
+    sampler = Random(data, n_splits=1, k=10, seed=seed)
     if path is None or models is None:
         models = []
         for i, split in enumerate(sampler.split()):
             model = SusyModel(data, path=dataset)
             model.train(split=split, epochs=epochs, iters=iters)
-            #predictions = model.predict()
+            predictions = model.predict(n_test=n_test)
             # marginals, A = model.px_model[0].infer()
 
-            #accuracy = np.where(np.equal(predictions[i][:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[0]
-            #print("GLOBAL Model " + str(i) + ":" + str(accuracy))
+            accuracy = np.where(np.equal(predictions[0][:, 0], data.test_labels[:n_test]))[0].shape[0] / data.test_labels[:n_test].shape[0]
+            print("GLOBAL Model " + str(i) + " : " + str(accuracy))
             if not os.path.isdir(os.path.join(path, 'baseline')):
                 os.makedirs(os.path.join(path, 'baseline'))
             model.px_model[0].save(os.path.join(path, 'baseline', 'px_model' + str(i)))
@@ -88,44 +88,51 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     models = []
     data = Susy(path="data/SUSY", seed=seed)
     if model is None:
-        sampler = Random(data, n_splits=data.train.shape[0] / 1000, k=10, seed=seed)
-        for split in sampler.split():
+        sampler = Random(data, n_splits=data.train.shape[0] / 1000, k=k, seed=seed)
+        for k, split in enumerate(sampler.split()):
             model = SusyModel(data, path="SUSY")
             state_space = model.state_space + 1
             n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
             d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
-            model.train(split=split, epochs=1, iters=2, n_models=int(r))
+            n_models = int(r*2)
+            model.train(split=split, epochs=1, iters=iters)
             models.append(model)
+            model.write_progress_hook(save_path, str(k) + ".csv")
+            np.save(os.path.join(save_path, "weights_" + str(k)), model.get_weights())
     else:
         r = model.shape[0] + 2
         d, r, h, n = data.radon_number(r=r + 2, h=h, d=data.train.shape[0])
 
     # Radon Machines
-    aggregates = []
+    methods = ['mean', 'radon', 'wa']
+    aggregates = {k: [] for k in methods}
     for i, model in enumerate(models):
         logger.info("Aggregating Model No. " + str(i))
         rm = RadonMachine(model, r, h)
         mean = Mean(model)
-        aggregates.append(aggregation_helper(model, rm, data))
-        aggregates.append(aggregation_helper(model, mean, data))
+        wa = WeightedAverage(model)
+        aggregates['radon'].append(aggregation_helper(model, rm, data))
+        aggregates['mean'].append(aggregation_helper(model, mean, data))
+        aggregates['wa'].append(aggregation_helper(model, wa, data))
 
     if exp_loader is None:
         np.save(os.path.join(save_path, 'mask'), data.mask)
-        np.save(os.path.join(save_path, 'splits'), split.split_idx)
+        np.save(os.path.join(save_path, 'splits'), sampler.split_idx)
     return models, aggregates
 
 
 def aggregation_helper(model, aggregator, data):
+    n_test = 10000
     try:
         aggregator.aggregate(None)
         aggregate = aggregator.aggregate_models
         for aggregate_weights in aggregate:
             aggregate_model = px.Model(weights=aggregate_weights, graph=model.graph, states=model.state_space + 1)
-            predictions = model.predict(aggregate_model)
-            accuracy = np.where(np.equal(predictions[:, 0], data.test_labels))[0].shape[0] / data.test_labels.shape[
+            predictions = model.predict(aggregate_model, n_test)
+            accuracy = np.where(np.equal(predictions[:, 0], data.test_labels[:n_test]))[0].shape[0] / data.test_labels[:n_test].shape[
                 0]
             logger.info(str(accuracy))
-            return aggregate_weights, predictions, accuracy
+            return {'weights': aggregate_weights, 'labels': predictions, 'acc': accuracy}
     except ValueError or TypeError as e:
         print(e)
 
@@ -180,7 +187,7 @@ if __name__ == '__main__':
     loader = 1582471048
     result, agg = susy()
 
-    for aggregation_method in agg:
-        weights = aggregation_method[0]
-        predictions = aggregation_method[1]
-        acc = aggregation_method[2]
+    for key, aggregation_method in agg.items():
+        print(key)
+        for model in aggregation_method:
+            print(str(model['acc']))

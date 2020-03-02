@@ -2,6 +2,8 @@ from enum import Enum
 
 import numpy as np
 import pxpy as px
+from scipy.stats import multivariate_normal
+
 
 from src.conf.settings import get_logger
 
@@ -10,7 +12,7 @@ logger = get_logger()
 
 class AggregationType(Enum):
     Mean = 1
-    MaximumLikelihood = 2
+    WeightedAverage = 2
     RadonPoints = 3
     WassersteinBarycenter = 4
     GeometricMedian = 5
@@ -21,7 +23,7 @@ class Aggregation:
 
     def __init__(self, model):
         self.options = {AggregationType.Mean: Mean,
-                        AggregationType.MaximumLikelihood: MaximumLikelihood,
+                        AggregationType.WeightedAverage: WeightedAverage,
                         AggregationType.RadonPoints: RadonMachine,
                         AggregationType.TukeyDepth: tukey_depth,
                         AggregationType.WassersteinBarycenter: wasserstein_barycenter}
@@ -71,10 +73,10 @@ class Mean(Aggregation):
         self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=0))
 
 
-class MaximumLikelihood(Aggregation):
+class WeightedAverage(Aggregation):
 
     def __init__(self, model):
-        super(MaximumLikelihood, self).__init__(model)
+        super(WeightedAverage, self).__init__(model)
 
     def aggregate(self, opt, **kwargs):
         self._weighted_average()
@@ -95,15 +97,49 @@ class MaximumLikelihood(Aggregation):
 
         weights = self.model.get_weights()
         distribution = "normal"
-        p = self.maximum_likelihood(weights, distribution)
-        partition = np.zeros(weights.shape[0])
-        for i in range(weights.shape[0]):
-            partition[i] = p.predict(weights[i])
-        return 1 / np.sum(partition) * (weights * partition)
+        mean, cov = self.estimate_normal(weights)
+        try:
+            likelihood = multivariate_normal.pdf(weights.T, mean, cov)
+        except np.linalg.LinAlgError as e:
+            logger.info("Trying to Generate additional samples via Bootstrapping to obtain non-singular matrix")
 
-    def maximum_likelihood(self, weights, distribution):
-        p = 0
-        return p
+            alt_cov = self.generate_cov(weights.shape[0])
+            bootstrap = np.random.multivariate_normal(mean, alt_cov, weights.shape[1]*2)
+            samples = np.hstack((weights, bootstrap.T))
+            inverse_alt_cov = np.linalg.inv(np.cov(bootstrap.T))
+            print(e)
+        try:
+             likelihood = multivariate_normal.logpdf(weights.T, mean, alt_cov)
+        except Exception as e:
+            likelihood = [self.log_normal(x, mean, alt_cov, inverse_alt_cov) for x in weights.T]
+        normalizer = np.sum(likelihood)
+        return np.sum(likelihood/normalizer * weights, axis=0)
+
+    def estimate_normal(self, weights):
+        return np.mean(weights, axis=1), np.cov(weights)
+
+    def generate_cov(self, dim):
+        return np.identity(dim)
+
+    def log_normal(self, x, mean, cov, inv):
+        """
+
+        Parameters
+        ----------
+        x :
+        mean :
+        inv :
+
+        Returns
+        -------
+
+        """
+        from math import pi
+        try:
+            return 0.5 * - (np.log((2 * pi) ** 2) + np.log(np.linalg.det(cov))) - 0.5 * np.matmul(
+                np.matmul((x - mean).T, inv), x - mean)
+        except np.linalg.LinAlgError:
+            return multivariate_normal.logpdf(x, mean, cov)
 
 
 class RadonMachine(Aggregation):
@@ -148,11 +184,11 @@ class RadonMachine(Aggregation):
         h = self.h
         folds = []
         res = []
-        aggregation_weights = weights
+        aggregation_weights = weights[:,:r**h]
         for i in range(h, 0, -1):
             new_weights = None
             if i > 1:
-                splits = np.split(aggregation_weights, r, axis=1)
+                splits = np.split(aggregation_weights, r**(i-1), axis=1)
             else:
                 splits = [aggregation_weights]
             for split in splits:
@@ -168,8 +204,8 @@ class RadonMachine(Aggregation):
                 A = np.vstack((np.vstack((A, sum_zero_constraint)), fix_variable_constraint))
                 new_weights= self._radon_point(A, b) if new_weights is None \
                     else np.vstack((new_weights, self._radon_point(A, b)))
-            aggregate = np.array(new_weights).T
-            res.append(aggregate)
+            aggregation_weights = np.array(new_weights).T
+            res.append(aggregation_weights)
         return res
 
     def _radon_point(self, A=None, b=None, sol=None):
