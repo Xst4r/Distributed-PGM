@@ -203,24 +203,42 @@ class RadonMachine(Aggregation):
 
 class KL(Aggregation):
 
-    def __init__(self, model):
+    def __init__(self, model, A, X):
         super(KL, self).__init__(model)
-        pass
+        if not all(isinstance(x, px.Model) for x in self.model):
+            raise TypeError("Models have to be PX Models for this Aggregaton")
+
+        self.A = A
+        self.X = X
+        self.K = len(self.model)
+        self.phi = [model.phi for model in self.model]
 
     def aggregate(self, opt, **kwargs):
         self._aggregate(opt, **kwargs)
 
     def _aggregate(self, opt, **kwargs):
-        pass
+        from scipy.optimize import minimize
+        K = self.K
+        A = self.A
+        X = self.X
+        x0 = np.zeros(self.model[0].weights.shape[0])
+        res = minimize(self.naive_kl, x0, args=(self.phi, A, X, K))
+        kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
+        kl_A, kl_marginals = kl_model.infer()
+        fisher_matrix = []
+        for i in range(K):
+            self.fisher_information(i, kl_A, rex.x)
 
     def naive_kl(self, theta, phi, A, X, K):
         def inner(theta, phi, A, X):
             p_x = np.exp([theta * phi(x) - A for x in X])
             return np.sum(p_x)
-        return np.sum([inner(theta, phi[k], A[k], X[k]) for k in K])
+        return - np.sum([inner(theta, phi[k], A[k], X[k]) for k in K])
 
-    def fisher_information(self):
-        pass
+    def fisher_information(self,i, kl_A, theta):
+        return 1/len(self.X[i]) * \
+               np.sum(self.phi[i](x) *
+                      np.exp(np.inner(self.phi[i](x), theta) - kl_A) for x in self.X[i])
 
     def weighted_kl(self):
         pass
