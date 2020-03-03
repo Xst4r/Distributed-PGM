@@ -56,8 +56,7 @@ def save_seed(path):
 
 
 def load_experiment(path):
-    # models = np.load(os.path.join(path, "models.npy"))
-    models = None
+    models = [np.load(os.path.join(path, "weights", file)) for file in os.listdir(os.path.join(path, "weights"))]
     mask = np.load(os.path.join(path, "mask.npy"))
     return models, mask
 
@@ -67,11 +66,26 @@ def load_seed(path):
     return seed
 
 
+def prep_and_train(cv_split, data_index, iters, data, save_path):
+    model = SusyModel(data,
+                      path=data.__class__.__name__)
+    state_space = model.state_space + 1
+    model.train(split=data_index,
+                epochs=1,
+                iters=iters)
+    model.write_progress_hook(path=save_path,
+                              fname=str(cv_split) + ".csv")
+    np.save(os.path.join(save_path,
+                         "weights_" + str(cv_split)),
+            model.get_weights())
+    return model
+
+
 def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
 
     save_path = os.path.join("experiments", "susy")
-    seed = None
     model = None
+    mask = None
     if exp_loader is not None:
         experiment_path = os.path.join(save_path, "_".join([str(n), str(iters), str(epochs)]) + "_" + str(exp_loader))
         seed = load_seed(experiment_path)
@@ -83,24 +97,25 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
-    baseline(iters, epochs, "SUSY", save_path, seed)
+    #baseline(iters, epochs, "SUSY", save_path, seed)
 
     models = []
-    data = Susy(path="data/SUSY", seed=seed)
+    data = Susy(path="data/SUSY", mask=mask, seed=seed)
     if model is None:
-        sampler = Random(data, n_splits=data.train.shape[0] / 1000, k=k, seed=seed)
+        sampler = Random(data, n_splits=data.train.shape[0]/(n*k), k=k, seed=seed)
         for k, split in enumerate(sampler.split()):
-            model = SusyModel(data, path="SUSY")
-            state_space = model.state_space + 1
-            n_states = np.sum([state_space[i] * state_space[j] for i, j in model.edgelist])
-            d, r, h, n = data.radon_number(r=n_states + 2, h=1, d=data.train.shape[0])
-            n_models = int(r*2)
-            model.train(split=split, epochs=1, iters=iters)
-            models.append(model)
-            model.write_progress_hook(save_path, str(k) + ".csv")
-            np.save(os.path.join(save_path, "weights_" + str(k)), model.get_weights())
+            models.append(prep_and_train(cv_split=k,
+                                         data_index=split,
+                                         iters=iters,
+                                         data=data,
+                                         save_path=save_path))
+        d, r, h, n = data.radon_number(r=model[0].get_num_of_states() + 2,
+                                       h=1,
+                                       d=data.train.shape[0])
     else:
-        r = model.shape[0] + 2
+        models = model
+        dummy_model = SusyModel(data, path="SUSY")
+        r = model[0].shape[0]
         d, r, h, n = data.radon_number(r=r + 2, h=h, d=data.train.shape[0])
 
     # Radon Machines
@@ -108,12 +123,20 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     aggregates = {k: [] for k in methods}
     for i, model in enumerate(models):
         logger.info("Aggregating Model No. " + str(i))
-        rm = RadonMachine(model, r, h)
-        mean = Mean(model)
-        wa = WeightedAverage(model)
-        aggregates['radon'].append(aggregation_helper(model, rm, data))
-        aggregates['mean'].append(aggregation_helper(model, mean, data))
-        aggregates['wa'].append(aggregation_helper(model, wa, data))
+        aggr = [RadonMachine(model, r, h),
+                Mean(model),
+                WeightedAverage(model)]
+        weights = None
+        if isinstance(model, np.ndarray):
+            weights = model
+            model = dummy_model
+        for name, aggregator in zip(methods, aggr):
+            aggregates[name].append(
+                aggregation_helper(model=model,
+                                   aggregator=aggregator,
+                                   data=data,
+                                   weights=weights)
+            )
 
     if exp_loader is None:
         np.save(os.path.join(save_path, 'mask'), data.mask)
@@ -121,7 +144,7 @@ def susy(exp_loader=None, n=100, k=10, iters=500, h=1, epochs=1):
     return models, aggregates
 
 
-def aggregation_helper(model, aggregator, data):
+def aggregation_helper(model, aggregator, data, weights=None):
     n_test = 10000
     try:
         aggregator.aggregate(None)
@@ -184,8 +207,13 @@ def main():
 
 
 if __name__ == '__main__':
-    loader = 1582471048
-    result, agg = susy()
+    loader = 1582964858
+    result, agg = susy(exp_loader=None,
+                       n=10000,
+                       k=1,
+                       iters=1000,
+                       h=1,
+                       epochs=1)
 
     for key, aggregation_method in agg.items():
         print(key)

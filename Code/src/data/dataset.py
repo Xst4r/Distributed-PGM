@@ -32,7 +32,7 @@ class GraphType(Enum):
 
 class Data:
 
-    def __init__(self, path=None, url=None, seed=None):
+    def __init__(self, path=None, url=None, mask=None, seed=None):
         """
 
         Parameters
@@ -75,6 +75,10 @@ class Data:
         self.data = None
 
         self.train = None
+        self.test = None
+        self.holdout = None
+
+        self.mask = mask
 
         self.root_dir = os.path.join(path, "model")
 
@@ -219,13 +223,28 @@ class Data:
 
 class Dota2(Data):
 
-    def __init__(self, url=None, path=None, seed=None):
+    def __init__(self, url=None, path=None, mask=None, seed=None):
+        super(Dota2, self).__init__(path, url, mask, seed)
+
         self.heroes = {}
         self.hero_list = None
+
         self.data = None
         self.train = None
         self.test = None
-        super(Dota2, self).__init__(path, url, seed)
+        self.holdout_size = 10000
+
+        if self.train is None:
+            new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.8)
+
+            if mask is None:
+                self.mask = new_mask
+            else:
+                self.mask = mask
+
+        self.train = self.data[self.mask]
+        self.test = self.data[~self.mask][self.holdout_size:]
+        self.holdout = self.data[~self.mask][0:self.holdout_size]
 
         self.load_json()
         self.data_header()
@@ -303,18 +322,12 @@ class Dota2(Data):
 
 class Susy(Data):
 
-    def __init__(self, url=None, path=None, seed=None):
+    def __init__(self, url=None, path=None, mask=None, seed=None):
 
-        super(Susy, self).__init__(path, url, seed)
+        super(Susy, self).__init__(path, url, mask, seed)
 
         if self.random_state is None:
             self.random_state = np.random.RandomState(seed=seed)
-
-        self._disc_opts = {Discretization.Quantile: self._quantile,
-                           Discretization.KMeans: self._kmeans,
-                           Discretization.Distance: self._distance
-
-                           }
 
         if not os.path.isdir(path):
             print("No data directory provided defaulting to " +
@@ -341,17 +354,20 @@ class Susy(Data):
         except FileNotFoundError as e:
             logger.debug("Couldn't load a file in the folder: " + str(e))
 
-        if self.train is None:
-            self.mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.8)
 
-        self.discretize(Discretization.Quantile)
+        new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.8)
+
+        if self.mask is None:
+            self.mask = new_mask
+
+        self.discretize()
         self.train = self.data[self.mask]
         self.test = self.data[~self.mask][self.holdout_size:]
         self.holdout = self.data[~self.mask][0:self.holdout_size]
 
         self.test_labels = np.copy(self.test[0].to_numpy())
 
-    def discretize(self, opt):
+    def discretize(self):
         quants = np.linspace(0, 1, 9)
         for (col_name, col) in self.train.iteritems():
             if col_name != self.label_column:
@@ -391,13 +407,58 @@ class Susy(Data):
 
 class CoverType(Data):
 
-    def __init__(self):
-        pass
-        super(CoverType, self).__init__()
+    def __init__(self, url=None, path=None, mask=None, seed=None,
+                 train_test_ratio=0.8,
+                 discretization_quantiles=9,
+                 label_col=0):
+        super(CoverType, self).__init__(url, path, mask, seed)
 
+        if self.random_state is None:
+            self.random_state = np.random.RandomState(seed=seed)
 
+        self.ratio = train_test_ratio
+        self.holdout_size = 10000
+        self.quantiles = discretization_quantiles
+
+        self.label_column=label_col
+        self.test_labels = np.copy(self.test[self.label_column].to_numpy())
+
+        self.prep_folder(path)
+        self.prep_data()
+
+    def prep_folder(self, path):
+        if not os.path.isdir(path):
+            logger.info("No data directory provided defaulting to " +
+                        os.path.join(ROOT_DIR, 'data'))
+            self.path = os.path.join(ROOT_DIR, path)
+            if not os.path.isdir(self.path):
+                os.makedirs(self.path)
+        else:
+            if os.path.isabs(path):
+                self.path = path
+            else:
+                self.path = os.path.join(ROOT_DIR, path)
+
+    def prep_data(self):
+        new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=self.ratio)
+
+        if self.mask is None:
+            self.mask = new_mask
+
+        self.discretize()
+        self.train = self.data[self.mask]
+        self.test = self.data[~self.mask][self.holdout_size:]
+        self.holdout = self.data[~self.mask][0:self.holdout_size]
+
+    def discretize(self):
+        quants = np.linspace(0, 1, self.quantiles)
+        for (col_name, col) in self.train.iteritems():
+            if col_name != self.label_column:
+                _, bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
+                self.data.loc[:, col_name] = np.digitize(self.data[col_name], bins)
+
+            
 class Fact(Data):
 
-    def __init__(self):
-        pass
-        super(Fact, self).__init__()
+    def __init__(self, url=None, path=None, mask=None, seed=None):
+        super(Fact, self).__init__(url, path, mask, seed)

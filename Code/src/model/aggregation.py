@@ -69,8 +69,11 @@ class Mean(Aggregation):
         -------
 
         """
-        weights = self.model.get_weights()
-        self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=1))
+        if isinstance(self.model, np.ndarray):
+            weights = self.model
+        else:
+            weights = self.model.get_weights()
+        self.aggregate_models.append(1 / weights.shape[1] * np.sum(weights, axis=1))
 
 
 class WeightedAverage(Aggregation):
@@ -94,8 +97,10 @@ class WeightedAverage(Aggregation):
         -------
 
         """
-
-        weights = self.model.get_weights()
+        if isinstance(self.model, np.ndarray):
+            weights = self.model
+        else:
+            weights = self.model.get_weights()
         distribution = "normal"
         mean, cov = self.estimate_normal(weights)
         try:

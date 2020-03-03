@@ -170,7 +170,7 @@ class Model:
         split: Split
             class:src.preprocessing.split.Split Contains the number of splits and thus the number of models to be trained.
             Each split will be distributed to a single device/model.
-g
+
         Raises
         ------
         RuntimeError
@@ -203,14 +203,13 @@ g
             update, _ = log_progress(start, update, iter_time, total_models, i)
             data = np.ascontiguousarray(train[idx.flatten()])
             init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
-            model = px.train(data=init_data, graph=self.graph,
-                             iters=1, shared_states=False)
-            for epoch in range(epochs):
-                px.train(data=data,
-                         iters=iters,
-                         shared_states=False,
-                         in_model=model,
-                         opt_progress_hook=self.opt_progress_hook)
+            data = np.ascontiguousarray(np.vstack((data, init_data)))
+            model = px.train(data=data,
+                             graph=self.graph,
+                             iters=iters,
+                             shared_states=False,
+                             opt_progress_hook=self.opt_progress_hook)
+
             models.append(model)
             iter_time = time.time()
 
@@ -358,15 +357,6 @@ g
         states = len(self.data_set.data.columns)
         return states
 
-    def _distribute(self):
-        pass
-
-    def _gather(self):
-        pass
-
-    def _aggregate(self):
-        pass
-
     def _px_create_graph(self):
         return px.create_graph(self.edgelist, self.state_space)
 
@@ -398,6 +388,9 @@ g
 
     def get_weights(self):
         return np.stack(self.best_weights, axis=0).T
+
+    def get_num_of_states(self):
+        return np.sum([self.state_space[i] * self.state_space[j] for i, j in self.edgelist])
 
 
 class Dota2(Model):
