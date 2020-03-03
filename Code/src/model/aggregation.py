@@ -70,7 +70,7 @@ class Mean(Aggregation):
 
         """
         weights = self.model.get_weights()
-        self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=0))
+        self.aggregate_models.append(1 / weights.shape[0] * np.sum(weights, axis=1))
 
 
 class WeightedAverage(Aggregation):
@@ -79,7 +79,7 @@ class WeightedAverage(Aggregation):
         super(WeightedAverage, self).__init__(model)
 
     def aggregate(self, opt, **kwargs):
-        self._weighted_average()
+        self.aggregate_models.append(self._weighted_average())
 
     def _weighted_average(self):
         """
@@ -113,7 +113,7 @@ class WeightedAverage(Aggregation):
         except Exception as e:
             likelihood = [self.log_normal(x, mean, alt_cov, inverse_alt_cov) for x in weights.T]
         normalizer = np.sum(likelihood)
-        return np.sum(likelihood/normalizer * weights, axis=0)
+        return np.sum(likelihood/normalizer * weights, axis=1)
 
     def estimate_normal(self, weights):
         return np.mean(weights, axis=1), np.cov(weights)
