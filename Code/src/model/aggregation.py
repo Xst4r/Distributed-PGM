@@ -30,6 +30,7 @@ class Aggregation:
 
         self.model = model
         self.aggregate_models = []
+        self.success = False
 
     def aggregate(self, opt, **kwargs):
         """
@@ -57,6 +58,7 @@ class Mean(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         self._average()
+        self.success = True
 
     def _average(self):
         """
@@ -83,6 +85,7 @@ class WeightedAverage(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         self.aggregate_models.append(self._weighted_average())
+        self.success = True
 
     def _weighted_average(self):
         """
@@ -181,6 +184,9 @@ class RadonMachine(Aggregation):
             weights = self.model.get_weights()
         else:
             weights = self.model
+
+        if weights.shape[1] != self.radon_number:
+            return np.zeros(weights.shape[0])
         # Coefficient Matrix Ax = b
         print("Calculating Radon Point for Radon Number: " + str(self.radon_number) + "\n" +
               "For Matrix with Shape: " + str(weights.shape) + "\n" +
@@ -211,6 +217,7 @@ class RadonMachine(Aggregation):
                     else np.vstack((new_weights, self._radon_point(A, b)))
             aggregation_weights = np.array(new_weights).T
             res.append(aggregation_weights)
+        self.success = True
         return res
 
     def _radon_point(self, A=None, b=None, sol=None):
@@ -268,11 +275,11 @@ class KL(Aggregation):
         kl_A, kl_marginals = kl_model.infer()
         fisher_matrix = []
         for i in range(K):
-            self.fisher_information(i, kl_A, rex.x)
+            self.fisher_information(i, kl_A, res.x)
 
     def naive_kl(self, theta, phi, A, X, K):
         def inner(theta, phi, A, X):
-            p_x = np.exp([theta * phi(x) - A for x in X])
+            p_x = np.exp([np.inner(theta * phi(x)) - A for x in X])
             return np.sum(p_x)
         return - np.sum([inner(theta, phi[k], A[k], X[k]) for k in K])
 
@@ -283,6 +290,7 @@ class KL(Aggregation):
 
     def weighted_kl(self):
         pass
+
 
 class Variance(Aggregation):
 

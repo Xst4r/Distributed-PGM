@@ -188,7 +188,12 @@ class Model:
         iter_time = None
 
         # Initialization for best Params
-        total_models = len(split) if n_models is None else n_models
+        if split is None:
+            total_models = 1
+            split = [np.arange(train.shape[0])]
+        else:
+            total_models = len(split) if n_models is None else np.min([len(split), n_models])
+
         if self.best_weights is None:
             self.best_weights = [0] * total_models
         if self.best_objs is None:
@@ -346,10 +351,11 @@ class Model:
         -------
         :class:`numpy.ndarray` containing the state space for each feature.
         """
-        statespace = np.arange(self.data_set.train.shape[1], dtype=np.uint64)
-        for i, column in enumerate(self.data_set.train.columns):
+        data = self.data_set.train.append(self.data_set.test)
+        statespace = np.arange(data.shape[1], dtype=np.uint64)
+        for i, column in enumerate(data.columns):
             self.state_mapping[column] = i
-            statespace[i] = np.max(self.data_set.data[column].to_numpy().astype(np.uint64))
+            statespace[i] = np.max(data[column].to_numpy().astype(np.uint64))
 
         return statespace
 
@@ -390,7 +396,8 @@ class Model:
         return np.stack(self.best_weights, axis=0).T
 
     def get_num_of_states(self):
-        return np.sum([self.state_space[i] * self.state_space[j] for i, j in self.edgelist])
+        num_states = self.state_space + 1
+        return np.sum([num_states[i] * num_states[j] for i, j in self.edgelist])
 
 
 class Dota2(Model):
@@ -463,11 +470,12 @@ class Susy(Model):
 
     def predict(self, px_model=None, n_test=None):
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
-        test[:,0] = -1
+        test[:,self.data_set.label_column] = -1
         if n_test is None:
             n_test = test.shape[0]-1
         else:
             np.min([n_test, test.shape[0]-1])
+        test = np.ascontiguousarray(test[:n_test])
         if px_model is None:
             if self.trained:
                 return [px_model.predict(test[:n_test]) for px_model in self.px_model]

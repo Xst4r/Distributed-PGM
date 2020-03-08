@@ -2,7 +2,7 @@ import logging
 from math import log
 
 import numpy as np
-
+from sklearn.model_selection import RepeatedStratifiedKFold
 from enum import Enum
 from src.model.aggregation import AggregationType
 
@@ -42,6 +42,9 @@ class Sampler:
         """
 
         self.random_state = np.random.RandomState(seed)
+        self.data = data
+        self.seed = seed
+
         if self.n_splits is None:
             self.n_splits = n_splits
 
@@ -52,7 +55,7 @@ class Sampler:
 
         self.sample_complexity = sample_complexity
         self.split_idx = None
-        self.create_split(data.train.shape, data.train)
+        self._stratified()
 
         self.data_dim = data.train.shape[1]
 
@@ -108,16 +111,23 @@ class Sampler:
     def split(self):
         yield from self.split_idx
 
+    def stratified_split(self):
+        return self.rskf.split(self.dataset, self.labels)
+
     def _random(self, shape):
         split = np.arange(shape[0])
         self.random_state.shuffle(split)
-        cv_splits = np.array_split(split, self.k_fold)
-        self.split_idx = [np.array_split(cv_split, self.n_splits) for cv_split in cv_splits]
+        self.split_idx = np.array_split(split, self.n_splits)
+
+    def _stratified(self):
+        self.labels = self.data.data[self.data.label_column]
+        self.dataset = self.data.data.drop(self.data.label_column, axis=1)
+        self.rskf = RepeatedStratifiedKFold(n_splits=self.k_fold, n_repeats=1, random_state=self.seed[0])
 
     def _bootstrap(self, data):
         total_samples = self.sample_complexity * self.n_splits
         data_idx = np.arange(data.shape[0])
-        choices = self.random_state.choice(a=data_idx , size=total_samples, replace=True).reshape(self.n_split, self.sample_complexity)
+        choices = self.random_state.choice(a=data_idx , size=total_samples, replace=True).reshape(self.n_splits, self.sample_complexity)
         self.split_idx = choices
 
     def _model(self, models):
