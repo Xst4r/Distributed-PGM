@@ -89,7 +89,7 @@ class Mean(Aggregation):
             self._average()
             self.success = True
         except Exception as e:
-            logger.error("Aggregation Failed in " + self.__class__.__name__)
+            logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _average(self):
         """
@@ -112,8 +112,11 @@ class WeightedAverage(Aggregation):
         super(WeightedAverage, self).__init__(model)
 
     def aggregate(self, opt, **kwargs):
-        self.aggregate_models.append(self._weighted_average())
-        self.success = True
+        try:
+            self.aggregate_models.append(self._weighted_average())
+            self.success = True
+        except Exception as e:
+            logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _weighted_average(self):
         """
@@ -188,7 +191,11 @@ class RadonMachine(Aggregation):
         self.h = int(h)
 
     def aggregate(self, opt, **kwargs):
-        self.aggregate_models = self._radon_machine()
+        try:
+            self.aggregate_models = self._radon_machine()
+            self.success = True
+        except Exception as e:
+            logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _radon_machine(self):
         """
@@ -323,7 +330,11 @@ class KL(Aggregation):
         self.eps = eps
 
     def aggregate(self, opt, **kwargs):
-        self._aggregate(opt, **kwargs)
+        try:
+            self._aggregate(opt, **kwargs)
+            self.success = True
+        except Exception as e:
+            logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
         from scipy.optimize import minimize
@@ -410,15 +421,19 @@ class Variance(Aggregation):
             self.local_data.append(np.ascontiguousarray(sample, dtype=np.uint16))
 
     def aggregate(self, opt, **kwargs):
-        self._aggregate(opt, **kwargs)
+        try:
+            self._aggregate(opt, **kwargs)
+            self.success = True
+        except Exception as e:
+            logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
-        scores = self.welford()
+        scores = self._welford()
 
     def _chain_graph(self, i):
         return np.append(np.arange(1, i), [0])
 
-    def welford(self):
+    def _welford(self):
         """
         Welford Algorithm for online variance
         :param count:
