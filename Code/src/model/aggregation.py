@@ -64,6 +64,7 @@ class Aggregation:
     """
         raise NotImplementedError("Abstract Function that should not be called.")
 
+
 class Mean(Aggregation):
 
     def __init__(self, model):
@@ -412,7 +413,7 @@ class Variance(Aggregation):
             self.graph = self.model[0].graph
             self.states = self.model[0].states
         if edgelist is None:
-            self.edgelist = self._chain_graph(self.model.shape[1])
+            self.edgelist = self._chain_graph(len(self.model))
         for sample in samples:
             self.y_true.append(sample[:,label])
             sample[:,label] = -1
@@ -428,8 +429,11 @@ class Variance(Aggregation):
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
-        res = np.zeros(self.model[0].shape[0])
+        res = np.zeros(self.weights.shape[0])
         scores = self._welford()
+        coefs = np.array(scores)
+        partition = np.sum(coefs, axis=0)
+        res = np.matmul(self.weights * coefs[:,0]/partition[0])
         return res
 
     def _chain_graph(self, i):
