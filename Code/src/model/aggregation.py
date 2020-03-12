@@ -7,6 +7,7 @@ from scipy.stats import multivariate_normal
 
 
 from src.conf.settings import get_logger
+from src.model.model import Model
 
 logger = get_logger()
 
@@ -36,6 +37,12 @@ class Aggregation:
             to be supplied as well. This is usually the case when we need to create an instance of `pxpy.Model` to
             perform inference or sample from the probabilistic graphical model.
         """
+        if not isinstance(model, (np.ndarray, Model)):
+            raise TypeError("Excepted models to be either of type numpy.ndarray, pxpy.model or Model")
+        elif isinstance(model, list):
+            if not all(isinstance(x, px.Model) for x in model):
+                raise TypeError("Provided List has to contain objects of type pxpy.Model only")
+
         self.options = {AggregationType.Mean: Mean,
                         AggregationType.WeightedAverage: WeightedAverage,
                         AggregationType.RadonPoints: RadonMachine,
@@ -70,9 +77,19 @@ class Mean(Aggregation):
     def __init__(self, model):
         super(Mean, self).__init__(model)
 
+        if isinstance(model, Model):
+            self.weights = model.get_weights()
+        elif isinstance(model, list):
+            self.weights = [m.weights for m in self.model]
+        else:
+            self.weights = self.model
+
     def aggregate(self, opt, **kwargs):
-        self._average()
-        self.success = True
+        try:
+            self._average()
+            self.success = True
+        except Exception as e:
+            logger.error("Aggregation Failed in " + self.__class__.__name__)
 
     def _average(self):
         """
@@ -85,10 +102,7 @@ class Mean(Aggregation):
         -------
 
         """
-        if isinstance(self.model, np.ndarray):
-            weights = self.model
-        else:
-            weights = self.model.get_weights()
+        weights = self.weights
         self.aggregate_models.append(1 / weights.shape[1] * np.sum(weights, axis=1))
 
 
