@@ -45,7 +45,7 @@ class Aggregation:
         elif isinstance(model, list):
             if not all(isinstance(x, px.Model) for x in model):
                 raise TypeError("Provided List has to contain objects of type pxpy.Model only")
-            
+
         self.model = model
         self.aggregate_models = []
         self.success = False
@@ -62,12 +62,7 @@ class Aggregation:
         -------
 
     """
-        try:
-            self.options[opt](**kwargs)
-        except KeyError:
-            print("The provided option is unknown defaulting to averaging with uninformative prior")
-            self.options[AggregationType.Mean](**kwargs)
-
+        raise NotImplementedError("Abstract Function that should not be called.")
 
 class Mean(Aggregation):
 
