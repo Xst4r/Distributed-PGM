@@ -45,13 +45,7 @@ class Aggregation:
         elif isinstance(model, list):
             if not all(isinstance(x, px.Model) for x in model):
                 raise TypeError("Provided List has to contain objects of type pxpy.Model only")
-
-        self.options = {AggregationType.Mean: Mean,
-                        AggregationType.WeightedAverage: WeightedAverage,
-                        AggregationType.RadonPoints: RadonMachine,
-                        AggregationType.TukeyDepth: tukey_depth,
-                        AggregationType.WassersteinBarycenter: wasserstein_barycenter}
-
+            
         self.model = model
         self.aggregate_models = []
         self.success = False
