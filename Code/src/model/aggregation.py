@@ -2,6 +2,7 @@ from enum import Enum
 
 import numpy as np
 import pxpy as px
+import warnings
 from scipy.stats import multivariate_normal
 
 
@@ -22,6 +23,19 @@ class AggregationType(Enum):
 class Aggregation:
 
     def __init__(self, model):
+        """
+
+        Parameters
+        ----------
+        model :
+            Either List of `pxpy.Model` or `numpy.ndarray` with shape (row,col),
+             where the matrix is a collection of parameter vectors, with row being the number of parameters per model
+             and col being the number of models.
+
+            If model is of type `numpy.ndarray`, depending on the Aggregation method a graph and the number of states have
+            to be supplied as well. This is usually the case when we need to create an instance of `pxpy.Model` to
+            perform inference or sample from the probabilistic graphical model.
+        """
         self.options = {AggregationType.Mean: Mean,
                         AggregationType.WeightedAverage: WeightedAverage,
                         AggregationType.RadonPoints: RadonMachine,
@@ -251,37 +265,98 @@ class RadonMachine(Aggregation):
 
 class KL(Aggregation):
 
-    def __init__(self, model, A, X):
-        super(KL, self).__init__(model)
-        if not all(isinstance(x, px.Model) for x in self.model):
-            raise TypeError("Models have to be PX Models for this Aggregaton")
+    def __init__(self, models, n=100, samples=None, graph=None, states=None, eps=1e-3):
+        """
 
-        self.A = A
-        self.X = X
+        Parameters
+        ----------
+        models :
+        n :
+        samples :
+        graph :
+        states :
+        eps :
+        """
+        super(KL, self).__init__(models)
+
+        if not all(isinstance(x, px.Model) for x in models) or isinstance(models, np.ndarray):
+            raise TypeError("Models have to be either a list of pxpy models or a numpy ndarray containing weights")
+
+        if samples is not None:
+            self.X = samples
+        else:
+            self.X = [model.sample(num_samples=n) for model in models]
+
+        if isinstance(self.model, np.ndarray):
+            if graph is None or states is None:
+                raise ValueError("Graph and States must be supplied.")
+            if isinstance(graph, np.ndarray):
+                if graph.shape[1] != 2:
+                    raise ValueError("Provided Edgelist has to have exactly 2 Columns")
+                self.graph = px.create_graph(graph)
+            else:
+                self.graph = graph
+            self.states = states
+            self.weights = self.model
+            self.model = [px.Model(weights=weights, graph=graph, states=states) for weights in self.model.T]
+        else:
+            self.graph = self.model[0].graph
+            self.states = self.model[0].states
+
         self.K = len(self.model)
         self.phi = [model.phi for model in self.model]
+        self.obj = np.infty
+        self.eps = eps
 
     def aggregate(self, opt, **kwargs):
         self._aggregate(opt, **kwargs)
 
     def _aggregate(self, opt, **kwargs):
         from scipy.optimize import minimize
+        from functools import partial
         K = self.K
-        A = self.A
         X = self.X
+        average_statistics = []
+        for i, samples in enumerate(X):
+            avg = np.mean([self.phi[i](x) for x in samples], axis=0)
+            average_statistics.append(avg)
+        self.average_suff_stats = average_statistics
         x0 = np.zeros(self.model[0].weights.shape[0])
-        res = minimize(self.naive_kl, x0, args=(self.phi, A, X, K))
+        obj = partial(self.naive_kl, average_statistics=average_statistics,
+                                     graph=self.model[0].graph,
+                                     states= np.copy(self.model[0].states))
+        res = minimize(obj, x0, callback=self.callback, tol=self.eps, options={"maxiter":50})
         kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
-        kl_A, kl_marginals = kl_model.infer()
+        kl_m, kl_A = kl_model.infer()
         fisher_matrix = []
         for i in range(K):
             self.fisher_information(i, kl_A, res.x)
 
-    def naive_kl(self, theta, phi, A, X, K):
-        def inner(theta, phi, A, X):
-            p_x = np.exp([np.inner(theta * phi(x)) - A for x in X])
-            return np.sum(p_x)
-        return - np.sum([inner(theta, phi[k], A[k], X[k]) for k in K])
+    def naive_kl(self, theta, average_statistics, graph, states):
+        model = px.Model(weights=theta, graph=graph, states=states)
+        avg_stats = np.mean(average_statistics, axis=0)
+        _, A = model.infer()
+        return -(np.inner(theta, np.mean(average_statistics, axis=0)) - A) + self.l2_regularization(theta)
+
+    def l1_regularization(self, theta, lam=1e-1):
+        return lam * np.sum(np.abs(theta))
+
+    def l2_regularization(self, theta, lam=1e-1):
+        return  lam * np.sum(np.power(theta, 2))
+
+    def callback(self, theta):
+        model = px.Model(weights=theta, graph=self.graph, states=self.states)
+        _, A = model.infer()
+        obj = -(np.inner(theta, np.mean(self.average_suff_stats, axis=0)) - A)
+        print("OBJ: " + str(obj))
+        print("DELTA:" + str(np.abs(self.obj - obj)))
+        if np.abs(self.obj - obj) < self.eps:
+            self.obj = np.nanmin([obj,  self.obj])
+            warnings.warn("Terminating optimization: time limit reached")
+            return True
+        else:
+            self.obj = np.nanmin([obj, self.obj])
+            return False
 
     def fisher_information(self,i, kl_A, theta):
         return 1/len(self.X[i]) * \
@@ -294,34 +369,61 @@ class KL(Aggregation):
 
 class Variance(Aggregation):
 
-    def __init__(self, model):
+    def __init__(self, model, samples, label, graph=None, states=None, edgelist=None):
         super(Variance, self).__init__(model)
+
         self.edgelist = []
         self.local_data = []
+        self.y_true = []
+        self.graph = graph
+        self.states = states
+        if isinstance(self.model, np.ndarray):
+            if graph is None or states is None:
+                raise ValueError("Models were provided as Collection of weight vectors. "
+                                 "Graph or States were None, but need to be specified.")
+            if isinstance(graph, np.ndarray):
+                self.graph = px.create_graph(edgelist=graph)
+            self.weights = self.model
+            self.model = [px.Model(weights=weights, graph=self.graph, states=self.states) for weights in self.model.T]
+        else:
+            self.graph = self.model[0].graph
+            self.states = self.model[0].states
+        if edgelist is None:
+            self.edgelist = self._chain_graph(self.model.shape[1])
+        for sample in samples:
+            self.y_true.append(sample[:,label])
+            sample[:,label] = -1
+            self.local_data.append(np.ascontiguousarray(sample, dtype=np.uint16))
 
     def aggregate(self, opt, **kwargs):
         self._aggregate(opt, **kwargs)
 
     def _aggregate(self, opt, **kwargs):
-        pass
+        scores = self.welford()
 
-    def welford(self, count, mean):
+    def _chain_graph(self, i):
+        return np.append(np.arange(1, i), [0])
+
+    def welford(self):
         """
         Welford Algorithm for online variance
         :param count:
         :param mean:
         :return:
         """
-        def get_acc(predictions):
-            return 0.5
+        def get_acc(y_true, y_pred):
+            return np.where(y_true == y_pred)[0].shape[0]/y_true.shape[0]
 
-        def update(count, mean, M2, node):
-            theta_new = self.model[node]
-            model = px.Model(weights=theta_new, graph=None, states=None)
-            predictions = model.predict(self.local_data[node])
-            acc = get_acc(predictions)
-            new_mean = (acc - mean)/count
-            M2 += (acc - mean)*(acc - new_mean)
+        def update(model, count, mean, M2, node, y_true):
+            count += 1
+            remote_data = self.local_data[node]
+            predictions = model.predict(remote_data)
+            acc = get_acc(y_true, predictions[:,-1])
+
+            delta = acc - mean
+            mean += delta/count
+            delta2 = acc - mean
+            M2 += delta * delta2
             return count, mean, M2
 
         def finalize(count, mean, M2):
@@ -329,14 +431,18 @@ class Variance(Aggregation):
             return mean, variance
 
         scores = []
-        for i, theta in enumerate(self.model):
-            mean = theta
+        for i, model in enumerate(self.model):
+            data = self.local_data[i]
+            y_true = self.y_true[i]
+            y_pred = model.predict(data)[:,-1]
+            mean = get_acc(y_true, y_pred)
             count = 1
-            M2 = theta
-            for node in self.edgelist[i]:
-                mean, count, M2 = update(count, mean, M2, node)
-            mean, variance = finalize(count, mean, M2, node)
+            M2 = 0
+            for node in [self.edgelist[i]]:
+                count, mean, M2 = update(self.model[i], count, mean, M2, node, y_true)
+            mean, variance = finalize(count, mean, M2)
             scores.append((mean, variance))
+        return scores
 
 
 def wasserstein_barycenter(weights):
@@ -363,5 +469,39 @@ def print_help(aggtype=None):
 def tukey_depth():
     pass
 
+
+import os
+from src.conf.settings import ROOT_DIR
+
+
+def kl():
+    path = os.path.join(ROOT_DIR, "experiments", "COVERTYPE", "100_50_1_1583660364", "models")
+
+    models = []
+    theta = []
+    logpartitions = []
+    suff_stats = []
+    for file in os.listdir(path):
+        if "k0" in file:
+            models.append(px.load_model(os.path.join(path, file)))
+    samples = []
+    for model in models:
+        m, A = model.infer()
+        samples.append(model.sample(num_samples=100))
+        logpartitions.append(A)
+        suff_stats.append(model.statistics)
+        theta.append(model.weights)
+    weights = np.array([model.weights for model in models]).T
+    var_agg = Variance(weights, samples, -1, models[0].graph, models[0].states)
+    var_agg.aggregate(None)
+    agg = KL(models, 100)
+    agg.aggregate(None)
+
+    # KL(theta1 |theta2) = A2 - A1  - mu1(theta2 - theta1)
+    # KL(i,j) = A[j] - A[i] - suff_stats[i]*(theta[j] - theta[i])
+
+
+if __name__ == '__main__':
+    kl()
 
 
