@@ -1,12 +1,15 @@
+import os
 from enum import Enum
+from functools import partial
 
 import numpy as np
 import pxpy as px
 import warnings
 from scipy.stats import multivariate_normal
+from scipy.optimize import minimize
 
 
-from src.conf.settings import get_logger
+from src.conf.settings import get_logger, ROOT_DIR
 from src.model.model import Model
 
 logger = get_logger()
@@ -86,8 +89,10 @@ class Mean(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
-            self._average()
+            res = self._average()
             self.success = True
+            self.aggregate_models.append(res)
+            return res
         except Exception as e:
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
@@ -103,7 +108,7 @@ class Mean(Aggregation):
 
         """
         weights = self.weights
-        self.aggregate_models.append(1 / weights.shape[1] * np.sum(weights, axis=1))
+        return 1 / weights.shape[1] * np.sum(weights, axis=1)
 
 
 class WeightedAverage(Aggregation):
@@ -192,8 +197,10 @@ class RadonMachine(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
-            self.aggregate_models = self._radon_machine()
+            res = self._radon_machine()
+            self.aggregate_models.append(res)
             self.success = True
+            return res
         except Exception as e:
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
@@ -331,14 +338,15 @@ class KL(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
-            self._aggregate(opt, **kwargs)
+            res = self._aggregate(opt, **kwargs)
             self.success = True
+            self.aggregate_models.append(res)
+            return res
         except Exception as e:
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
-        from scipy.optimize import minimize
-        from functools import partial
+        res = np.zeros(self.model[0].weights.shape[0])
         K = self.K
         X = self.X
         average_statistics = []
@@ -356,6 +364,7 @@ class KL(Aggregation):
         fisher_matrix = []
         for i in range(K):
             self.fisher_information(i, kl_A, res.x)
+        return res
 
     def naive_kl(self, theta, average_statistics, graph, states):
         model = px.Model(weights=theta, graph=graph, states=states)
@@ -422,13 +431,17 @@ class Variance(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
-            self._aggregate(opt, **kwargs)
+            res = self._aggregate(opt, **kwargs)
             self.success = True
+            self.aggregate_models.append(res)
+            return res
         except Exception as e:
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
+        res = np.zeros(self.model[0].shape[0])
         scores = self._welford()
+        return res
 
     def _chain_graph(self, i):
         return np.append(np.arange(1, i), [0])
@@ -493,14 +506,6 @@ def wasserstein_barycenter(weights):
 
 def print_help(aggtype=None):
     pass
-
-
-def tukey_depth():
-    pass
-
-
-import os
-from src.conf.settings import ROOT_DIR
 
 
 def kl():
