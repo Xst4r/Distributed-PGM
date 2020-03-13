@@ -40,11 +40,12 @@ class Aggregation:
             to be supplied as well. This is usually the case when we need to create an instance of `pxpy.Model` to
             perform inference or sample from the probabilistic graphical model.
         """
-        if not isinstance(model, (np.ndarray, Model)):
+        if not isinstance(model, (np.ndarray, Model)) and not  isinstance(model, list):
             raise TypeError("Excepted models to be either of type numpy.ndarray, pxpy.model or Model")
-        elif isinstance(model, list):
+        if isinstance(model, list):
             if not all(isinstance(x, px.Model) for x in model):
                 raise TypeError("Provided List has to contain objects of type pxpy.Model only")
+
 
         self.model = model
         self.aggregate_models = []
@@ -283,7 +284,7 @@ class RadonMachine(Aggregation):
 
 class KL(Aggregation):
 
-    def __init__(self, models, n=100, samples=None, graph=None, states=None, eps=1e-3):
+    def __init__(self, models, n=3000, samples=None, graph=None, states=None, eps=1e-3):
         """
 
         Parameters
@@ -336,7 +337,7 @@ class KL(Aggregation):
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
-        res = np.zeros(self.model[0].weights.shape[0])
+        naivekl = np.zeros(self.model[0].weights.shape[0])
         K = self.K
         X = self.X
         average_statistics = []
@@ -351,10 +352,31 @@ class KL(Aggregation):
         res = minimize(obj, x0, callback=self.callback, tol=self.eps, options={"maxiter":50})
         kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
         kl_m, kl_A = kl_model.infer()
-        fisher_matrix = []
-        for i in range(K):
-            self.fisher_information(i, kl_A, res.x)
-        return res
+        naivekl += res.x
+        self.test(kl_model)
+
+        try:
+            fisher_matrix = []
+            inverse_fisher = []
+            for i in range(K):
+                fisher_matrix.append(self.fisher_information(i, kl_m[:kl_model.weights.shape[0]], res.x))
+                inverse_fisher.append(np.linalg.inv(fisher_matrix[i]))
+        except np.linalg.LinAlgError as e:
+            pass
+
+        return res.x
+
+    def test(self, model):
+        labels = np.concatenate(self.X)[:, -1]
+        data = np.concatenate(self.X)
+        data[:, -1] = -1
+        preds = model.predict(np.ascontiguousarray(np.copy(data), dtype=np.uint16))
+        data[:, -1] = -1
+        all_preds = [m.predict(np.ascontiguousarray(np.copy(data), dtype=np.uint16)) for m in self.model]
+        acc = np.where(preds[:,-1] == labels)[0].shape[0] / labels.shape[0]
+        all_acc = [np.where(p[:, -1] == labels)[0].shape[0] / labels.shape[0] for p in all_preds]
+
+        return all_acc
 
     def naive_kl(self, theta, average_statistics, graph, states):
         model = px.Model(weights=theta, graph=graph, states=states)
@@ -365,7 +387,7 @@ class KL(Aggregation):
     def l1_regularization(self, theta, lam=1e-1):
         return lam * np.sum(np.abs(theta))
 
-    def l2_regularization(self, theta, lam=1e-1):
+    def l2_regularization(self, theta, lam=0):
         return  lam * np.sum(np.power(theta, 2))
 
     def callback(self, theta):
@@ -373,6 +395,7 @@ class KL(Aggregation):
         _, A = model.infer()
         obj = -(np.inner(theta, np.mean(self.average_suff_stats, axis=0)) - A)
         print("OBJ: " + str(obj))
+        print("REG: " + str(self.l2_regularization(theta)))
         print("DELTA:" + str(np.abs(self.obj - obj)))
         if np.abs(self.obj - obj) < self.eps:
             self.obj = np.nanmin([obj,  self.obj])
@@ -382,10 +405,11 @@ class KL(Aggregation):
             self.obj = np.nanmin([obj, self.obj])
             return False
 
-    def fisher_information(self,i, kl_A, theta):
-        return 1/len(self.X[i]) * \
-               np.sum(self.phi[i](x) *
-                      np.exp(np.inner(self.phi[i](x), theta) - kl_A) for x in self.X[i])
+    def fisher_information(self, i, mu, theta):
+        res = np.zeros((theta.shape[0], theta.shape[0]))
+        for x in self.X[i]:
+            res += np.outer(self.phi[i](x) - mu, self.phi[i](x) - mu)
+        return 1/self.X[i].shape[0] * res
 
     def weighted_kl(self):
         pass
@@ -520,8 +544,8 @@ def kl():
         theta.append(model.weights)
     weights = np.array([model.weights for model in models]).T
     var_agg = Variance(weights, samples, -1, models[0].graph, models[0].states)
-    var_agg.aggregate(None)
-    agg = KL(models, 100)
+    # var_agg.aggregate(None)
+    agg = KL(models, 3000)
     agg.aggregate(None)
 
     # KL(theta1 |theta2) = A2 - A1  - mu1(theta2 - theta1)

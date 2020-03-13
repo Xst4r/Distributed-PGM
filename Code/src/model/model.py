@@ -83,6 +83,7 @@ class Model:
 
         self.hook_counter = 0
         self.stepsize = 1e-1
+        self.maxiter = 10000
 
 
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
@@ -179,6 +180,7 @@ class Model:
         -------
             None
         """
+        self.maxiter = iters
         models = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
 
@@ -282,6 +284,9 @@ class Model:
         self.best_objs[self.curr_model] = np.copy(contents.obj)
         print(str(self.curr_model) + "," + str(contents.obj), file=self.csv_writer)
 
+        if self.check_covergence():
+            state_p.contents.maxiter = self.maxiter
+
     def progress_hook(self, state_p):
         return
 
@@ -290,6 +295,9 @@ class Model:
 
     def opt_proximal_hook(self, state_p):
         return
+
+    def check_covergence(self):
+        return False
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
