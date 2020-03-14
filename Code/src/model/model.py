@@ -201,14 +201,14 @@ class Model:
         if self.best_objs is None:
             self.best_objs = [0] * total_models
 
-        # Training
+        # Distributed Training
         for i, idx in enumerate(split):
             self.curr_model = i
             if n_models is not None:
                 if i >= n_models:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
-            data = np.ascontiguousarray(train[idx.flatten()])
+            data = np.ascontiguousarray(np.copy(train[idx.flatten()]))
             init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
             data = np.ascontiguousarray(np.vstack((data, init_data)))
             model = px.train(data=data,
@@ -486,7 +486,7 @@ class Susy(Model):
         test = np.ascontiguousarray(test[:n_test])
         if px_model is None:
             if self.trained:
-                return [px_model.predict(test[:n_test]) for px_model in self.px_model]
+                return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in self.px_model]
         else:
             return px_model.predict(test[:n_test])
 

@@ -353,7 +353,7 @@ class KL(Aggregation):
         kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
         kl_m, kl_A = kl_model.infer()
         naivekl += res.x
-        self.test(kl_model)
+        #self.test(kl_model)
 
         try:
             fisher_matrix = []
