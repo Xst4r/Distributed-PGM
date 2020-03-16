@@ -10,6 +10,7 @@ import os
 from shutil import copyfileobj
 
 import numpy as np
+from scipy.stats import random_correlation
 import pxpy as px
 
 logger = get_logger()
@@ -26,43 +27,52 @@ class Coordinator(object):
         self.k_fold = k
         self.iters = iters
         self.h = h
+        self.r = 0
         self.rounds = epochs
         self.n_models = n_models
         self.save_path = os.path.join("experiments", self.name)
-        self.seed = None
 
-    def baseline(self, path):
-        models = None
+        self.model_loader = None
+        self.mask = None
+        if self.exp_loader is not None:
+            self.experiment_path = os.path.join(self.save_path, "_".join(
+                [str(self.num_local_samples), str(self.iters), str(self.rounds)]) + "_" + str(self.exp_loader))
+            self.seed = self.load_seed(self.experiment_path)
+            self.model_loader, self.mask = self.load_experiment(self.experiment_path)
+        else:
+            self.experiment_path, self.seed = self.save_seed(os.path.join(self.save_path, "_".join(
+                [str(self.num_local_samples), str(self.iters), str(self.rounds)])))
 
+        if not os.path.isdir(self.experiment_path):
+            os.makedirs(self.experiment_path)
+        self.random_state = np.random.RandomState(seed=self.seed)
+
+    def baseline(self):
         if os.path.isabs(self.name):
             data = self.data_obj(path=self.name, seed=self.seed)
         else:
             data = self.data_obj(path=os.path.join("data", self.name), seed=self.seed)
 
-        if path is None or models is None:
-            models = []
-            for i in range(10):
-                data.train_test_split(i)
-                test_size = np.min([n_test, data.test.shape[0] - 1])
-                model = SusyModel(data, path=self.name)
-                model.train(split=None, epochs=self.rounds, iters=self.iters)
-                predictions = model.predict(n_test=test_size)
-                # marginals, A = model.px_model[0].infer()
+        models = []
+        for i in range(10):
+            data.train_test_split(i)
+            test_size = np.min([n_test, data.test.shape[0] - 1])
+            model = SusyModel(data, path=self.name)
+            model.train(split=None, epochs=self.rounds, iters=self.iters)
+            predictions = model.predict(n_test=test_size)
+            # marginals, A = model.px_model[0].infer()
 
-                accuracy = np.where(np.equal(predictions[0][:, data.label_column], data.test_labels[:test_size]))[0].shape[0] / data.test_labels[:test_size].shape[0]
-                print("GLOBAL Model " + str(i) + " : " + str(accuracy))
-                if not os.path.isdir(os.path.join(path, 'baseline')):
-                    os.makedirs(os.path.join(path, 'baseline'))
-                model.px_model[0].save(os.path.join(path, 'baseline', 'px_model' + str(i)))
-                model.write_progress_hook(os.path.join(path, 'baseline'))
-                models.append(model)
-        else:
-            model = self.load_model(path)
-
+            accuracy = np.where(np.equal(predictions[0][:, data.label_column], data.test_labels[:test_size]))[0].shape[0] / data.test_labels[:test_size].shape[0]
+            print("GLOBAL Model " + str(i) + " : " + str(accuracy))
+            if not os.path.isdir(os.path.join(self.experiment_path, 'baseline')):
+                os.makedirs(os.path.join(self.experiment_path, 'baseline'))
+            model.px_model[0].save(os.path.join(self.experiment_path, 'baseline', 'px_model' + str(i)))
+            model.write_progress_hook(os.path.join(self.experiment_path, 'baseline'))
+            models.append(model)
+        return models
 
     def load_model(self, path):
         pass
-
 
     def save_seed(self, path):
         data_dir = os.path.join(path + "_" + str(int(time())))
@@ -70,7 +80,6 @@ class Coordinator(object):
         seed = np.random.randint(0, np.iinfo(np.int32).max, 1)
         np.save(os.path.join(data_dir, "seed"), seed)
         return data_dir, seed
-
 
     def load_experiment(self, path):
         mask = None
@@ -118,14 +127,11 @@ class Coordinator(object):
         return model
 
     def aggregate(self, distributed_models, data):
-        d, r, h, n = data.radon_number(r=distributed_models.get_num_of_states() + 2,
-                                       h=1,
-                                       d=data.train.shape[0])
         test_size = np.min([n_test, data.test.shape[0] - 1])
         methods = ['mean', 'radon', 'wa']
         aggregates = {k: [] for k in methods}
         aggr = [Mean(distributed_models),
-                RadonMachine(distributed_models, r, h),
+                RadonMachine(distributed_models, self.r, self.h),
                 WeightedAverage(distributed_models)]
         weights = None
         if isinstance(distributed_models, np.ndarray):
@@ -159,38 +165,51 @@ class Coordinator(object):
                 trained_model = self.train(data=data, i=i, sampler=sampler, experiment_path=experiment_path)
                 models.append(trained_model)
 
+                d, r, h, n = data.radon_number(r=trained_model.get_num_of_states() + 2,
+                                               h=1,
+                                               d=data.train.shape[0])
+                self.r = r
+                samples = self.sample_parameters(trained_model)
                 # TODO: Generate new Model Parameters here
                 # Aggregation
                 logger.info("Aggregating Model No. " + str(i))
                 aggregates.append(self.aggregate(trained_model, data))
         return models, aggregates, sampler
 
+    def sample_parameters(self, model):
+        n_samples = self.r ** self.h
+        samples_per_model = np.ceil(n_samples/len(model.px_model))
+        theta_samples = []
+        for px_model in model.px_model:
+            cov = self.gen_unif_cov(px_model.weights.shape[0])
+            theta_samples.append(self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model))
+        return theta_samples
+
+    def gen_unif_cov(self, n_dim):
+        return np.diag(np.ones(n_dim))
+
+    def gen_random_cov(self, n_dim):
+        eigs = self.random_state.rand(n_dim)
+        eigs = eigs/np.sum(eigs) * eigs.shape[0]
+        return random_correlation.rvs(eigs, random_state=self.random_state)
+
+    def gen_fisher_cov(self, phi, mu):
+        return np.outer(mu-phi, (mu-phi).T)
+
     def prepare_and_run(self):
 
-        model_loader = None
-        mask = None
-        if self.exp_loader is not None:
-            experiment_path = os.path.join(self.save_path, "_".join([str(self.num_local_samples), str(self.iters), str(self.rounds)]) + "_" + str(self.exp_loader))
-            self.seed = self.load_seed(experiment_path)
-            model_loader, mask = self.load_experiment(experiment_path)
-        else:
-            experiment_path, self.seed = self.save_seed(os.path.join(self.save_path, "_".join([str(self.num_local_samples), str(self.iters), str(self.rounds)])))
-
-        if not os.path.isdir(experiment_path):
-            os.makedirs(experiment_path)
-
-        self.baseline(experiment_path)
-        data = self.data_obj(path=os.path.join("data", self.name), mask=mask, seed=self.seed)
-        models, aggregate, sampler = self.run(data, experiment_path, model_loader)
+        self.baseline()
+        data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed)
+        models, aggregate, sampler = self.run(data, self.experiment_path, self.model_loader)
 
         if self.exp_loader is None:
-            np.save(os.path.join(experiment_path, 'mask'), data.mask)
-            np.save(os.path.join(experiment_path, 'splits'), sampler.split_idx)
-            os.makedirs(os.path.join(experiment_path, "models"))
+            np.save(os.path.join(self.experiment_path, 'mask'), data.mask)
+            np.save(os.path.join(self.experiment_path, 'splits'), sampler.split_idx)
+            os.makedirs(os.path.join(self.experiment_path, "models"))
             for i, m in enumerate(models):
-                np.save(os.path.join(experiment_path, str(i) + "_mask"), m.data.masks[i])
+                np.save(os.path.join(self.experiment_path, str(i) + "_mask"), m.data.masks[i])
                 for j, pxm in enumerate(m.px_model):
-                    pxm.save(os.path.join(experiment_path, "models", "k" + str(i) + "_n" + str(j) + "px"))
+                    pxm.save(os.path.join(self.experiment_path, "models", "k" + str(i) + "_n" + str(j) + "px"))
         return models, aggregate
 
 

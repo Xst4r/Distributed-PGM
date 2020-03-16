@@ -408,7 +408,7 @@ class KL(Aggregation):
     def fisher_information(self, i, mu, theta):
         res = np.zeros((theta.shape[0], theta.shape[0]))
         for x in self.X[i]:
-            res += np.outer(self.phi[i](x) - mu, self.phi[i](x) - mu)
+            res += np.outer(-self.phi[i](x) + mu, - self.phi[i](x) + mu)
         return 1/self.X[i].shape[0] * res
 
     def weighted_kl(self):
@@ -467,7 +467,8 @@ class Variance(Aggregation):
         """
         Welford Algorithm for online variance
         :param count:
-        :param mean:
+        :param
+        mean:
         :return:
         """
         def get_acc(y_true, y_pred):
@@ -545,7 +546,7 @@ def kl():
     weights = np.array([model.weights for model in models]).T
     var_agg = Variance(weights, samples, -1, models[0].graph, models[0].states)
     # var_agg.aggregate(None)
-    agg = KL(models, 3000)
+    agg = KL(models, 500)
     agg.aggregate(None)
 
     # KL(theta1 |theta2) = A2 - A1  - mu1(theta2 - theta1)
