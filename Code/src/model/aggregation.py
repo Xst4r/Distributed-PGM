@@ -127,6 +127,7 @@ class WeightedAverage(Aggregation):
         -------
 
         """
+        likelihood = None
         if isinstance(self.model, np.ndarray):
             weights = self.model
         else:
@@ -134,7 +135,9 @@ class WeightedAverage(Aggregation):
         distribution = "normal"
         mean, cov = self.estimate_normal(weights)
         try:
-            likelihood = multivariate_normal.pdf(weights.T, mean, cov)
+            likelihood = multivariate_normal.logpdf(weights.T, mean, cov)
+            if all(likelihood == 0):
+                raise np.linalg.LinAlgError()
         except np.linalg.LinAlgError as e:
             logger.info("Trying to Generate additional samples via Bootstrapping to obtain non-singular matrix")
 
@@ -143,10 +146,11 @@ class WeightedAverage(Aggregation):
             samples = np.hstack((weights, bootstrap.T))
             inverse_alt_cov = np.linalg.inv(np.cov(bootstrap.T))
             print(e)
-        try:
-             likelihood = multivariate_normal.logpdf(weights.T, mean, alt_cov)
-        except Exception as e:
-            likelihood = [self.log_normal(x, mean, alt_cov, inverse_alt_cov) for x in weights.T]
+        if likelihood is None:
+            try:
+                 likelihood = multivariate_normal.logpdf(weights.T, mean, alt_cov)
+            except Exception as e:
+                likelihood = [self.log_normal(x, mean, alt_cov, inverse_alt_cov) for x in weights.T]
         normalizer = np.sum(likelihood)
         return np.sum(likelihood/normalizer * weights, axis=1)
 
@@ -189,7 +193,7 @@ class RadonMachine(Aggregation):
     def aggregate(self, opt, **kwargs):
         try:
             res = self._radon_machine()
-            self.aggregate_models.append(res)
+            self.aggregate_models = res
             self.success = True
             return res
         except Exception as e:
@@ -218,8 +222,10 @@ class RadonMachine(Aggregation):
         else:
             weights = self.model
 
-        if weights.shape[1] != self.radon_number:
+        if weights.shape[1] < self.radon_number**self.h:
             return np.zeros(weights.shape[0])
+        else:
+            weights = weights[:, :self.radon_number**self.h]
         # Coefficient Matrix Ax = b
         print("Calculating Radon Point for Radon Number: " + str(self.radon_number) + "\n" +
               "For Matrix with Shape: " + str(weights.shape) + "\n" +
@@ -284,7 +290,7 @@ class RadonMachine(Aggregation):
 
 class KL(Aggregation):
 
-    def __init__(self, models, n=3000, samples=None, graph=None, states=None, eps=1e-3):
+    def __init__(self, models, n=100, samples=None, graph=None, states=None, eps=1e-3):
         """
 
         Parameters
@@ -298,13 +304,8 @@ class KL(Aggregation):
         """
         super(KL, self).__init__(models)
 
-        if not all(isinstance(x, px.Model) for x in models) or isinstance(models, np.ndarray):
+        if not (all(isinstance(x, px.Model) for x in models) or isinstance(models, np.ndarray)):
             raise TypeError("Models have to be either a list of pxpy models or a numpy ndarray containing weights")
-
-        if samples is not None:
-            self.X = samples
-        else:
-            self.X = [model.sample(num_samples=n) for model in models]
 
         if isinstance(self.model, np.ndarray):
             if graph is None or states is None:
@@ -321,6 +322,11 @@ class KL(Aggregation):
         else:
             self.graph = self.model[0].graph
             self.states = self.model[0].states
+
+        if samples is not None:
+            self.X = [np.copy(sample) for sample in samples]
+        else:
+            self.X = [model.sample(num_samples=n) for model in self.model]
 
         self.K = len(self.model)
         self.phi = [model.phi for model in self.model]
@@ -384,7 +390,7 @@ class KL(Aggregation):
         _, A = model.infer()
         return -(np.inner(theta, np.mean(average_statistics, axis=0)) - A) + self.l2_regularization(theta)
 
-    def l1_regularization(self, theta, lam=1e-1):
+    def l1_regularization(self, theta, lam=0):
         return lam * np.sum(np.abs(theta))
 
     def l2_regularization(self, theta, lam=0):
@@ -394,9 +400,9 @@ class KL(Aggregation):
         model = px.Model(weights=theta, graph=self.graph, states=self.states)
         _, A = model.infer()
         obj = -(np.inner(theta, np.mean(self.average_suff_stats, axis=0)) - A)
-        print("OBJ: " + str(obj))
-        print("REG: " + str(self.l2_regularization(theta)))
-        print("DELTA:" + str(np.abs(self.obj - obj)))
+        #print("OBJ: " + str(obj))
+        #print("REG: " + str(self.l2_regularization(theta)))
+        #print("DELTA:" + str(np.abs(self.obj - obj)))
         if np.abs(self.obj - obj) < self.eps:
             self.obj = np.nanmin([obj,  self.obj])
             warnings.warn("Terminating optimization: time limit reached")
@@ -436,12 +442,13 @@ class Variance(Aggregation):
         else:
             self.graph = self.model[0].graph
             self.states = self.model[0].states
+            self.weights = np.array([mod.weights for mod in self.model])
         if edgelist is None:
-            self.edgelist = self._chain_graph(len(self.model))
+            self.edgelist = self._full_graph(len(self.model))
         for sample in samples:
-            self.y_true.append(sample[:,label])
+            self.y_true.append(np.copy(sample[:,label]))
             sample[:,label] = -1
-            self.local_data.append(np.ascontiguousarray(sample, dtype=np.uint16))
+            self.local_data.append(np.ascontiguousarray(np.copy(sample), dtype=np.uint16))
 
     def aggregate(self, opt, **kwargs):
         try:
@@ -453,15 +460,19 @@ class Variance(Aggregation):
             logger.error("Aggregation Failed in " + self.__class__.__name__ + " due to " + str(e))
 
     def _aggregate(self, opt, **kwargs):
-        res = np.zeros(self.weights.shape[0])
-        scores = self._welford()
-        coefs = np.array(scores)
-        partition = np.sum(coefs, axis=0)
-        res = np.matmul(self.weights * coefs[:,0]/partition[0])
+        res = self._welford()
         return res
 
     def _chain_graph(self, i):
         return np.append(np.arange(1, i), [0])
+
+    def _full_graph(self, i):
+        edges = np.arange(0, i)
+        edgelist = np.zeros((i, i - 1))
+        for j in range(i):
+            edgelist[j:,] = np.delete(edges, j)
+        return edgelist.astype(np.uint16)
+
 
     def _welford(self):
         """
@@ -492,17 +503,20 @@ class Variance(Aggregation):
 
         scores = []
         for i, model in enumerate(self.model):
+            (print(str(i)))
             data = self.local_data[i]
             y_true = self.y_true[i]
             y_pred = model.predict(data)[:,-1]
             mean = get_acc(y_true, y_pred)
             count = 1
             M2 = 0
-            for node in [self.edgelist[i]]:
+            for node in self.edgelist[i]:
                 count, mean, M2 = update(self.model[i], count, mean, M2, node, y_true)
             mean, variance = finalize(count, mean, M2)
             scores.append((mean, variance))
-        return scores
+        mean_weights = np.array(scores)[:,0] / np.sum(np.array(scores)[:,0])
+        res = np.matmul(self.weights.T,mean_weights)
+        return res
 
 
 def wasserstein_barycenter(weights):
@@ -545,7 +559,7 @@ def kl():
         theta.append(model.weights)
     weights = np.array([model.weights for model in models]).T
     var_agg = Variance(weights, samples, -1, models[0].graph, models[0].states)
-    # var_agg.aggregate(None)
+    var_agg.aggregate(None)
     agg = KL(models, 500)
     agg.aggregate(None)
 

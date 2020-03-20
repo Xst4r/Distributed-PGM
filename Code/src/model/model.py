@@ -44,7 +44,7 @@ def log_progress(start, update, iter_time, total_models, model_count):
 
 class Model:
 
-    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, eps=1e-1):
         """
             Parameters
             ----------
@@ -55,7 +55,11 @@ class Model:
             states : Integer
                 Undirected graph, representing the conditional independence structure
             statespace : Integer or 1-dimensional :class:`numpy.ndarray`
-
+                TODO
+            delta : Float
+                Probability of two average sufficient statistics having at most distance eps
+            eps : Float
+                Bound for distance between two average sufficient statistics
             See Also
             --------
 
@@ -85,7 +89,6 @@ class Model:
         self.stepsize = 1e-1
         self.maxiter = 10000
 
-
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
         self.state_mapping = BijectiveDict()
@@ -104,15 +107,28 @@ class Model:
                 os.makedirs(self.root_dir)
 
         self._create_graph()
+        self.px_batch = {}
         self.px_model = []
 
         self.trained = False
         self.curr_model = 0
-        self.best_objs = None
-        self.best_weights = None
 
-        self.csv_writer = io.StringIO("Model, Objective,")
-        print("Model, Objective,", file=self.csv_writer)
+        self.train_counter = 0
+        self.delta = delta
+        self.eps = eps
+        self.suff_data = int(np.ceil(self.hoefding_bound(self.delta, self.eps)))
+        self.data_delta = int(np.ceil(self.suff_data / 20))
+        self.n_local_data = 0
+
+        self.prev_obj = np.infty
+        self.best_objs = {}
+        self.best_weights = {}
+
+        self.csv_writer = io.StringIO("Model, Objective, n_Data")
+        print("Model, Objective, n_Data", file=self.csv_writer)
+        print("Eps = " + str(self.eps), file=self.csv_writer)
+        print("Delta = " + str(self.delta), file=self.csv_writer)
+        print("Data Increment = " + str(self.data_delta), file=self.csv_writer)
 
     def get_node_id(self, colname):
         pass
@@ -133,7 +149,7 @@ class Model:
             raise AttributeError("Invalid Edgelist: Edgelist has to be a 2-Column Matrix of Type np.array")
         self.edgelist = np.vstack((self.edgelist, edges))
 
-    def predict(self, px_model=None):
+    def predict(self, px_model=None, epoch=None):
         """
         TODO
 
@@ -158,7 +174,7 @@ class Model:
         else:
             return px_model.predict(test)
 
-    def train(self, epochs=1, iters=100, split=None, n_models=None):
+    def train(self, epochs=1, iters=100, split=None, n_models=None, mode=px.Mode.mrf):
         """
         TODO
 
@@ -181,6 +197,7 @@ class Model:
             None
         """
         self.maxiter = iters
+        self.train_counter += 1
         models = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
 
@@ -196,32 +213,41 @@ class Model:
         else:
             total_models = len(split) if n_models is None else np.min([len(split), n_models])
 
-        if self.best_weights is None:
-            self.best_weights = [0] * total_models
-        if self.best_objs is None:
-            self.best_objs = [0] * total_models
+        self.best_weights[self.train_counter] = [0] * total_models
+        self.best_objs[self.train_counter] = [np.infty] * total_models
 
         # Distributed Training
         for i, idx in enumerate(split):
+            self.curr_iter = 0
+            if len(split) > 1:
+                self.n_local_data = np.int64(np.min([np.ceil(self.data_delta * self.train_counter), idx.shape[0]]))
+            else:
+                self.n_local_data = idx.shape[0]
             self.curr_model = i
             if n_models is not None:
                 if i >= n_models:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
-            data = np.ascontiguousarray(np.copy(train[idx.flatten()]))
+            data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
             init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
             data = np.ascontiguousarray(np.vstack((data, init_data)))
             model = px.train(data=data,
                              graph=self.graph,
                              iters=iters,
                              shared_states=False,
-                             opt_progress_hook=self.opt_progress_hook)
+                             opt_progress_hook=self.opt_progress_hook,
+                             mode=mode,
+                             k=4)
 
-            models.append(model)
+            if self.train_counter == 1:
+                models.append(model)
+            else:
+                self.px_model[i] = model
             iter_time = time.time()
 
-        self.px_model = models
-
+        if not self.px_model:
+            self.px_model = models
+        self.px_batch[self.train_counter] = models
         end = time.time()
         logger.info("Finished Training Models: " +
                     "{:.2f} s".format(end - start))
@@ -279,13 +305,16 @@ class Model:
         -------
 
         """
-        contents = state_p.contents
-        self.best_weights[self.curr_model] = np.copy(contents.best_weights)
-        self.best_objs[self.curr_model] = np.copy(contents.obj)
-        print(str(self.curr_model) + "," + str(contents.obj), file=self.csv_writer)
 
-        if self.check_covergence():
-            state_p.contents.maxiter = self.maxiter
+        contents = state_p.contents
+        self.best_weights[self.train_counter][self.curr_model] = np.copy(contents.best_weights)
+        if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
+            logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
+            state_p.contents.iteration = self.maxiter
+        self.prev_obj = contents.obj
+        self.best_objs[self.train_counter][self.curr_model] = np.min([self.best_objs[self.train_counter][self.curr_model], np.copy(contents.obj).ravel()])
+        print(str(self.curr_model) + "," + str(contents.obj) + "," + str(self.n_local_data), file=self.csv_writer)
+        self.curr_iter += 1
 
     def progress_hook(self, state_p):
         return
@@ -296,8 +325,8 @@ class Model:
     def opt_proximal_hook(self, state_p):
         return
 
-    def check_covergence(self):
-        return False
+    def check_convergence(self, curr_obj, grad, tol=1e-5, gtol=1e-3):
+        return self.prev_obj - curr_obj < tol and np.linalg.norm(grad, np.infty) < gtol
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
@@ -401,11 +430,21 @@ class Model:
         return np.zeros(suff_stats)
 
     def get_weights(self):
-        return np.stack(self.best_weights, axis=0).T
+        return np.stack(self.best_weights[self.train_counter], axis=0).T
 
     def get_num_of_states(self):
         num_states = self.state_space + 1
         return np.sum([num_states[i] * num_states[j] for i, j in self.edgelist])
+
+    def hoefding_bound(self, delta=0.8, eps=1):
+        d = self.get_num_of_states()
+        c = - (np.log(1 - np.sqrt(delta)) - np.log(2)) / (np.log(d))
+        return (2 * (1+c) * np.log(d)) / eps**2
+
+    def get_bounded_distance(self, delta=0.8):
+        d = self.get_num_of_states()
+        c = - (np.log(1 - np.sqrt(delta)) - np.log(2)) / (np.log(d))
+        return 2* np.sqrt(((1+c) * np.log(d)) / (2 * self.n_local_data * self.train_counter))
 
 
 class Dota2(Model):

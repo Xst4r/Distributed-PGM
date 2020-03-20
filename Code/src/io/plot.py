@@ -110,5 +110,5 @@ def graph_plotter(ax, edgelist):
 data1, data2, data3, data4 = np.random.randn(4, 100)
 graph = np.array([[0,1], [1,2], [2,3], [3,4]])
 fig, ax = plt.subplots(1, 1)
-#score_plotter(ax, data1, data2, {'marker': 'x'})
+score_plotter(ax, data1, data2, {'marker': 'x'})
 graph_plotter(ax, graph)

@@ -104,7 +104,7 @@ class Data:
                 logger.debug("Unable to load file : " + str(file) + "\nException :" + str(e))
         os.chdir(ROOT_DIR)
 
-    def _train_test_split(self, ratio=0.9, holdout_size=10000):
+    def _train_test_split(self, ratio=0.8, holdout_size=10000):
         """
 
         Parameters
@@ -119,8 +119,8 @@ class Data:
         mask = self.random_state.rand(n_data) < ratio
         return mask, self.data[mask][holdout_size:], self.data[~mask], self.data[mask][0:holdout_size]
 
-    def train_test_split(self, i):
-        new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=self.ratio)
+    def train_test_split(self, i, ratio):
+        new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=ratio)
         self.masks.append(new_mask)
 
         self.mask = new_mask
