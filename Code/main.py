@@ -7,6 +7,7 @@ from src.conf.settings import get_logger
 from time import time
 import datetime
 import os
+import io
 from shutil import copyfileobj
 
 import numpy as np
@@ -14,7 +15,7 @@ from scipy.stats import random_correlation
 import pxpy as px
 
 logger = get_logger()
-n_test = 10000
+n_test = 50000
 
 
 class Coordinator(object):
@@ -46,6 +47,8 @@ class Coordinator(object):
         if not os.path.isdir(self.experiment_path):
             os.makedirs(self.experiment_path)
         self.random_state = np.random.RandomState(seed=self.seed)
+        self.csv_writer = io.StringIO()
+        self.res = None
 
     def baseline(self):
         if os.path.isabs(self.name):
@@ -54,6 +57,7 @@ class Coordinator(object):
             data = self.data_obj(path=os.path.join("data", self.name), seed=self.seed)
 
         models = []
+        accs = []
         for i in range(10):
             data.train_test_split(i, 0.8)
             test_size = np.min([n_test, data.test.shape[0] - 1])
@@ -61,14 +65,20 @@ class Coordinator(object):
             model.train(split=None, epochs=self.rounds, iters=self.iters)
             predictions = model.predict(n_test=test_size)
             # marginals, A = model.px_model[0].infer()
-
-            accuracy = np.where(np.equal(predictions[0][:, data.label_column], data.test_labels[:test_size]))[0].shape[0] / data.test_labels[:test_size].shape[0]
+            y_pred = predictions[0][:, data.label_column]
+            y_true = data.test_labels[:test_size]
+            accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / data.test_labels[:test_size].shape[0]
+            accs.append(accuracy)
             print("GLOBAL Model " + str(i) + " : " + str(accuracy))
             if not os.path.isdir(os.path.join(self.experiment_path, 'baseline')):
                 os.makedirs(os.path.join(self.experiment_path, 'baseline'))
             model.px_model[0].save(os.path.join(self.experiment_path, 'baseline', 'px_model' + str(i)))
-            model.write_progress_hook(os.path.join(self.experiment_path, 'baseline'))
+            np.save(os.path.join(self.experiment_path, 'baseline', 'y_true_' + str(i)), y_true)
+            np.save(os.path.join(self.experiment_path, 'baseline', 'y_pred_' + str(i)), y_pred)
+            np.save(os.path.join(self.experiment_path, 'baseline', 'mask_' + str(i)), data.mask)
+            model.write_progress_hook(os.path.join(self.experiment_path, 'baseline'), 'stats ' + str(i) + ".csv" )
             models.append(model)
+        np.save(os.path.join(self.experiment_path, 'baseline', 'accuracy'), np.array(accs))
         return models
 
     def load_model(self, path):
@@ -100,16 +110,19 @@ class Coordinator(object):
             aggregator.aggregate(None)
             aggregate = aggregator.aggregate_models
             if aggregator.success:
-                for aggregate_weights in aggregate:
-                    aggregate_model = px.Model(weights=aggregate_weights, graph=graph, states=np.ascontiguousarray(states + 1))
-                    predictions = model.predict(aggregate_model, test_size)
-                    accuracy = np.where(np.equal(predictions[:, model.data_set.label_column], data.test_labels[:test_size]))[0].shape[0] / data.test_labels[:test_size].shape[
-                        0]
-                    logger.info(str(accuracy))
-                return {'px_model': aggregate_model, 'labels': predictions, 'acc': accuracy}
-            return {'weights': None, 'labels': None, 'acc': None}
+                aggregate_model = px.Model(weights=aggregate[0], graph=graph, states=np.ascontiguousarray(states + 1))
+                predictions = model.predict(aggregate_model, test_size)
+                y_pred = np.copy(predictions[:, model.data_set.label_column])
+                y_true = np.copy(data.test_labels[:test_size])
+                accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / y_true.shape[0]
+                if accuracy < 0.4:
+                    print("test")
+                logger.info(aggregator.__class__.__name__ +  ": " + str(accuracy))
+                return {'px_model': aggregate_model, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy}
+            return {}
         except ValueError or TypeError as e:
             print(e)
+            return {}
 
     def train(self, data, i, sampler, experiment_path, model=None):
         model.train(split=sampler.split_idx,
@@ -123,17 +136,19 @@ class Coordinator(object):
         test_size = np.min([n_test, data.test.shape[0] - 1])
         methods = ['mean', 'radon', 'wa', 'kl', 'var']
         aggregates = {k: [] for k in methods}
+        sample_size = np.ceil((distributed_models.sample_func(distributed_models.train_counter) * distributed_models.data_delta)/2)
         if weights is not None:
             aggr = [Mean(weights),
                     RadonMachine(weights, self.r, self.h),
                     WeightedAverage(weights),
-                    KL(distributed_models.px_model, graph=distributed_models.graph, states=distributed_models.state_space, samples=idx),
+                    KL(distributed_models.px_model, graph=distributed_models.graph, states=distributed_models.state_space, samples=None, n=int(sample_size)),
                     Variance(distributed_models.px_model, graph=distributed_models.graph, states=distributed_models.state_space, samples=idx, label=-1)]
         else:
             aggr = [Mean(distributed_models),
                     RadonMachine(distributed_models, self.r, self.h),
                     WeightedAverage(distributed_models),
-                    KL(distributed_models.px_model)]
+                    KL(distributed_models.px_model, graph=distributed_models.graph, states=distributed_models.state_space, samples=None, n=int(sample_size)),
+                    Variance(distributed_models.px_model, graph=distributed_models.graph, states=distributed_models.state_space, samples=idx, label=-1)]
         weights = None
         if isinstance(distributed_models, np.ndarray):
             weights = distributed_models
@@ -148,7 +163,7 @@ class Coordinator(object):
 
         return aggregates
 
-    def run(self, data, experiment_path, loaded_model):
+    def run(self, data, loaded_model):
         models = []
         k_aggregates = []
         sampler = None
@@ -170,16 +185,15 @@ class Coordinator(object):
                     #Training
                     sampler = Random(data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
                     sampler.create_split(data.train.shape, data.train)
-                    trained_model = self.train(data=data, i=i, sampler=sampler, experiment_path=experiment_path, model=model)
+                    trained_model = self.train(data=data, i=i, sampler=sampler, experiment_path=self.experiment_path, model=model)
 
                     d, r, h, n = data.radon_number(r=trained_model.get_num_of_states() + 2,
                                                    h=1,
                                                    d=data.train.shape[0])
                     self.r = r
 
-
-                    theta_samples, theta_old = self.sample_parameters(trained_model)
-                    theta_arr = np.concatenate(theta_samples, axis=1)
+                    #theta_samples, theta_old = self.sample_parameters(trained_model)
+                    #theta_arr = np.concatenate(theta_samples, axis=1)
                     """
                     # This only works when variance stays the same.
                     else:
@@ -198,28 +212,60 @@ class Coordinator(object):
                     # Aggregation
                     logger.info("Aggregating Model No. " + str(i))
                     kl_samples = [np.ascontiguousarray(data.train.iloc[idx][:trained_model.data_delta * trained_model.train_counter].values, dtype=np.uint16) for idx in sampler.split_idx]
+                    local_predictions = None
                     local_predictions = trained_model.predict(n_test=n_test)
-                    for local_pred in local_predictions:
-                        acc = np.where(np.equal(local_pred[:, model.data_set.label_column], data.test_labels[:n_test]))[
-                            0].shape[0] / data.test_labels[:n_test].shape[
-                            0]
-                        logger.info(str(acc))
-                    aggregates[model.n_local_data] = self.aggregate(trained_model, data, trained_model.graph, trained_model.state_space, theta_arr, kl_samples)
+                    local_acc = []
+                    if not local_predictions is None:
+                        for local_pred in local_predictions:
+                            acc = np.where(np.equal(local_pred[:, model.data_set.label_column], data.test_labels[:n_test]))[
+                                0].shape[0] / data.test_labels[:n_test].shape[
+                                0]
+                            local_acc.append(acc)
+                            logger.info(str(acc))
+                    aggregation = self.aggregate(trained_model, data, trained_model.graph, trained_model.state_space, None, kl_samples)
+                    self.record_progress(aggregation, model.n_local_data, i, self.experiment_path, local_acc)
+                    aggregates[model.n_local_data] = aggregation
+                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv")
                 models.append(trained_model)
-                np.save(os.path.join(self.save_path,
-                                    "weights_" + str(i)),
-                                    model.get_weights())
-                model.write_progress_hook(path=experiment_path,
-                                            fname=str(i) + ".csv")
+                model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
+                                          fname="obj_progress" + ".csv")
                 k_aggregates.append(aggregates)
+                self.res = k_aggregates
+                try:
+                    self.finalize(i, trained_model, aggregates, data.mask, sampler.split_idx)
+                except Exception as e:
+                    print(e)
         return models, k_aggregates, sampler
+
+    def finalize(self, i, models, aggregates, mask, splits):
+        cv_path = os.path.join(self.experiment_path, str(i))
+        for cnt, split in enumerate(splits):
+            np.save(os.path.join(cv_path, "local_split_" + str(cnt)), split)
+        for j, (n_data, model) in enumerate(aggregates.items()):
+            sub_model_path = os.path.join(cv_path, "batch_n" + str(j))
+            if not os.path.isdir(sub_model_path):
+                os.makedirs(sub_model_path)
+            if j == 0:
+                np.save(os.path.join(cv_path, "mask"), mask)
+                np.save(os.path.join(cv_path, 'edgelist'), models.edgelist)
+                np.save(os.path.join(cv_path, 'statespace'), models.state_space)
+            for k, px_model in enumerate(models.px_batch[j+1]):
+                np.save(os.path.join(sub_model_path, "dist_weights " + str(k)), np.copy(px_model.weights))
+            for m, (name, aggregation) in enumerate(model.items()):
+                if m == 0:
+                    np.save(os.path.join(sub_model_path, "y_true"), aggregation[0]['y_true'])
+                if aggregation[0]:
+                    np.save(os.path.join(sub_model_path, "y_pred_" + name), aggregation[0]['y_pred'])
+                    np.save(os.path.join(sub_model_path, "weights_" + name), aggregation[0]['px_model'].weights)
+            for k, px_model in enumerate(models.px_batch_local[j+1]):
+                px_model.save(os.path.join(sub_model_path, "dist_pxmodel " + str(k) + ".px"))
 
     def sample_parameters(self, model, perturb=False):
         n_samples = self.r ** self.h
         samples_per_model = int(np.ceil(n_samples/len(model.px_model)))
         theta_old = []
         theta_samples = []
-        eps = model.get_bounded_distance(model.delta)
+        eps = (model.get_bounded_distance(model.delta)/2)**2
         for i, px_model in enumerate(model.px_model):
             cov = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
             theta_old.append(px_model.weights)
@@ -244,19 +290,50 @@ class Coordinator(object):
 
     def prepare_and_run(self):
 
-        #self.baseline()
+        self.baseline()
         data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed)
-        models, aggregate, sampler = self.run(data, self.experiment_path, self.model_loader)
+        models, aggregate, sampler = self.run(data, self.model_loader)
 
-        if self.exp_loader is None:
-            np.save(os.path.join(self.experiment_path, 'mask'), data.mask)
-            np.save(os.path.join(self.experiment_path, 'splits'), sampler.split_idx)
-            os.makedirs(os.path.join(self.experiment_path, "models"))
-            for i, m in enumerate(models):
-                np.save(os.path.join(self.experiment_path, str(i) + "_mask"), m.data.masks[i])
-                for j, pxm in enumerate(m.px_model):
-                    pxm.save(os.path.join(self.experiment_path, "models", "k" + str(i) + "_n" + str(j) + "px"))
         return models, aggregate
+
+    def record_progress(self, model_dict, d, k, experiment_path, local_info):
+        """
+
+        Parameters
+        ----------
+        model_dict : dict
+        d : int
+
+        Returns
+        -------
+
+        """
+        write_str = str(d) + ", "
+        path =  os.path.join(experiment_path, str(k))
+
+        if not os.path.isdir(path):
+            header = "n_local_data, "
+            os.makedirs(path)
+            header += ", ".join(["local_acc_" + str(k) for k in range(len(local_info))])
+            header += ", "
+            header += ", ".join([name + "_acc" for name, _ in model_dict.items()])
+            print(header, file=self.csv_writer)
+
+        write_str += ", ".join([str(inf) for inf in local_info]) + ", "
+        for method, results in model_dict.items():
+            for stats in results:
+                if stats:
+                    write_str += ", " + str(stats['acc'])
+                else:
+                    write_str += ", " + 'nan'
+        print(write_str, file=self.csv_writer)
+
+    def write_progress(self, path, fname):
+        with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
+            self.csv_writer.seek(0)
+            copyfileobj(self.csv_writer, f)
+            del self.csv_writer
+            self.csv_writer = io.StringIO()
 
 
 def main():

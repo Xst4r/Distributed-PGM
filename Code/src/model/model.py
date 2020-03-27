@@ -107,6 +107,7 @@ class Model:
                 os.makedirs(self.root_dir)
 
         self._create_graph()
+        self.px_batch_local = {}
         self.px_batch = {}
         self.px_model = []
 
@@ -116,8 +117,9 @@ class Model:
         self.train_counter = 0
         self.delta = delta
         self.eps = eps
+        self.sample_func = lambda x : 0.1*x**2
         self.suff_data = int(np.ceil(self.hoefding_bound(self.delta, self.eps)))
-        self.data_delta = int(np.ceil(self.suff_data / 20))
+        self.data_delta = int(np.ceil(self.suff_data / self.sample_func(15)))
         self.n_local_data = 0
 
         self.prev_obj = np.infty
@@ -215,12 +217,12 @@ class Model:
 
         self.best_weights[self.train_counter] = [0] * total_models
         self.best_objs[self.train_counter] = [np.infty] * total_models
-
+        self.px_batch_local[self.train_counter] = [0] * total_models
         # Distributed Training
         for i, idx in enumerate(split):
             self.curr_iter = 0
             if len(split) > 1:
-                self.n_local_data = np.int64(np.min([np.ceil(self.data_delta * self.train_counter), idx.shape[0]]))
+                self.n_local_data = np.int64(np.min([np.ceil(self.data_delta * self.sample_func(self.train_counter)), idx.shape[0]]))
             else:
                 self.n_local_data = idx.shape[0]
             self.curr_model = i
@@ -229,16 +231,20 @@ class Model:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
             data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
-            init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
-            data = np.ascontiguousarray(np.vstack((data, init_data)))
+            #init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
+            #data = np.ascontiguousarray(np.vstack((data, init_data)))
             model = px.train(data=data,
                              graph=self.graph,
                              iters=iters,
                              shared_states=False,
                              opt_progress_hook=self.opt_progress_hook,
                              mode=mode,
+                             initial_stepsize=1e-2,
                              k=4)
-
+            self.prev_obj = np.infty
+            if len(split) > 1:
+                self.px_batch_local[self.train_counter][i] = model
+                model = self.merge_weights(model)
             if self.train_counter == 1:
                 models.append(model)
             else:
@@ -247,7 +253,7 @@ class Model:
 
         if not self.px_model:
             self.px_model = models
-        self.px_batch[self.train_counter] = models
+        self.px_batch[self.train_counter] = self.px_model
         end = time.time()
         logger.info("Finished Training Models: " +
                     "{:.2f} s".format(end - start))
@@ -255,34 +261,29 @@ class Model:
         if not self.trained:
             self.trained = True
 
-        self.merge_weights()
-
-    def merge_weights(self):
+    def merge_weights(self, px_model):
         """
         """
-        if len(self.px_model) == 1:
-            self.global_weights.append(self.px_model[0].weights)
-            return
 
-        global_states = self.merge_states()
+        global_states = np.ascontiguousarray(self.state_space, dtype=np.uint64) + 1
         global_cliques = [global_states[i] * global_states[j] for i, j in self.edgelist]
         model_size = np.sum(global_cliques)
 
-        for model in self.px_model:
-            weights = model.weights
-            if weights.shape[0] < model_size:
-                weights = np.copy(model.weights)
-                local_states = model.states
-                local_cliques = [local_states[i] * local_states[j] for i, j in self.edgelist]
+        weights = px_model.weights
+        if weights.shape[0] < model_size:
+            weights = np.ascontiguousarray(np.copy(px_model.weights))
+            local_states = px_model.states
+            local_cliques = [local_states[i] * local_states[j] for i, j in self.edgelist]
 
-                missing_states = np.array(global_cliques) - np.array(local_cliques)
-                offset = 0
-                for j, idx in enumerate(global_cliques):
-                    if missing_states[j] > 0:
-                        inserts = np.zeros(missing_states[j])
-                        weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
-                    offset += idx
-            self.global_weights.append(weights)
+            missing_states = np.array(global_cliques) - np.array(local_cliques)
+            offset = 0
+            for j, idx in enumerate(global_cliques):
+                if missing_states[j] > 0:
+                    inserts = np.zeros(missing_states[j]) + np.min(weights[int(offset):int(offset + local_cliques[j])])
+                    weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
+                offset += idx
+        self.best_weights[self.train_counter][self.curr_model] = weights
+        return px.Model(weights=weights, graph=px_model.graph, states=global_states)
 
     def merge_states(self):
         """
@@ -307,14 +308,30 @@ class Model:
         """
 
         contents = state_p.contents
-        self.best_weights[self.train_counter][self.curr_model] = np.copy(contents.best_weights)
+        # self.best_weights[self.train_counter][self.curr_model] = np.copy(contents.best_weights)
         if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
             logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
-            state_p.contents.iteration = self.maxiter
+            if contents.iteration > 10:
+                state_p.contents.iteration = self.maxiter
         self.prev_obj = contents.obj
         self.best_objs[self.train_counter][self.curr_model] = np.min([self.best_objs[self.train_counter][self.curr_model], np.copy(contents.obj).ravel()])
         print(str(self.curr_model) + "," + str(contents.obj) + "," + str(self.n_local_data), file=self.csv_writer)
         self.curr_iter += 1
+
+    def squared_l2_regularization(self, state_p):
+        state = state_p.contents
+        lam = 0.1
+        np.copyto(state.gradient, state.gradient + 2.0 * lam * state.weights)
+
+    def prox_l1(self, state_p):
+        state = state_p.contents
+        l = state.lam * state.stepsize
+
+        x = state.weights_extrapolation - state.stepsize * state.gradient
+
+        np.copyto(state.weights, 0, where=np.absolute(x) < l)
+        np.copyto(state.weights, x - l, where=x > l)
+        np.copyto(state.weights, x + l, where=-x > l)
 
     def progress_hook(self, state_p):
         return
@@ -325,7 +342,7 @@ class Model:
     def opt_proximal_hook(self, state_p):
         return
 
-    def check_convergence(self, curr_obj, grad, tol=1e-5, gtol=1e-3):
+    def check_convergence(self, curr_obj, grad, tol=1e-5, gtol=1e-7):
         return self.prev_obj - curr_obj < tol and np.linalg.norm(grad, np.infty) < gtol
 
     def parallel_train(self, split=None):

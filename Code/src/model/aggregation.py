@@ -145,7 +145,7 @@ class WeightedAverage(Aggregation):
             bootstrap = np.random.multivariate_normal(mean, alt_cov, weights.shape[1]*2)
             samples = np.hstack((weights, bootstrap.T))
             inverse_alt_cov = np.linalg.inv(np.cov(bootstrap.T))
-            print(e)
+            logger.error(e)
         if likelihood is None:
             try:
                  likelihood = multivariate_normal.logpdf(weights.T, mean, alt_cov)
@@ -223,13 +223,13 @@ class RadonMachine(Aggregation):
             weights = self.model
 
         if weights.shape[1] < self.radon_number**self.h:
-            return np.zeros(weights.shape[0])
+            raise np.linalg.LinAlgError("Not enough Models for Radon Aggregation")
         else:
             weights = weights[:, :self.radon_number**self.h]
         # Coefficient Matrix Ax = b
-        print("Calculating Radon Point for Radon Number: " + str(self.radon_number) + "\n" +
+        logger.info("Calculating Radon Point for Radon Number: " + str(self.radon_number) + "\n" +
               "For Matrix with Shape: " + str(weights.shape) + "\n" +
-              "using " + str(self.h) + "aggregation layers.")
+              "using " + str(self.h) + " aggregation layers.")
         r = self.radon_number
         h = self.h
         folds = []
@@ -270,7 +270,7 @@ class RadonMachine(Aggregation):
                 np.save("leq_sol", sol)
                 pos = sol >= 0
             except (ValueError, np.linalg.LinAlgError) as e:
-                print(e)
+                logger.error(e)
                 logger.warn("MATRIX IS SINGULAR")
                 sol, resid, rank, s = np.linalg.lstsq(A, b, rcond=None)
                 np.save("lstsq_sol", sol)
@@ -290,7 +290,7 @@ class RadonMachine(Aggregation):
 
 class KL(Aggregation):
 
-    def __init__(self, models, n=100, samples=None, graph=None, states=None, eps=1e-3):
+    def __init__(self, models, n=100, samples=None, graph=None, states=None, eps=1e-2):
         """
 
         Parameters
@@ -326,7 +326,7 @@ class KL(Aggregation):
         if samples is not None:
             self.X = [np.copy(sample) for sample in samples]
         else:
-            self.X = [model.sample(num_samples=n) for model in self.model]
+            self.X = [model.sample(num_samples=n, sampler=px.Sampler.gibbs) for model in self.model]
 
         self.K = len(self.model)
         self.phi = [model.phi for model in self.model]
@@ -335,6 +335,7 @@ class KL(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
+            opt = True
             res = self._aggregate(opt, **kwargs)
             self.success = True
             self.aggregate_models.append(res)
@@ -346,31 +347,64 @@ class KL(Aggregation):
         naivekl = np.zeros(self.model[0].weights.shape[0])
         K = self.K
         X = self.X
-        average_statistics = []
-        for i, samples in enumerate(X):
-            avg = np.mean([self.phi[i](x) for x in samples], axis=0)
-            average_statistics.append(avg)
-        self.average_suff_stats = average_statistics
-        x0 = np.zeros(self.model[0].weights.shape[0])
-        obj = partial(self.naive_kl, average_statistics=average_statistics,
-                                     graph=self.model[0].graph,
-                                     states= np.copy(self.model[0].states))
-        res = minimize(obj, x0, callback=self.callback, tol=self.eps, options={"maxiter":50})
-        kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
+        if opt:
+            data = np.ascontiguousarray(np.concatenate(X), dtype=np.uint16)
+            res = px.train(data=data, graph=self.model[0].graph)
+            res = self.merge_weights(res, self.model[0].states)
+            weights = np.ascontiguousarray(res.weights)
+            states = np.ascontiguousarray(self.model[0].states)
+            kl_model = px.Model(weights=weights, graph=self.model[0].graph, states=states)
+        else:
+            average_statistics = []
+            for i, samples in enumerate(X):
+                avg = np.mean([self.phi[i](x) for x in samples], axis=0)
+                average_statistics.append(avg)
+            self.average_suff_stats = average_statistics
+            x0 = np.zeros(self.model[0].weights.shape[0])
+            obj = partial(self.naive_kl, average_statistics=average_statistics,
+                                         graph=self.model[0].graph,
+                                         states= np.copy(self.model[0].states))
+            res = minimize(obj, x0, callback=self.callback, tol=self.eps, options={"maxiter":50, "gtol": 1e-3})
+            kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
+
         kl_m, kl_A = kl_model.infer()
-        naivekl += res.x
+        naivekl += kl_model.weights
         #self.test(kl_model)
 
         try:
             fisher_matrix = []
             inverse_fisher = []
             for i in range(K):
-                fisher_matrix.append(self.fisher_information(i, kl_m[:kl_model.weights.shape[0]], res.x))
+                fisher_matrix.append(self.fisher_information(i, kl_m[:kl_model.weights.shape[0]], kl_model.weights))
                 inverse_fisher.append(np.linalg.inv(fisher_matrix[i]))
         except np.linalg.LinAlgError as e:
             pass
 
-        return res.x
+        return kl_model.weights
+
+    def merge_weights(self, px_model, states):
+        """
+        """
+
+        global_states = np.ascontiguousarray(states, dtype=np.uint64)
+        global_cliques = [global_states[i] * global_states[j] for i, j in px_model.graph.edgelist]
+        model_size = np.sum(global_cliques)
+
+        weights = px_model.weights
+        if weights.shape[0] < model_size:
+            weights = np.ascontiguousarray(np.copy(px_model.weights))
+            local_states = px_model.states
+            local_cliques = [local_states[i] * local_states[j] for i, j in px_model.graph.edgelist]
+
+            missing_states = np.array(global_cliques) - np.array(local_cliques)
+            offset = 0
+            for j, idx in enumerate(global_cliques):
+                if missing_states[j] > 0:
+                    inserts = np.zeros(missing_states[j])
+                    weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
+                offset += idx
+
+        return px.Model(weights=weights, graph=px_model.graph, states=global_states)
 
     def test(self, model):
         labels = np.concatenate(self.X)[:, -1]
@@ -388,13 +422,16 @@ class KL(Aggregation):
         model = px.Model(weights=theta, graph=graph, states=states)
         avg_stats = np.mean(average_statistics, axis=0)
         _, A = model.infer()
-        return -(np.inner(theta, np.mean(average_statistics, axis=0)) - A) + self.l2_regularization(theta)
+        return -(np.inner(theta, np.mean(average_statistics, axis=0)) - A) + self.l1_regularization(theta)
 
-    def l1_regularization(self, theta, lam=0):
+    def l1_regularization(self, theta, lam=1e-2):
         return lam * np.sum(np.abs(theta))
 
     def l2_regularization(self, theta, lam=0):
-        return  lam * np.sum(np.power(theta, 2))
+        return lam * np.sum(np.power(theta, 2))
+
+    def px_callback(self, state_p):
+        pass
 
     def callback(self, theta):
         model = px.Model(weights=theta, graph=self.graph, states=self.states)
@@ -503,7 +540,7 @@ class Variance(Aggregation):
 
         scores = []
         for i, model in enumerate(self.model):
-            (print(str(i)))
+            # (print(str(i)))
             data = self.local_data[i]
             y_true = self.y_true[i]
             y_pred = model.predict(data)[:,-1]

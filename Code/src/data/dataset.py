@@ -432,6 +432,7 @@ class CoverType(Data):
             logger.debug("Couldn't load a file in the folder: " + str(e))
 
         self.prep_folder(path)
+        self.data[self.label_column] -= 1
 
     def prep_folder(self, path):
         if not os.path.isdir(path):
