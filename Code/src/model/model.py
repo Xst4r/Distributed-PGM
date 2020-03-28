@@ -176,7 +176,7 @@ class Model:
         else:
             return px_model.predict(test)
 
-    def train(self, epochs=1, iters=100, split=None, n_models=None, mode=px.Mode.mrf):
+    def train(self, epochs=1, iters=100, split=None, n_models=None, mode=px.ModelType.mrf):
         """
         TODO
 

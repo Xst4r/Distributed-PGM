@@ -110,7 +110,9 @@ class Coordinator(object):
             aggregator.aggregate(None)
             aggregate = aggregator.aggregate_models
             if aggregator.success:
-                aggregate_model = px.Model(weights=aggregate[0], graph=graph, states=np.ascontiguousarray(states + 1))
+                if np.sum([(states[row[0]] + 1) * (states[row[1]] + 1) for row in graph.edgelist]) != aggregate[0].shape[0]:
+                    print("that's not right")
+                aggregate_model = px.Model(weights=np.ascontiguousarray(aggregate[0]), graph=graph, states=np.ascontiguousarray(states + 1))
                 predictions = model.predict(aggregate_model, test_size)
                 y_pred = np.copy(predictions[:, model.data_set.label_column])
                 y_true = np.copy(data.test_labels[:test_size])

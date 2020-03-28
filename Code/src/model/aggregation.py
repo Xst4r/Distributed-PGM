@@ -46,7 +46,6 @@ class Aggregation:
             if not all(isinstance(x, px.Model) for x in model):
                 raise TypeError("Provided List has to contain objects of type pxpy.Model only")
 
-
         self.model = model
         self.aggregate_models = []
         self.success = False
@@ -326,7 +325,7 @@ class KL(Aggregation):
         if samples is not None:
             self.X = [np.copy(sample) for sample in samples]
         else:
-            self.X = [model.sample(num_samples=n, sampler=px.Sampler.gibbs) for model in self.model]
+            self.X = [model.sample(num_samples=n, sampler=px.SamplerType.gibbs) for model in self.model]
 
         self.K = len(self.model)
         self.phi = [model.phi for model in self.model]
