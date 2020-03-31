@@ -72,6 +72,8 @@ class Config(object):
         self.URLS = {"DOTA2":"https://archive.ics.uci.edu/ml/machine-learning-databases/00367/dota2Dataset.zip",
                      "SUSY":"https://archive.ics.uci.edu/ml/machine-learning-databases/00279/SUSY.csv.gz",
                      "COVERTYPE": "https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.data.gz"}
+        self.DATASET = None
+        self.ARGS = None
 
     def set_sampler(self, type):
         choices = {'gibbs': SamplerType.gibbs,
@@ -94,6 +96,12 @@ class Config(object):
 
     def set_url(self, url):
         self.URLS = url
+
+    def set_dataset(self, dataset):
+        self.DATASET = dataset
+
+    def set_cmd_args(self, cmd_args):
+        self.ARGS = cmd_args
 
     def get_logger(self,
             LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -142,6 +150,16 @@ class Config(object):
             log.addHandler(file_handler_debug)
 
         return log
+
+    def write_readme(self, path):
+        with open(os.path.join(path, 'readme.md'), "w+") as readme:
+            readme.write("DataSet : " + str(self.DATASET) + "\n")
+            readme.write("ModelType : " + str(self.MODELTYPE) + "\n")
+            readme.write("Sampler : " + str(self.SAMPLER) + "\n")
+            readme.write("Regularization : " + str(self.REGULARIZATION.__name__) + "\n")
+            if self.ARGS:
+                for name, value in self.ARGS.__dict__.items():
+                    readme.write(name + " : " + str(value)  + "\n")
 
 CONFIG = Config()
 

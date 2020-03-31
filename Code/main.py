@@ -48,6 +48,7 @@ class Coordinator(object):
         self.random_state = np.random.RandomState(seed=self.seed)
         self.csv_writer = io.StringIO()
         self.res = None
+        CONFIG.write_readme(self.experiment_path)
 
     def baseline(self):
         if os.path.isabs(self.name):
@@ -452,6 +453,7 @@ if __name__ == '__main__':
     CONFIG.set_sampler(cmd_args.Sampler)
     CONFIG.set_regularization(cmd_args.Regularization)
     CONFIG.set_model_type(cmd_args.ModelType)
+    CONFIG.set_cmd_args(cmd_args)
     number_of_samples_per_model = 100
     coordinator = Coordinator(data_set_name=cmd_args.Dataset,
                               Data=data_class,
