@@ -13,7 +13,7 @@ from multiprocessing import cpu_count
 
 from src.data.dataset import Data
 from src.conf.bijective_dict import BijectiveDict
-from src.conf.settings import ROOT_DIR, get_logger
+from src.conf.settings import CONFIG
 from src.model.util.chow_liu_tree import build_chow_liu_tree
 
 LOG_FORMAT = '%(message)s'
@@ -24,7 +24,8 @@ LOG_FILE_ERROR = os.path.join('logs', 'model_err.log')
 LOG_FILE_DEBUG = os.path.join('logs', 'model_dbg.log')
 
 from time import sleep
-logger = get_logger()
+
+logger = CONFIG.get_logger()
 
 
 def log_progress(start, update, iter_time, total_models, model_count):
@@ -73,8 +74,8 @@ class Model:
 
         """
 
-        self.model_logger = get_logger(LOG_FORMAT, LOG_NAME, LOG_FILE_INFO,
-                                       LOG_FILE_WARN, LOG_FILE_ERROR, LOG_FILE_DEBUG)
+        self.model_logger = CONFIG.get_logger(LOG_FORMAT, LOG_NAME, LOG_FILE_INFO,
+                                              LOG_FILE_WARN, LOG_FILE_ERROR, LOG_FILE_DEBUG)
         if not isinstance(data, Data):
             raise TypeError("Data has to be an instance of Pandas Dataframe")
 
@@ -102,7 +103,7 @@ class Model:
         if statespace is None:
             self.state_space = self._statespace_from_data()
         if path is not None:
-            self.root_dir = os.path.join(ROOT_DIR, "data", path, "model")
+            self.root_dir = os.path.join(CONFIG.ROOT_DIR, "data", path, "model")
             if not os.path.exists(self.root_dir):
                 os.makedirs(self.root_dir)
 
@@ -110,6 +111,7 @@ class Model:
         self.px_batch_local = {}
         self.px_batch = {}
         self.px_model = []
+        self.px_model_scaled = []
 
         self.trained = False
         self.curr_model = 0
@@ -117,9 +119,9 @@ class Model:
         self.train_counter = 0
         self.delta = delta
         self.eps = eps
-        self.sample_func = lambda x : 0.1*x**2
+        self.sample_func = lambda x: 0.1 * x ** 2
         self.suff_data = int(np.ceil(self.hoefding_bound(self.delta, self.eps)))
-        self.data_delta = int(np.ceil(self.suff_data / self.sample_func(15)))
+        self.data_delta = int(np.ceil(self.suff_data / self.sample_func(5)))
         self.n_local_data = 0
 
         self.prev_obj = np.infty
@@ -169,7 +171,7 @@ class Model:
             `class:np.array` with predicted test data (all -1 elements are predicted and replaced)
         """
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
-        test[:,0] = -1
+        test[:, 0] = -1
         if px_model is None:
             if self.trained:
                 return [px_model.predict(test) for px_model in self.px_model]
@@ -201,6 +203,7 @@ class Model:
         self.maxiter = iters
         self.train_counter += 1
         models = []
+        scaled_models = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
 
         # Timing
@@ -222,7 +225,8 @@ class Model:
         for i, idx in enumerate(split):
             self.curr_iter = 0
             if len(split) > 1:
-                self.n_local_data = np.int64(np.min([np.ceil(self.data_delta * self.sample_func(self.train_counter)), idx.shape[0]]))
+                self.n_local_data = np.int64(
+                    np.min([np.ceil(self.data_delta * self.sample_func(self.train_counter)), idx.shape[0]]))
             else:
                 self.n_local_data = idx.shape[0]
             self.curr_model = i
@@ -231,15 +235,17 @@ class Model:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
             data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
-            #init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
-            #data = np.ascontiguousarray(np.vstack((data, init_data)))
+            # init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
+            # data = np.ascontiguousarray(np.vstack((data, init_data)))
             model = px.train(data=data,
                              graph=self.graph,
                              iters=iters,
                              shared_states=False,
                              opt_progress_hook=self.opt_progress_hook,
-                             mode=mode,
+                             mode=CONFIG.MODELTYPE,
                              initial_stepsize=1e-2,
+                             opt_regularization_hook=CONFIG.REGULARIZATION,
+                             inference=px.InferenceType.junction_tree,
                              k=4)
             self.prev_obj = np.infty
             if len(split) > 1:
@@ -247,12 +253,18 @@ class Model:
                 model = self.merge_weights(model)
             if self.train_counter == 1:
                 models.append(model)
+                if CONFIG.MODELTYPE == px.ModelType.integer:
+                    scaled_models.append(self.scale_model(model))
             else:
                 self.px_model[i] = model
+                scaled_model = self.scale_model(model)
+                self.px_model_scaled[i] = scaled_model
             iter_time = time.time()
 
         if not self.px_model:
             self.px_model = models
+            if CONFIG.MODELTYPE == px.ModelType.integer:
+                self.px_model_scaled = scaled_models
         self.px_batch[self.train_counter] = self.px_model
         end = time.time()
         logger.info("Finished Training Models: " +
@@ -260,6 +272,10 @@ class Model:
 
         if not self.trained:
             self.trained = True
+
+    def scale_model(self, model):
+        weights = np.log(2) * np.ascontiguousarray(np.copy(model.weights))
+        return px.Model(weights=weights, graph=self.graph, states=self.state_space + 1)
 
     def merge_weights(self, px_model):
         """
@@ -280,10 +296,10 @@ class Model:
             for j, idx in enumerate(global_cliques):
                 if missing_states[j] > 0:
                     inserts = np.zeros(missing_states[j]) + np.min(weights[int(offset):int(offset + local_cliques[j])])
-                    weights = np.insert(weights, int(offset + local_cliques[j]), inserts )
+                    weights = np.insert(weights, int(offset + local_cliques[j]), inserts)
                 offset += idx
         self.best_weights[self.train_counter][self.curr_model] = weights
-        return px.Model(weights=weights, graph=px_model.graph, states=global_states)
+        return px.Model(weights=weights.astype(np.float64), graph=px_model.graph, states=global_states)
 
     def merge_states(self):
         """
@@ -309,12 +325,14 @@ class Model:
 
         contents = state_p.contents
         # self.best_weights[self.train_counter][self.curr_model] = np.copy(contents.best_weights)
-        if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
-            logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
-            if contents.iteration > 10:
-                state_p.contents.iteration = self.maxiter
+        if CONFIG.MODELTYPE != px.ModelType.integer:
+            if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
+                # logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
+                if contents.iteration > 100:
+                    state_p.contents.iteration = self.maxiter
         self.prev_obj = contents.obj
-        self.best_objs[self.train_counter][self.curr_model] = np.min([self.best_objs[self.train_counter][self.curr_model], np.copy(contents.obj).ravel()])
+        self.best_objs[self.train_counter][self.curr_model] = np.min(
+            [self.best_objs[self.train_counter][self.curr_model], np.copy(contents.obj).ravel()])
         print(str(self.curr_model) + "," + str(contents.obj) + "," + str(self.n_local_data), file=self.csv_writer)
         self.curr_iter += 1
 
@@ -343,7 +361,10 @@ class Model:
         return
 
     def check_convergence(self, curr_obj, grad, tol=1e-5, gtol=1e-7):
-        return self.prev_obj - curr_obj < tol and np.linalg.norm(grad, np.infty) < gtol
+        if CONFIG.MODELTYPE == px.ModelType.integer:
+            return self.prev_obj - curr_obj < tol
+        else:
+            return self.prev_obj - curr_obj < tol and np.linalg.norm(grad, np.infty) < gtol
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
@@ -374,7 +395,7 @@ class Model:
                 if i < len(processes):
                     processes[i].join()
                     logger.info("Training Models: " +
-                            "{:.2%}".format(float(count) / float(len(processes))))
+                                "{:.2%}".format(float(count) / float(len(processes))))
 
             count += n_proc
 
@@ -386,7 +407,8 @@ class Model:
             copyfileobj(self.csv_writer, f)
 
     def _parallel_train(self, data, model):
-        px.train(data=data, iters=100, shared_states=False, in_model=model)
+        px.train(data=data, iters=100, shared_states=False, in_model=model, mode=CONFIG.MODELTYPE,
+                 opt_regularization_hook=CONFIG.REGULARIZATION)
 
     def _create_graph(self):
         """
@@ -394,9 +416,13 @@ class Model:
             when creating this object.
         """
         holdout = np.ascontiguousarray(self.data_set.holdout.to_numpy().astype(np.uint16))
-        self.edgelist = px.train(data=holdout, graph=px.GraphType.auto_tree, iters=1).graph.edgelist
+        self.edgelist = px.train(data=holdout, graph=px.GraphType.auto_tree, iters=1, mode=CONFIG.MODELTYPE,
+                                 opt_regularization_hook=CONFIG.REGULARIZATION).graph.edgelist
         self.graph = self._px_create_graph()
         self.weights = self.init_weights()
+
+    def _px_create_graph(self):
+        return px.create_graph(self.edgelist, self.state_space)
 
     def _statespace_from_data(self):
         """
@@ -417,11 +443,10 @@ class Model:
         states = len(self.data_set.data.columns)
         return states
 
-    def _px_create_graph(self):
-        return px.create_graph(self.edgelist, self.state_space)
-
     def _px_create_model(self):
-        return px.Model(weights=self.weights, graph=self.graph, states=self.state_space.reshape(self.state_space.shape[0],1), stats=px.StatisticsType.overcomplete)
+        return px.Model(weights=self.weights, graph=self.graph,
+                        states=self.state_space.reshape(self.state_space.shape[0], 1),
+                        stats=px.StatisticsType.overcomplete)
 
     def _px_create_dist_models(self):
         pass
@@ -456,38 +481,26 @@ class Model:
     def hoefding_bound(self, delta=0.8, eps=1):
         d = self.get_num_of_states()
         c = - (np.log(1 - np.sqrt(delta)) - np.log(2)) / (np.log(d))
-        return (2 * (1+c) * np.log(d)) / eps**2
+        return (2 * (1 + c) * np.log(d)) / eps ** 2
 
     def get_bounded_distance(self, delta=0.8):
         d = self.get_num_of_states()
         c = - (np.log(1 - np.sqrt(delta)) - np.log(2)) / (np.log(d))
-        return 2* np.sqrt(((1+c) * np.log(d)) / (2 * self.n_local_data * self.train_counter))
+        return 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * self.n_local_data * self.train_counter))
 
 
 class Dota2(Model):
 
     def __init__(self, data, weights=None, states=None, statespace=None, path=None):
+        super(Dota2, self).__init__(data, weights, states, statespace, path)
 
         self.data = data
-
         if states is None:
             self.states = self._states_from_data()
         if statespace is None:
             self.state_space = self._statespace_from_data()
 
-        super(Dota2, self).__init__(data, weights, states, statespace, path)
-
         self.state_mapping = self._set_state_mapping()
-
-    def _states_from_data(self):
-        return len(self.data.train.columns)
-
-    def _statespace_from_data(self):
-        statespace = np.arange(self.states, dtype=np.uint64)
-        for i, column in enumerate(self.data.train.columns):
-            statespace[i] = np.unique(self.data.train[column]).shape[0]
-
-        return statespace
 
     def _set_state_mapping(self):
         state_mapping = BijectiveDict()
@@ -508,13 +521,13 @@ class Dota2(Model):
                     pass
                 else:
                     clique = []
-                    n_edges += (len(token) * (len(token) - 1))/2
+                    n_edges += (len(token) * (len(token) - 1)) / 2
                     for vertex in token:
                         clique.append(self.state_mapping[vertex])
                     for i, source in enumerate(clique):
                         for j in range(i, len(clique)):
                             if i != j:
-                                edge = np.vstack((edge, np.array([source, clique[j]], dtype=np.uint64).reshape(1,2)))
+                                edge = np.vstack((edge, np.array([source, clique[j]], dtype=np.uint64).reshape(1, 2)))
             assert edge.shape[0] == n_edges
             self.add_edge(np.array(edge))
 
@@ -534,15 +547,19 @@ class Susy(Model):
 
     def predict(self, px_model=None, n_test=None):
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
-        test[:,self.data_set.label_column] = -1
+        test[:, self.data_set.label_column] = -1
         if n_test is None:
-            n_test = test.shape[0]-1
+            n_test = test.shape[0] - 1
         else:
-            np.min([n_test, test.shape[0]-1])
+            np.min([n_test, test.shape[0] - 1])
         test = np.ascontiguousarray(test[:n_test])
         if px_model is None:
             if self.trained:
-                return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in self.px_model]
+                if CONFIG.MODELTYPE == px.ModelType.integer:
+                    return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
+                            self.px_model_scaled]
+                else:
+                    return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
+                            self.px_model]
         else:
             return px_model.predict(test[:n_test])
-

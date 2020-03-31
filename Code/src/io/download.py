@@ -9,9 +9,9 @@ from queue import  Queue
 import os
 import io
 from urllib import request
-from src.conf.settings import ROOT_DIR, URLS, get_logger
+from src.conf.settings import CONFIG
 
-logger = get_logger()
+logger = CONFIG.get_logger()
 
 
 class Download:
@@ -23,7 +23,7 @@ class Download:
         self.next = None
 
         if url is None:
-            for key, value in URLS.items():
+            for key, value in CONFIG.URLS.items():
                 self.dl_queue.put((key, value))
         else:
             self.dl_queue.put((' ',url))
@@ -41,7 +41,7 @@ class Download:
 
     def set_destination(self, path, use_root=True):
         if use_root:
-            self.dest = os.path.join(ROOT_DIR, path)
+            self.dest = os.path.join(CONFIG.ROOT_DIR, path)
         else:
             self.dest = path
 
@@ -50,7 +50,7 @@ class Download:
 
     def _download(self):
         name, url = self.next
-        if not os.path.exists(os.path.join(ROOT_DIR, "data", name)):
+        if not os.path.exists(os.path.join(CONFIG.ROOT_DIR, "data", name)):
             print("Downloading " + name)
             data = request.urlopen(url)
             length = data.getheader('content-length')
@@ -73,8 +73,8 @@ class Download:
             else:
                 writeable = data.read()
 
-            os.makedirs(os.path.join(ROOT_DIR, "data", name))
-            with open(os.path.join(ROOT_DIR, "data", name, fname), 'wb') as file:
+            os.makedirs(os.path.join(CONFIG.ROOT_DIR, "data", name))
+            with open(os.path.join(CONFIG.ROOT_DIR, "data", name, fname), 'wb') as file:
                 if isinstance(writeable, io.BytesIO):
                     print("Writing Bytes")
                     file.write(writeable.getvalue())
@@ -82,4 +82,4 @@ class Download:
                     print("Writing File")
                     file.write(writeable)
         else:
-            print("Directory for that Data Set already exists. Please check the containing files and remove the directory to proceed: \n" + os.path.join(ROOT_DIR, "data" ,name))
+            print("Directory for that Data Set already exists. Please check the containing files and remove the directory to proceed: \n" + os.path.join(CONFIG.ROOT_DIR, "data" ,name))

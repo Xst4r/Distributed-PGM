@@ -1,4 +1,4 @@
-from src.conf.settings import ROOT_DIR
+from src.conf.settings import CONFIG
 
 import os, zipfile, gzip, shutil, tarfile
 import logging
@@ -6,7 +6,7 @@ import logging
 class Extract:
 
     def __init__(self):
-        self.path = os.path.join(ROOT_DIR, "data")
+        self.path = os.path.join(CONFIG.ROOT_DIR, "data")
 
     def extract_all(self):
         os.chdir(self.path)

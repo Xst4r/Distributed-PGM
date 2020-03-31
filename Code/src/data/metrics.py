@@ -16,3 +16,7 @@ def prox_l1(state_p):
     np.copyto(state.weights, 0, where=np.absolute(x) < l)
     np.copyto(state.weights, x - l, where=x > l)
     np.copyto(state.weights, x + l, where=-x > l)
+
+
+def default(state_p):
+    return

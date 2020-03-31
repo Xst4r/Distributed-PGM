@@ -9,14 +9,14 @@ import pxpy as px
 from math import log
 from enum import Enum
 
-from src.conf.settings import ROOT_DIR, DEBUG, get_logger
+from src.conf.settings import CONFIG
 from src.io.download import Download
 from src.io.extract import Extract
 from src.conf.bijective_dict import BijectiveDict
 
 # Logger Setup
-logger = get_logger()
-
+logger = CONFIG.get_logger()
+ROOT_DIR = CONFIG.ROOT_DIR
 
 class Discretization(Enum):
     Quantile = 1
@@ -248,28 +248,20 @@ class Data:
 
 class Dota2(Data):
 
-    def __init__(self, url=None, path=None, mask=None, seed=None):
+    def __init__(self, url=None, path=None, mask=None, seed=None,
+                 train_test_ratio=0.9,
+                 discretization_quantiles=9,
+                 label_col=0):
         super(Dota2, self).__init__(path, url, mask, seed)
 
         self.heroes = {}
         self.hero_list = None
 
-        self.data = None
-        self.train = None
-        self.test = None
+        self.label_column = label_col
         self.holdout_size = 10000
 
-        if self.train is None:
-            new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=0.9)
-
-            if mask is None:
-                self.mask = new_mask
-            else:
-                self.mask = mask
-
-        self.train = self.data[self.mask]
-        self.test = self.data[~self.mask][self.holdout_size:]
-        self.holdout = self.data[~self.mask][0:self.holdout_size]
+        self.ratio = train_test_ratio
+        self.holdout_size = 10000
 
         self.load_json()
         self.data_header()
