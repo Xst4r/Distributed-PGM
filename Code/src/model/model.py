@@ -258,7 +258,8 @@ class Model:
             else:
                 self.px_model[i] = model
                 scaled_model = self.scale_model(model)
-                self.px_model_scaled[i] = scaled_model
+                if CONFIG.MODELTYPE == px.ModelType.integer:
+                    self.px_model_scaled[i] = scaled_model
             iter_time = time.time()
 
         if not self.px_model:
