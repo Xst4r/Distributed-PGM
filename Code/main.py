@@ -373,58 +373,58 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description="Distributed PGM Experiment Interface")
 
-    parser.add_argument('--Dataset',
-                        metavar='--data',
+    parser.add_argument('--data',
+                        metavar='DataSet',
                         type=str,
                         help='Name of a Dataset contained in /data',
                         default="COVERTYPE",
                         required=False)
-    parser.add_argument('--Iterations',
-                        metavar='--maxiter',
+    parser.add_argument('--maxiter',
+                        metavar='Iterations',
                         type=int,
                         help='Maximum number of Iteration for each model.',
                         default=1000,
                         required=False)
-    parser.add_argument('--LoadExperiment',
-                        metavar='--load',
+    parser.add_argument('--load',
+                        metavar='LoadExperiment',
                         type=int,
                         help='Identifier(Time in Seconds) found at the end of an experiment folder (e.g. 1583334301)',
                         required=False)
-    parser.add_argument('--NumModels',
-                        metavar='--n_models',
+    parser.add_argument('--n_models',
+                        metavar='NumModels',
                         type=int,
                         help='Number of Local (Distributed) Models',
                         default=10,
                         required=False)
-    parser.add_argument('--CrossValidation',
-                        metavar='--cv',
+    parser.add_argument('--cv',
+                        metavar='CrossValidation',
                         type=int,
                         help='Number of Cross Validation Splits',
                         default=10,
                         required=False)
-    parser.add_argument('--Epochs',
-                        metavar='--epoch',
+    parser.add_argument('--epoch',
+                        metavar='Epochs',
                         type=int,
                         help="Number of Epochs (Rounds of Data retrieval on each local model) Increases the Amount of data "
                              "for each local model, each round.",
                         default=15,
                         required=False)
-    parser.add_argument('--Regularization',
-                        metavar='--reg',
+    parser.add_argument('--reg',
+                        metavar='Regularization',
                         type=str,
                         help="Choose from available regularization options",
                         default='None',
                         choices=['None, l1, l2'],
                         required=False)
-    parser.add_argument('--ModelType',
-                        metavar='--mt',
+    parser.add_argument('--mt',
+                        metavar='ModelType',
                         type=str,
                         help="Choose from available Modeltypes",
                         default='mrf',
                         choices=['mrf, integer'],
                         required=False)
-    parser.add_argument('--Sampler',
-                        metavar='--samp',
+    parser.add_argument('--samp',
+                        metavar='Sampler',
                         type=str,
                         help="Choose from available Samplers",
                         default='gibbs',
@@ -435,6 +435,13 @@ def parse_args():
                         help="Number of Radon Machine Aggregation Steps. Each increment of h increases "
                              "the number of samples required exponentially by r**h",
                         default=1)
+    parser.add_argument('--prams',
+                        metavar='SampleParameters',
+                        type=bool,
+                        help="Choose the sample parameter vectors from "
+                             "a normal distribution around the local model parameter vectors.",
+                        default=False)
+
     args = parser.parse_args()
     return args
 
@@ -449,21 +456,21 @@ def get_data_class(type):
 
 if __name__ == '__main__':
     cmd_args = parse_args()
-    data_class = get_data_class(cmd_args.Dataset)
-    CONFIG.set_sampler(cmd_args.Sampler)
-    CONFIG.set_regularization(cmd_args.Regularization)
-    CONFIG.set_model_type(cmd_args.ModelType)
+    data_class = get_data_class(cmd_args.data)
+    CONFIG.set_sampler(cmd_args.samp)
+    CONFIG.set_regularization(cmd_args.reg)
+    CONFIG.set_model_type(cmd_args.mt)
     CONFIG.set_cmd_args(cmd_args)
     number_of_samples_per_model = 100
-    coordinator = Coordinator(data_set_name=cmd_args.Dataset,
+    coordinator = Coordinator(data_set_name=cmd_args.data,
                               Data=data_class,
-                              exp_loader=cmd_args.LoadExperiment,
+                              exp_loader=cmd_args.load,
                               n=number_of_samples_per_model,
-                              k=cmd_args.CrossValidation,
-                              iters=cmd_args.Iterations,
+                              k=cmd_args.cv,
+                              iters=cmd_args.maxiter,
                               h=cmd_args.h,
-                              epochs=cmd_args.Epochs,
-                              n_models=cmd_args.NumModels)
+                              epochs=cmd_args.epoch,
+                              n_models=cmd_args.n_models)
 
     result, agg = coordinator.prepare_and_run()
 
