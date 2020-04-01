@@ -480,10 +480,7 @@ def get_data_class(type):
 if __name__ == '__main__':
     cmd_args = parse_args()
     data_class = get_data_class(cmd_args.data)
-    CONFIG.set_sampler(cmd_args.samp)
-    CONFIG.set_regularization(cmd_args.reg)
-    CONFIG.set_model_type(cmd_args.mt)
-    CONFIG.set_cmd_args(cmd_args)
+    CONFIG.setup(cmd_args)
     number_of_samples_per_model = 100
     coordinator = Coordinator(data_set_name=cmd_args.data,
                               Data=data_class,

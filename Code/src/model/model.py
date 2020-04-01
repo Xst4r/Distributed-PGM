@@ -114,6 +114,7 @@ class Model:
 
         self.trained = False
         self.curr_model = 0
+        self.stop_counter = 0
 
         self.delta = delta
         self.eps = eps
@@ -227,8 +228,6 @@ class Model:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
             data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
-            # init_data = np.ascontiguousarray(self.state_space.astype(np.uint16).reshape(self.state_space.shape[0],1)).T
-            # data = np.ascontiguousarray(np.vstack((data, init_data)))
             model = px.train(data=data,
                              graph=self.graph,
                              iters=iters,
@@ -239,7 +238,7 @@ class Model:
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              inference=px.InferenceType.junction_tree,
                              k=4)
-            self.prev_obj = np.infty
+            self.reset_train()
             if len(split) > 1:
                 self.px_batch_local[self.epoch][i] = model
                 model = self.merge_weights(model)
@@ -265,6 +264,10 @@ class Model:
 
         if not self.trained:
             self.trained = True
+
+    def reset_train(self):
+        self.prev_obj = np.infty
+        self.stop_counter = 0
 
     def scale_model(self, model):
         weights = np.log(2) * np.ascontiguousarray(np.copy(model.weights))
@@ -321,8 +324,11 @@ class Model:
         if CONFIG.MODELTYPE != px.ModelType.integer:
             if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
                 # logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
-                if contents.iteration > 100:
+                if self.stop_counter == 100:
                     state_p.contents.iteration = self.maxiter
+                self.stop_counter += 1
+            else:
+                self.stop_counter = 0
         self.prev_obj = contents.obj
         self.best_objs[self.epoch][self.curr_model] = np.min(
             [self.best_objs[self.epoch][self.curr_model], np.copy(contents.obj).ravel()])

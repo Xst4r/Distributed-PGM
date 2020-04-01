@@ -74,6 +74,10 @@ class Config(object):
                      "COVERTYPE": "https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.data.gz"}
         self.DATASET = None
         self.ARGS = None
+        self.HOEFD_DELTA = None
+        self.HOEFD_EPS = None
+        self.GTOL = None
+        self.TOL = None
 
     def set_sampler(self, type):
         choices = {'gibbs': SamplerType.gibbs,
@@ -102,6 +106,18 @@ class Config(object):
 
     def set_cmd_args(self, cmd_args):
         self.ARGS = cmd_args
+
+    def set_hoefding_eps(self, type):
+        self.HOEFD_EPS = type
+
+    def set_hoefding_delta(self, type):
+        self.HOEFD_DELTA = type
+
+    def set_gtol(self, type):
+        self.GTOL = type
+
+    def set_tol(self, type):
+        self.TOL = type
 
     def get_logger(self,
             LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -150,6 +166,14 @@ class Config(object):
             log.addHandler(file_handler_debug)
 
         return log
+
+    def setup(self, cmd_args):
+        self.set_sampler(cmd_args.samp)
+        self.set_regularization(cmd_args.reg)
+        self.set_model_type(cmd_args.mt)
+        self.set_cmd_args(cmd_args)
+        self.set_hoefding_eps(cmd_args.hoefd_eps)
+        self.set_hoefding_delta(cmd_args.hoefd_delta)
 
     def write_readme(self, path):
         with open(os.path.join(path, 'readme.md'), "w+") as readme:
