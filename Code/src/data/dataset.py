@@ -122,7 +122,7 @@ class Data:
         mask = self.random_state.rand(n_data) < ratio
         return mask, self.data[mask][holdout_size:], self.data[~mask], self.data[mask][0:holdout_size]
 
-    def train_test_split(self, i, ratio):
+    def k_fold_split(self, i, ratio):
         if i == 0:
             instances, variables = self.data.shape
             index = np.arange(instances)

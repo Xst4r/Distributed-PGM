@@ -6,7 +6,6 @@ import pxpy as px
 import networkx as nx
 import time
 
-from copy import deepcopy
 from shutil import copyfileobj
 from multiprocessing import Process
 from multiprocessing import cpu_count
@@ -45,7 +44,7 @@ def log_progress(start, update, iter_time, total_models, model_count):
 
 class Model:
 
-    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, eps=1e-1):
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, eps=1e-1, epochs=15):
         """
             Parameters
             ----------
@@ -86,9 +85,9 @@ class Model:
         self.state_space = None
         self.graph = None
 
-        self.hook_counter = 0
-        self.stepsize = 1e-1
         self.maxiter = 10000
+        self.epoch = 0
+        self.maxepoch = epochs
 
         self.edgelist = np.empty(shape=(0, 2), dtype=np.uint64)
 
@@ -116,12 +115,11 @@ class Model:
         self.trained = False
         self.curr_model = 0
 
-        self.train_counter = 0
         self.delta = delta
         self.eps = eps
         self.sample_func = lambda x: 0.1 * x ** 2
         self.suff_data = int(np.ceil(self.hoefding_bound(self.delta, self.eps)))
-        self.data_delta = int(np.ceil(self.suff_data / self.sample_func(5)))
+        self.data_delta = int(np.ceil(self.suff_data / self.sample_func(epochs)))
         self.n_local_data = 0
 
         self.prev_obj = np.infty
@@ -133,12 +131,6 @@ class Model:
         print("Eps = " + str(self.eps), file=self.csv_writer)
         print("Delta = " + str(self.delta), file=self.csv_writer)
         print("Data Increment = " + str(self.data_delta), file=self.csv_writer)
-
-    def get_node_id(self, colname):
-        pass
-
-    def get_node_name(self, colid):
-        pass
 
     def add_edge(self, edges):
         """
@@ -201,7 +193,7 @@ class Model:
             None
         """
         self.maxiter = iters
-        self.train_counter += 1
+        self.epoch += 1
         models = []
         scaled_models = []
         train = np.ascontiguousarray(self.data_set.train.to_numpy().astype(np.uint16))
@@ -218,15 +210,15 @@ class Model:
         else:
             total_models = len(split) if n_models is None else np.min([len(split), n_models])
 
-        self.best_weights[self.train_counter] = [0] * total_models
-        self.best_objs[self.train_counter] = [np.infty] * total_models
-        self.px_batch_local[self.train_counter] = [0] * total_models
+        self.best_weights[self.epoch] = [0] * total_models
+        self.best_objs[self.epoch] = [np.infty] * total_models
+        self.px_batch_local[self.epoch] = [0] * total_models
         # Distributed Training
         for i, idx in enumerate(split):
             self.curr_iter = 0
             if len(split) > 1:
                 self.n_local_data = np.int64(
-                    np.min([np.ceil(self.data_delta * self.sample_func(self.train_counter)), idx.shape[0]]))
+                    np.min([np.ceil(self.data_delta * self.sample_func(self.epoch)), idx.shape[0]]))
             else:
                 self.n_local_data = idx.shape[0]
             self.curr_model = i
@@ -249,9 +241,9 @@ class Model:
                              k=4)
             self.prev_obj = np.infty
             if len(split) > 1:
-                self.px_batch_local[self.train_counter][i] = model
+                self.px_batch_local[self.epoch][i] = model
                 model = self.merge_weights(model)
-            if self.train_counter == 1:
+            if self.epoch == 1:
                 models.append(model)
                 if CONFIG.MODELTYPE == px.ModelType.integer:
                     scaled_models.append(self.scale_model(model))
@@ -266,7 +258,7 @@ class Model:
             self.px_model = models
             if CONFIG.MODELTYPE == px.ModelType.integer:
                 self.px_model_scaled = scaled_models
-        self.px_batch[self.train_counter] = self.px_model
+        self.px_batch[self.epoch] = self.px_model
         end = time.time()
         logger.info("Finished Training Models: " +
                     "{:.2f} s".format(end - start))
@@ -299,7 +291,7 @@ class Model:
                     inserts = np.zeros(missing_states[j]) + np.min(weights[int(offset):int(offset + local_cliques[j])])
                     weights = np.insert(weights, int(offset + local_cliques[j]), inserts)
                 offset += idx
-        self.best_weights[self.train_counter][self.curr_model] = weights
+        self.best_weights[self.epoch][self.curr_model] = weights
         return px.Model(weights=weights.astype(np.float64), graph=px_model.graph, states=global_states)
 
     def merge_states(self):
@@ -332,8 +324,8 @@ class Model:
                 if contents.iteration > 100:
                     state_p.contents.iteration = self.maxiter
         self.prev_obj = contents.obj
-        self.best_objs[self.train_counter][self.curr_model] = np.min(
-            [self.best_objs[self.train_counter][self.curr_model], np.copy(contents.obj).ravel()])
+        self.best_objs[self.epoch][self.curr_model] = np.min(
+            [self.best_objs[self.epoch][self.curr_model], np.copy(contents.obj).ravel()])
         print(str(self.curr_model) + "," + str(contents.obj) + "," + str(self.n_local_data), file=self.csv_writer)
         self.curr_iter += 1
 
@@ -473,7 +465,7 @@ class Model:
         return np.zeros(suff_stats)
 
     def get_weights(self):
-        return np.stack(self.best_weights[self.train_counter], axis=0).T
+        return np.stack(self.best_weights[self.epoch], axis=0).T
 
     def get_num_of_states(self):
         num_states = self.state_space + 1
@@ -487,13 +479,13 @@ class Model:
     def get_bounded_distance(self, delta=0.8):
         d = self.get_num_of_states()
         c = - (np.log(1 - np.sqrt(delta)) - np.log(2)) / (np.log(d))
-        return 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * self.n_local_data * self.train_counter))
+        return 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * self.n_local_data * self.epoch))
 
 
 class Dota2(Model):
 
-    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
-        super(Dota2, self).__init__(data, weights, states, statespace, path)
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, epsilon=1e-1):
+        super(Dota2, self).__init__(data, weights, states, statespace, path, delta=delta, eps=epsilon)
 
         self.data = data
         if states is None:
@@ -535,11 +527,11 @@ class Dota2(Model):
 
 class Susy(Model):
 
-    def __init__(self, data, weights=None, states=None, statespace=None, path=None):
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, epsilon=1e-1):
 
         self.data = data
 
-        super(Susy, self).__init__(data, weights, states, statespace, path)
+        super(Susy, self).__init__(data, weights, states, statespace, path, delta=delta, eps=epsilon)
 
         if states is None:
             self.states = self._states_from_data()

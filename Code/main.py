@@ -52,14 +52,14 @@ class Coordinator(object):
 
     def baseline(self):
         if os.path.isabs(self.name):
-            data = self.data_obj(path=self.name, seed=self.seed)
+            data = self.data_obj(path=self.name, seed=self.seed, cval=self.k_fold)
         else:
-            data = self.data_obj(path=os.path.join("data", self.name), seed=self.seed)
+            data = self.data_obj(path=os.path.join("data", self.name), seed=self.seed, cval=self.k_fold)
 
         models = []
         accs = []
         for i in range(10):
-            data.train_test_split(i, 0.8)
+            data.k_fold_split(i, 0.8)
             test_size = np.min([n_test, data.test.shape[0] - 1])
             model = SusyModel(data, path=self.name)
             model.train(split=None, epochs=self.rounds, iters=self.iters)
@@ -78,6 +78,7 @@ class Coordinator(object):
             np.save(os.path.join(self.experiment_path, 'baseline', 'mask_' + str(i)), data.mask)
             model.write_progress_hook(os.path.join(self.experiment_path, 'baseline'), 'stats ' + str(i) + ".csv")
             models.append(model)
+        np.save(os.path.join(self.experiment_path, 'baseline', 'split'), np.stack(data.split))
         np.save(os.path.join(self.experiment_path, 'baseline', 'accuracy'), np.array(accs))
         return models
 
@@ -186,7 +187,7 @@ class Coordinator(object):
             # Outer Cross-Validation Loop.
             for i in range(self.k_fold):
                 aggregates = {}
-                data.train_test_split(i, 0.8)
+                data.k_fold_split(i, 0.8)
                 model = SusyModel(data,
                                   path=data.__class__.__name__)
                 theta_samples = None
@@ -252,6 +253,7 @@ class Coordinator(object):
                     self.finalize(i, trained_model, aggregates, data.mask, sampler.split_idx, local_y_pred)
                 except Exception as e:
                     print(e)
+        np.save(os.path.join(self.experiment_path, 'split'), np.stack(data.split))
         return models, k_aggregates, sampler
 
     def finalize(self, i, models, aggregates, mask, splits, local_y_pred):
@@ -310,8 +312,8 @@ class Coordinator(object):
 
     def prepare_and_run(self):
 
-        # self.baseline()
-        data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed)
+        self.baseline()
+        data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed, cval=self.k_fold)
         models, aggregate, sampler = self.run(data, self.model_loader)
 
         return models, aggregate
