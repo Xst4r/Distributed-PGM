@@ -33,7 +33,7 @@ class GraphType(Enum):
 
 class Data:
 
-    def __init__(self, path=None, url=None, mask=None, seed=None):
+    def __init__(self, path=None, url=None, mask=None, seed=None, cval=10):
         """
 
         Parameters
@@ -79,11 +79,14 @@ class Data:
         self.test = None
         self.test_labels = None
         self.holdout = None
+        self.split = None
+        self.holdout_size = 10000
 
         self.mask = mask
         self.masks = []
         self.bins = {}
         self.label_column = 0
+        self.cv = cval
 
         self.root_dir = os.path.join(path, "model")
 
@@ -120,7 +123,18 @@ class Data:
         return mask, self.data[mask][holdout_size:], self.data[~mask], self.data[mask][0:holdout_size]
 
     def train_test_split(self, i, ratio):
-        new_mask, self.train, self.test, self.holdout = self._train_test_split(ratio=ratio)
+        if i == 0:
+            instances, variables = self.data.shape
+            index = np.arange(instances)
+            self.random_state.shuffle(index)
+            self.holdout = self.data.iloc[index[:self.holdout_size]]
+            self.split = np.array_split(index[self.holdout_size:], self.cv)
+        n_splits = np.arange(self.cv)
+        train = n_splits[np.arange(self.cv) != i]
+        self.test = self.data.iloc[self.split[i]]
+        self.train = self.data.iloc[np.concatenate(np.array(self.split)[train])]
+        new_mask = np.zeros(self.data.shape, dtype=np.bool)
+        new_mask[np.concatenate(np.array(self.split)[train])] = True
         self.masks.append(new_mask)
 
         self.mask = new_mask
@@ -251,8 +265,9 @@ class Dota2(Data):
     def __init__(self, url=None, path=None, mask=None, seed=None,
                  train_test_ratio=0.9,
                  discretization_quantiles=9,
-                 label_col=0):
-        super(Dota2, self).__init__(path, url, mask, seed)
+                 label_col=0,
+                 cval=10):
+        super(Dota2, self).__init__(path, url, mask, seed, cval=cval)
 
         self.heroes = {}
         self.hero_list = None
@@ -339,9 +354,9 @@ class Dota2(Data):
 
 class Susy(Data):
 
-    def __init__(self, url=None, path=None, mask=None, seed=None):
+    def __init__(self, url=None, path=None, mask=None, seed=None, cval=10):
 
-        super(Susy, self).__init__(path, url, mask, seed)
+        super(Susy, self).__init__(path, url, mask, seed, cval=cval)
 
         if self.random_state is None:
             self.random_state = np.random.RandomState(seed=seed)
@@ -405,8 +420,9 @@ class CoverType(Data):
     def __init__(self, url=None, path=None, mask=None, seed=None,
                  train_test_ratio=0.9,
                  discretization_quantiles=9,
-                 label_col=54):
-        super(CoverType, self).__init__(path=path, url=url, mask=mask, seed=seed)
+                 label_col=54,
+                 cval=10):
+        super(CoverType, self).__init__(path=path, url=url, mask=mask, seed=seed, cval=cval)
 
         if self.random_state is None:
             self.random_state = np.random.RandomState(seed=seed)
