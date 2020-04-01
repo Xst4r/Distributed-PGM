@@ -14,12 +14,11 @@ from scipy.stats import random_correlation
 import pxpy as px
 
 logger = CONFIG.get_logger()
-n_test = 50000
 
 
 class Coordinator(object):
 
-    def __init__(self, data_set_name, Data, exp_loader, n, k, iters, h, epochs, n_models):
+    def __init__(self, data_set_name, Data, exp_loader, n, k, iters, h, epochs, n_models, n_test):
         self.name = data_set_name
         self.data_obj = Data
         self.exp_loader = exp_loader
@@ -31,6 +30,7 @@ class Coordinator(object):
         self.rounds = epochs
         self.n_models = n_models
         self.save_path = os.path.join("experiments", self.name)
+        self.n_test = n_test
 
         self.model_loader = None
         self.mask = None
@@ -60,7 +60,7 @@ class Coordinator(object):
         accs = []
         for i in range(10):
             data.k_fold_split(i, 0.8)
-            test_size = np.min([n_test, data.test.shape[0] - 1])
+            test_size = np.min([self.n_test, data.test.shape[0] - 1])
             model = SusyModel(data, path=self.name)
             model.train(split=None, epochs=self.rounds, iters=self.iters)
             predictions = model.predict(n_test=test_size)
@@ -106,7 +106,7 @@ class Coordinator(object):
         return seed
 
     def aggregation_helper(self, model, aggregator, data, graph, states, weights=None):
-        test_size = np.min([n_test, data.test.shape[0] - 1])
+        test_size = np.min([self.n_test, data.test.shape[0] - 1])
         try:
             aggregator.aggregate(None)
             aggregate = aggregator.aggregate_models
@@ -138,7 +138,7 @@ class Coordinator(object):
         return model
 
     def aggregate(self, distributed_models, data, graph, states, weights=None, idx=None):
-        test_size = np.min([n_test, data.test.shape[0] - 1])
+        test_size = np.min([self.n_test, data.test.shape[0] - 1])
         methods = ['mean', 'radon', 'wa', 'kl', 'var']
         aggregates = {k: [] for k in methods}
         sample_size = np.ceil(
@@ -226,15 +226,15 @@ class Coordinator(object):
                         data.train.iloc[idx][:trained_model.data_delta * trained_model.train_counter].values,
                         dtype=np.uint16) for idx in sampler.split_idx]
                     local_predictions = None
-                    local_predictions = trained_model.predict(n_test=n_test)
+                    local_predictions = trained_model.predict(n_test=self.n_test)
                     local_acc = []
                     local_y_pred = []
                     if not local_predictions is None:
                         for local_indexer, local_pred in enumerate(local_predictions):
                             y_pred = local_pred[:, model.data_set.label_column]
-                            y_true = data.test_labels[:n_test]
+                            y_true = data.test_labels[:self.n_test]
                             acc = np.where(np.equal(y_pred, y_true))[
-                                      0].shape[0] / data.test_labels[:n_test].shape[
+                                      0].shape[0] / data.test_labels[:self.n_test].shape[
                                       0]
                             local_acc.append(acc)
                             local_y_pred.append(y_pred)
@@ -444,6 +444,27 @@ def parse_args():
                              "a normal distribution around the local model parameter vectors.",
                         default=False)
 
+    parser.add_argument('--n_test',
+                        metavar='TestSubset',
+                        type=int,
+                        help="Predicting a full test set, especially if it is large may take some time."
+                             "Use this to reduce the number of predictions. "
+                             "If n_test > test_size - test_size is chosen for prediction.",
+                        default=50000)
+
+    parser.add_argument('--hoefd_eps',
+                        metavar='HoefdingDistance',
+                        type=float,
+                        help="Hyperparameter for the Hoefding Bound. Used to calculate the number of samples needed"
+                             "to guarantee an upper bound on the distance with probability HoefdingProbability.",
+                        default=1e-1)
+
+    parser.add_argument('--hoefd_delta',
+                        metavar='HoefdingProbability',
+                        type=float,
+                        help="Hyperparameter for the Hoefding Bound. Probability of suff. stats. having at most"
+                             "distance of HoefdingDistance",
+                        default=0.5)
     args = parser.parse_args()
     return args
 
@@ -472,7 +493,8 @@ if __name__ == '__main__':
                               iters=cmd_args.maxiter,
                               h=cmd_args.h,
                               epochs=cmd_args.epoch,
-                              n_models=cmd_args.n_models)
+                              n_models=cmd_args.n_models,
+                              n_test=cmd_args.n_test)
 
     result, agg = coordinator.prepare_and_run()
 
