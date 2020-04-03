@@ -53,7 +53,7 @@ get_logger( LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
 
 import os
 import logging
-from pxpy import ModelType, SamplerType
+from pxpy import ModelType, SamplerType, GraphType
 from src.data.metrics import squared_l2_regularization, prox_l1, default
 from logging.handlers import RotatingFileHandler
 
@@ -78,6 +78,7 @@ class Config(object):
         self.HOEFD_EPS = None
         self.GTOL = None
         self.TOL = None
+        self.GRAPHTYPE = None
 
     def set_sampler(self, type):
         choices = {'gibbs': SamplerType.gibbs,
@@ -118,6 +119,12 @@ class Config(object):
 
     def set_tol(self, type):
         self.TOL = type
+
+    def set_graphtype(self, type):
+        choices = {'chain': GraphType.chain,
+                   'tree': GraphType.auto_tree,
+                   'full': GraphType.full}
+        self.GRAPHTYPE = choices[type]
 
     def get_logger(self,
             LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -174,6 +181,9 @@ class Config(object):
         self.set_cmd_args(cmd_args)
         self.set_hoefding_eps(cmd_args.hoefd_eps)
         self.set_hoefding_delta(cmd_args.hoefd_delta)
+        self.set_gtol(cmd_args.gtol)
+        self.set_tol(cmd_args.tol)
+        self.set_graphtype(cmd_args.graphtype)
 
     def write_readme(self, path):
         with open(os.path.join(path, 'readme.md'), "w+") as readme:

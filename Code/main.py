@@ -3,6 +3,7 @@ from src.model.model import Susy as SusyModel
 from src.preprocessing.sampling import Random
 from src.conf.settings import CONFIG
 from src.data.dataset import CoverType, Susy, Dota2
+from src.data.metrics import fisher_information
 from time import time
 import os
 import argparse
@@ -142,7 +143,7 @@ class Coordinator(object):
         methods = ['mean', 'radon', 'wa', 'kl', 'var']
         aggregates = {k: [] for k in methods}
         sample_size = np.ceil(
-            (distributed_models.sample_func(distributed_models.train_counter) * distributed_models.data_delta) / 2)
+            (distributed_models.sample_func(distributed_models.epoch) * distributed_models.data_delta) / 2)
         if weights is not None:
             aggr = [Mean(weights),
                     RadonMachine(weights, self.r, self.h),
@@ -202,28 +203,14 @@ class Coordinator(object):
                                                    h=1,
                                                    d=data.train.shape[0])
                     self.r = r
-
+                    fisher_information(trained_model.px_model[0])
                     # theta_samples, theta_old = self.sample_parameters(trained_model)
                     # theta_arr = np.concatenate(theta_samples, axis=1)
-                    """
-                    # This only works when variance stays the same.
-                    else:
-                        if theta_old[0].shape[0] == trained_model.px_model[0].weights.shape[0]:
-                            for j in range(len(theta_samples)):
-                                theta_samples[j] = (theta_samples[j] - np.outer(theta_old[j], np.ones(shape=theta_samples[j].shape[1]))) + \
-                                                   np.outer(trained_model.px_model[j].weights[:,None],  np.ones(shape=theta_samples[j].shape[1]))
-                                theta_old[j] = trained_model.px_model[j].weights[:,None]
-                                theta_arr = np.concatenate(theta_samples, axis=1)
-                        else:
-                            theta_samples, theta_old = self.sample_parameters(trained_model)
-                            theta_arr = np.concatenate(theta_samples, axis=1)
-                    """
 
-                    # TODO: Generate new Model Parameters here
                     # Aggregation
                     logger.info("Aggregating Model No. " + str(i))
                     kl_samples = [np.ascontiguousarray(
-                        data.train.iloc[idx][:trained_model.data_delta * trained_model.train_counter].values,
+                        data.train.iloc[idx][:trained_model.data_delta * trained_model.epoch].values,
                         dtype=np.uint16) for idx in sampler.split_idx]
                     local_predictions = None
                     local_predictions = trained_model.predict(n_test=self.n_test)
@@ -243,6 +230,8 @@ class Coordinator(object):
                                                  None, kl_samples)
                     self.record_progress(aggregation, model.n_local_data, i, self.experiment_path, local_acc)
                     aggregates[model.n_local_data] = aggregation
+                    if model.n_local_data > sampler.split_idx[0].shape[0]:
+                        break
                 self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv")
                 models.append(trained_model)
                 model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
@@ -465,6 +454,20 @@ def parse_args():
                         help="Hyperparameter for the Hoefding Bound. Probability of suff. stats. having at most"
                              "distance of HoefdingDistance",
                         default=0.5)
+    parser.add_argument('--gtol',
+                        type=float,
+                        help="Stopping criterion for the prox. gradient descent based on the gradient norm.",
+                        default=1e-7)
+    parser.add_argument('--tol',
+                        type=float,
+                        help="Stopping criterion for the prox. gradient descent based on objective rate of change.",
+                        default=1e-5)
+
+    parser.add_argument('--graphtype',
+                        type=str,
+                        help="GraphType for Probabilistic Graphical Models",
+                        choices=["chain", "tree", "full"],
+                        default="tree")
     args = parser.parse_args()
     return args
 

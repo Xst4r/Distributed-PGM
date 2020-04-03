@@ -52,22 +52,31 @@ def sk_confusion_matrix(y_true, y_pred):
 
 def fisher_information(model):
     mu, A = model.infer()
+    mu = mu[:model.weights.shape[0]]
     states = np.copy(model.states)
     edgelist = np.copy(model.graph.edgelist)
 
     x = np.ascontiguousarray(np.zeros(edgelist.shape[0] + 1 , dtype=np.uint16) - 1)
+    test_x = np.ascontiguousarray(np.zeros(edgelist.shape[0] + 1 , dtype=np.uint16))
     fisher_matrix = None
-    offset = 0
-    for u, v in edgelist:
+    offset = np.insert(np.cumsum([states[u] * states[v] for u,v in edgelist]), 0, 0)
+    node_offset = np.insert(np.cumsum(states), 0, 0)
+    for idx, (u, v) in enumerate(edgelist):
         for i in range(states[u]):
             for j in range(states[v]):
                 x[u] = i
                 x[v] = j
-                mu_i, _ = model.infer(observed=x)
-                phi_x = model.phi(x)
-                assert phi_x[offset + i*states[u] + j] == 1
-                fisher_matrix = mu_i * mu[offset + i*states[u] + j] if fisher_matrix is None else np.hstack((fisher_matrix, mu_i * mu[offset + i*j]))
-        offset += states[u] * states[v]
+                mu_, _ = model.infer(observed=x)
+                mu_ij = mu_[:model.weights.shape[0]]
+                prob_uv = model.prob(u, i, v, j)
+                try:
+                    if not (prob_uv == model.prob(u, i, v, j)):
+                        print("Error: " + str(prob_uv) +  str(model.prob(u, i, v, j)))
+                    model.prob(-1, i, 100, j)
+                    model.prob(-1, 500, 100, 300)
+                except (IndexError, ValueError):
+                    print("Error: " + "e= (" + str(u) + ',' + str(v) + ")" + " state: " + str(i) + " " + str(j))
+                fisher_matrix = mu_ij * prob_uv if fisher_matrix is None else np.vstack((fisher_matrix, mu_ij * prob_uv))
         x[u] = -1
         x[v] = -1
     return fisher_matrix

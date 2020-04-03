@@ -236,9 +236,13 @@ class Model:
                              mode=CONFIG.MODELTYPE,
                              initial_stepsize=1e-2,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
-                             inference=px.InferenceType.junction_tree,
                              k=4)
             self.reset_train()
+
+            phis = []
+            for d in data:
+                phis.append(model.phi(d).astype(np.uint8))
+
             if len(split) > 1:
                 self.px_batch_local[self.epoch][i] = model
                 model = self.merge_weights(model)
@@ -359,11 +363,11 @@ class Model:
     def opt_proximal_hook(self, state_p):
         return
 
-    def check_convergence(self, curr_obj, grad, tol=1e-5, gtol=1e-7):
+    def check_convergence(self, curr_obj, grad):
         if CONFIG.MODELTYPE == px.ModelType.integer:
-            return self.prev_obj - curr_obj < tol
+            return self.prev_obj - curr_obj < CONFIG.TOL
         else:
-            return self.prev_obj - curr_obj < tol and np.linalg.norm(grad, np.infty) < gtol
+            return self.prev_obj - curr_obj < CONFIG.TOL and np.linalg.norm(grad, np.infty) < CONFIG.GTOL
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.
@@ -415,7 +419,7 @@ class Model:
             when creating this object.
         """
         holdout = np.ascontiguousarray(self.data_set.holdout.to_numpy().astype(np.uint16))
-        self.edgelist = px.train(data=holdout, graph=px.GraphType.auto_tree, iters=1, mode=CONFIG.MODELTYPE,
+        self.edgelist = px.train(data=holdout, graph=CONFIG.GRAPHTYPE, iters=1, mode=CONFIG.MODELTYPE,
                                  opt_regularization_hook=CONFIG.REGULARIZATION).graph.edgelist
         self.graph = self._px_create_graph()
         self.weights = self.init_weights()

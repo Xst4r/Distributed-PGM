@@ -1,5 +1,6 @@
 import numpy as np
-from src.conf.settings import ROOT_DIR
+from src.conf.settings import CONFIG
+from src.data.metrics import fisher_information
 import pandas as pd
 import os
 import pxpy as px
@@ -24,11 +25,11 @@ class DataGenerator(object):
 
 
 def main():
-    n_dim = 20
-    n_classes = 10
+    n_dim = 5
+    n_classes = 2
     mean = [np.random.rand(n_dim) * np.random.randint(1, 6) for i in range(n_classes)]
     cov =  [np.random.rand(n_dim, n_dim) * np.random.randint(1, 4) for i in range(n_classes)]
-    gen =  DataGenerator(100000, 10, np.random.multivariate_normal, mean, cov)
+    gen =  DataGenerator(5000, 2, np.random.multivariate_normal, mean, cov)
     return gen.sample()
 
 
@@ -41,7 +42,18 @@ if __name__ == '__main__':
 
     res = np.ascontiguousarray(res, dtype=np.float64)
     disc, M = px.discretize(res, 10)
-    new_data = os.path.join(ROOT_DIR, "data")
+    model = px.train(disc, graph=px.GraphType.auto_tree)
+    fi = fisher_information(model)
+    phis = []
+    for d in disc:
+        phis.append(model.phi(d))
+    mu, a = model.infer()
+    mu = mu[:vars]
+    vars = model.weights.shape[0]
+    cov_XY = np.cov(np.array(phis).T)
+    EX_EY = np.outer(mu, mu)
+    E_XY = cov_XY + EX_EY
+    new_data = os.path.join(CONFIG.ROOT_DIR, "data")
     os.chdir(new_data)
     os.mkdir("SYNTH")
     df = pd.DataFrame(disc)
