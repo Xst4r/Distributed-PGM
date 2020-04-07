@@ -57,8 +57,14 @@ import argparse
 from pxpy import ModelType, SamplerType, GraphType
 from src.data.metrics import squared_l2_regularization, prox_l1, default
 from logging.handlers import RotatingFileHandler
+from enum import IntEnum
 
-# TODO: Create Config Class maybe ?
+
+class CovType(IntEnum):
+    unif = 0
+    random = 1
+    fish = 2
+    none = 3
 
 
 class Config(object):
@@ -80,9 +86,9 @@ class Config(object):
         self.GTOL = None
         self.TOL = None
         self.GRAPHTYPE = None
-        self.PRAMS = False
         self.CV = None
         self.EPOCHS = None
+        self.COVTYPE = None
 
     def set_sampler(self, type):
         choices = {'gibbs': SamplerType.gibbs,
@@ -131,8 +137,12 @@ class Config(object):
                    'star': GraphType.star}
         self.GRAPHTYPE = choices[type]
 
-    def set_parameter_samples(self, type):
-        self.PRAMS = type
+    def set_covtype(self, type):
+        choices = {'unif': CovType.unif,
+                   'random': CovType.random,
+                   'fish': CovType.fish,
+                   'none': CovType.none}
+        self.COVTYPE = choices[type]
 
     def set_cv(self, type):
         self.CV = type
@@ -197,9 +207,9 @@ class Config(object):
         self.set_hoefding_delta(cmd_args.hoefd_delta)
         self.set_gtol(cmd_args.gtol)
         self.set_tol(cmd_args.tol)
-        self.set_parameter_samples(cmd_args.prams)
         self.set_graphtype(cmd_args.graphtype)
         self.set_cv(cmd_args.cv)
+        self.set_covtype(cmd_args.covtype)
 
     def write_readme(self, path):
         with open(os.path.join(path, 'readme.md'), "w+") as readme:
@@ -279,12 +289,6 @@ def get_parser():
                         help="Number of Radon Machine Aggregation Steps. Each increment of h increases "
                              "the number of samples required exponentially by r**h",
                         default=1)
-    parser.add_argument('--prams',
-                        metavar='SampleParameters',
-                        type=bool,
-                        help="Choose the sample parameter vectors from "
-                             "a normal distribution around the local model parameter vectors.",
-                        default=False)
 
     parser.add_argument('--n_test',
                         metavar='TestSubset',
@@ -321,4 +325,9 @@ def get_parser():
                         help="GraphType for Probabilistic Graphical Models",
                         choices=["chain", "tree", "full", "star"],
                         default="tree")
+    parser.add_argument('--covtype',
+                        type=str,
+                        help="Covariance Matrix Type for Model Parameter Sampling",
+                        choices=["unif", "random", "fish", "none"],
+                        default="fish")
     return parser

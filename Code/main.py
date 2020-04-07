@@ -1,7 +1,7 @@
 from src.model.aggregation import RadonMachine, Mean, WeightedAverage, KL, Variance
 from src.model.model import Susy as SusyModel
 from src.preprocessing.sampling import Random
-from src.conf.settings import CONFIG, get_parser
+from src.conf.settings import CONFIG, get_parser, CovType
 from src.data.dataset import CoverType, Susy, Dota2
 from time import time
 import io, shlex, os
@@ -38,8 +38,10 @@ class Coordinator(object):
             self.seed = self.load_seed(self.experiment_path)
             self.model_loader, self.mask = self.load_experiment(self.experiment_path)
         else:
-            self.experiment_path, self.seed = self.save_seed(os.path.join(self.save_path, "_".join(
-                [str(self.num_local_samples), str(self.iters), str(self.rounds)])))
+            covtype = "COV_" + CONFIG.ARGS.covtype
+            reg = "REG_" + CONFIG.ARGS.reg
+            curr_time = str(int(time()))
+            self.experiment_path, self.seed = self.save_seed(os.path.join(self.save_path, "_".join([curr_time, covtype, reg])))
 
         if not os.path.isdir(self.experiment_path):
             os.makedirs(self.experiment_path)
@@ -90,11 +92,10 @@ class Coordinator(object):
         pass
 
     def save_seed(self, path):
-        data_dir = os.path.join(path + "_" + str(int(time())))
-        os.makedirs(data_dir)
+        os.makedirs(path)
         seed = np.random.randint(0, np.iinfo(np.int32).max, 1)
-        np.save(os.path.join(data_dir, "seed"), seed)
-        return data_dir, seed
+        np.save(os.path.join(path, "seed"), seed)
+        return path, seed
 
     def load_experiment(self, path):
         mask = None
@@ -210,7 +211,7 @@ class Coordinator(object):
                     self.r = r
 
                     theta_arr = None
-                    if CONFIG.PRAMS:
+                    if CONFIG.COVTYPE != CovType.none:
                         theta_samples_unif, theta_samples_fisher, theta_old = self.sample_parameters(trained_model)
                         theta_arr = np.concatenate(theta_samples_fisher, axis=1)
 
@@ -282,25 +283,30 @@ class Coordinator(object):
         n_samples = self.r ** self.h
         samples_per_model = int(np.ceil(n_samples / len(model.px_model)))
         theta_old = []
-        theta_samples_uniform = []
-        theta_samples_fisher = []
+        theta_samples = []
         eps = (model.get_bounded_distance(model.delta) / 2) ** 2
         for i, px_model in enumerate(model.px_model):
-            cov_unif = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
-            cov_semi_fisher = self.gen_semi_random_cov(px_model, eps)
+            if CONFIG.COVTYPE == CovType.unif:
+                cov = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
+            elif CONFIG.COVTYPE == CovType.random:
+                cov = self.gen_random_cov(px_model.weights.shape[0])
+            elif CONFIG.COVTYPE == CovType.fish:
+                cov = self.gen_semi_random_cov(px_model, eps)
+            else:
+                cov = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
+
             theta_old.append(px_model.weights)
             if np.mod(i, 3) == 0 and perturb:
-                theta_samples_uniform.append(
-                    self.random_state.multivariate_normal(px_model.weights, cov_unif, samples_per_model).T *
-                    self.random_state.multivariate_normal(np.zeros(px_model.weights.shape[0]), cov_unif,
-                                                          1).ravel()[:, None])
+                theta_samples.append(
+                    self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T *
+                    self.random_state.multivariate_normal(
+                                                    np.zeros(px_model.weights.shape[0]), cov,1).ravel()[:, None]
+                )
             else:
-                theta_samples_uniform.append(
-                    self.random_state.multivariate_normal(px_model.weights, cov_unif, samples_per_model).T)
-                theta_samples_fisher.append(
-                    self.random_state.multivariate_normal(px_model.weights, cov_semi_fisher, samples_per_model).T)
+                theta_samples.append(
+                    self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T)
 
-        return theta_samples_uniform, theta_samples_fisher, theta_old
+        return theta_samples, theta_old
 
     def gen_unif_cov(self, n_dim, eps=1e-1):
         return np.diag(np.ones(n_dim)) * eps
@@ -422,11 +428,10 @@ def get_data_class(type):
 
 if __name__ == '__main__':
 
-    keywords = ['--data', '--prams', '--reg', '--graphtype']
+    keywords = ['--data', '--covtype', '--reg', '--graphtype']
     datasets = ['susy', 'dota2', 'covertype']
-    sample_parameters = [True, False]
+    sample_parameters = ['none', 'unif', 'random', 'fish']
     reg = ['None', 'l2']
-    graphtype = ['chain', 'tree', 'star']
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg])]
     func = lambda x: zip(keywords, x)
     kwargs = [func(x) for x in configurations]
