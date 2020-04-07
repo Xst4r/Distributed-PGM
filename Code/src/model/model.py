@@ -342,8 +342,8 @@ class Model:
         # self.best_weights[self.train_counter][self.curr_model] = np.copy(contents.best_weights)
         if CONFIG.MODELTYPE != px.ModelType.integer:
             if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
-                # logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
                 if self.stop_counter == 100:
+                    logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
                     state_p.contents.iteration = self.maxiter
                 self.stop_counter += 1
             else:
@@ -490,7 +490,10 @@ class Model:
         return np.zeros(suff_stats)
 
     def get_weights(self):
-        return np.stack(self.best_weights[self.epoch], axis=0).T
+        if CONFIG.MODELTYPE == px.ModelType.integer:
+            return np.stack([pxm.weights for pxm in self.px_model.scaled], axis=0).T
+        else:
+            return np.stack([pxm.weights for pxm in self.px_model], axis=0).T
 
     def get_num_of_states(self):
         num_states = self.state_space + 1

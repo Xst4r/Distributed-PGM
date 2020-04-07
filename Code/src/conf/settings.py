@@ -261,7 +261,7 @@ def get_parser():
                         type=int,
                         help="Number of Epochs (Rounds of Data retrieval on each local model) Increases the Amount of data "
                              "for each local model, each round.",
-                        default=2,
+                        default=15,
                         required=False)
     parser.add_argument('--reg',
                         metavar='Regularization',
