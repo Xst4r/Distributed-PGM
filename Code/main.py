@@ -1,19 +1,16 @@
 from src.model.aggregation import RadonMachine, Mean, WeightedAverage, KL, Variance
 from src.model.model import Susy as SusyModel
 from src.preprocessing.sampling import Random
-from src.conf.settings import CONFIG
+from src.conf.settings import CONFIG, get_parser
 from src.data.dataset import CoverType, Susy, Dota2
-from src.data.metrics import fisher_information
 from time import time
-import os
-import argparse
-import io
+import io, shlex, os
 from shutil import copyfileobj
 
 import numpy as np
 from scipy.stats import random_correlation
 import pxpy as px
-
+import itertools
 logger = CONFIG.get_logger()
 
 
@@ -32,7 +29,7 @@ class Coordinator(object):
         self.n_models = n_models
         self.save_path = os.path.join("experiments", self.name)
         self.n_test = n_test
-
+        self.curr_split = 0
         self.model_loader = None
         self.mask = None
         if self.exp_loader is not None:
@@ -48,32 +45,37 @@ class Coordinator(object):
             os.makedirs(self.experiment_path)
         self.random_state = np.random.RandomState(seed=self.seed)
         self.csv_writer = io.StringIO()
+        self.obj_writer = io.StringIO()
+        print("n_data, name, obj", file=self.obj_writer)
+        self.baseline_models = []
         self.res = None
         CONFIG.write_readme(self.experiment_path)
 
-    def baseline(self):
-        if os.path.isabs(self.name):
-            data = self.data_obj(path=self.name, seed=self.seed, cval=self.k_fold)
-        else:
-            data = self.data_obj(path=os.path.join("data", self.name), seed=self.seed, cval=self.k_fold)
+    def baseline(self, data):
 
         models = []
         accs = []
-        for i in range(10):
-            data.k_fold_split(i, 0.8)
+        for i in range(CONFIG.CV):
+            data.load_cv_split(i)
             test_size = np.min([self.n_test, data.test.shape[0] - 1])
             model = SusyModel(data, path=self.name)
             model.train(split=None, epochs=self.rounds, iters=self.iters)
+
             predictions = model.predict(n_test=test_size)
-            # marginals, A = model.px_model[0].infer()
             y_pred = predictions[0][:, data.label_column]
             y_true = data.test_labels[:test_size]
             accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / data.test_labels[:test_size].shape[0]
             accs.append(accuracy)
             print("GLOBAL Model " + str(i) + " : " + str(accuracy))
+
             if not os.path.isdir(os.path.join(self.experiment_path, 'baseline')):
                 os.makedirs(os.path.join(self.experiment_path, 'baseline'))
             model.px_model[0].save(os.path.join(self.experiment_path, 'baseline', 'px_model' + str(i)))
+            if CONFIG.MODELTYPE == px.ModelType.integer:
+                self.baseline_models.append(model.px_model_scaled[0])
+            else:
+                self.baseline_models.append(model.px_model[0])
+            self.record_obj(i, None, model.px_model[0].num_instances, 'baseline_' + str(i))
             np.save(os.path.join(self.experiment_path, 'baseline', 'y_true_' + str(i)), y_true)
             np.save(os.path.join(self.experiment_path, 'baseline', 'y_pred_' + str(i)), y_pred)
             np.save(os.path.join(self.experiment_path, 'baseline', 'mask_' + str(i)), data.mask)
@@ -81,6 +83,7 @@ class Coordinator(object):
             models.append(model)
         np.save(os.path.join(self.experiment_path, 'baseline', 'split'), np.stack(data.split))
         np.save(os.path.join(self.experiment_path, 'baseline', 'accuracy'), np.array(accs))
+        data.reset_cv()
         return models
 
     def load_model(self, path):
@@ -121,6 +124,7 @@ class Coordinator(object):
                 y_pred = np.copy(predictions[:, model.data_set.label_column])
                 y_true = np.copy(data.test_labels[:test_size])
                 accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / y_true.shape[0]
+                self.record_obj(self.curr_split, aggregate_model.weights, model.n_local_data, aggregator.__class__.__name__)
                 if accuracy < 0.4:
                     print("test")
                 logger.info(aggregator.__class__.__name__ + ": " + str(accuracy))
@@ -187,10 +191,11 @@ class Coordinator(object):
         else:
             # Outer Cross-Validation Loop.
             for i in range(self.k_fold):
+                self.curr_split = i
                 aggregates = {}
-                data.k_fold_split(i, 0.8)
+                data.load_cv_split(i)
                 model = SusyModel(data,
-                                  path=data.__class__.__name__)
+                                  path=data.__class__.__name__, epochs=self.rounds)
                 theta_samples = None
                 while model.n_local_data < model.suff_data:
                     # Training
@@ -203,9 +208,11 @@ class Coordinator(object):
                                                    h=1,
                                                    d=data.train.shape[0])
                     self.r = r
-                    fisher_information(trained_model.px_model[0])
-                    # theta_samples, theta_old = self.sample_parameters(trained_model)
-                    # theta_arr = np.concatenate(theta_samples, axis=1)
+
+                    theta_arr = None
+                    if CONFIG.PRAMS:
+                        theta_samples_unif, theta_samples_fisher, theta_old = self.sample_parameters(trained_model)
+                        theta_arr = np.concatenate(theta_samples_fisher, axis=1)
 
                     # Aggregation
                     logger.info("Aggregating Model No. " + str(i))
@@ -226,13 +233,14 @@ class Coordinator(object):
                             local_acc.append(acc)
                             local_y_pred.append(y_pred)
                             logger.info(str(acc))
+                            self.record_obj(i, model.px_model[local_indexer].weights, model.n_local_data, "local_" + str(local_indexer) )
                     aggregation = self.aggregate(trained_model, data, trained_model.graph, trained_model.state_space,
-                                                 None, kl_samples)
+                                                 theta_arr, kl_samples)
                     self.record_progress(aggregation, model.n_local_data, i, self.experiment_path, local_acc)
                     aggregates[model.n_local_data] = aggregation
                     if model.n_local_data > sampler.split_idx[0].shape[0]:
                         break
-                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv")
+                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv")
                 models.append(trained_model)
                 model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
                                           fname="obj_progress" + ".csv")
@@ -274,19 +282,25 @@ class Coordinator(object):
         n_samples = self.r ** self.h
         samples_per_model = int(np.ceil(n_samples / len(model.px_model)))
         theta_old = []
-        theta_samples = []
+        theta_samples_uniform = []
+        theta_samples_fisher = []
         eps = (model.get_bounded_distance(model.delta) / 2) ** 2
         for i, px_model in enumerate(model.px_model):
-            cov = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
+            cov_unif = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
+            cov_semi_fisher = self.gen_semi_random_cov(px_model, eps)
             theta_old.append(px_model.weights)
             if np.mod(i, 3) == 0 and perturb:
-                theta_samples.append(self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T *
-                                     self.random_state.multivariate_normal(np.zeros(px_model.weights.shape[0]), cov,
-                                                                           1).ravel()[:, None])
+                theta_samples_uniform.append(
+                    self.random_state.multivariate_normal(px_model.weights, cov_unif, samples_per_model).T *
+                    self.random_state.multivariate_normal(np.zeros(px_model.weights.shape[0]), cov_unif,
+                                                          1).ravel()[:, None])
             else:
-                theta_samples.append(self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T)
+                theta_samples_uniform.append(
+                    self.random_state.multivariate_normal(px_model.weights, cov_unif, samples_per_model).T)
+                theta_samples_fisher.append(
+                    self.random_state.multivariate_normal(px_model.weights, cov_semi_fisher, samples_per_model).T)
 
-        return theta_samples, theta_old
+        return theta_samples_uniform, theta_samples_fisher, theta_old
 
     def gen_unif_cov(self, n_dim, eps=1e-1):
         return np.diag(np.ones(n_dim)) * eps
@@ -299,10 +313,27 @@ class Coordinator(object):
     def gen_fisher_cov(self, phi, mu):
         return np.outer(mu - phi, (mu - phi).T)
 
+    def gen_semi_random_cov(self, model, eps = 0):
+        a = np.insert(np.cumsum([model.states[u] * model.states[v] for u, v in model.graph.edgelist]), 0, 0)
+        marginals, A = model.infer()
+        eigs = self.random_state.rand(model.weights.shape[0])
+        eigs = eigs / np.sum(eigs) * eigs.shape[0]
+        # cov = random_correlation.rvs(eigs, random_state=self.random_state)
+        cov = np.zeros((model.weights.shape[0],model.weights.shape[0]))
+        rhs = np.outer(marginals, marginals)
+        diag = np.diag(marginals[:model.weights.shape[0]] - marginals[:model.weights.shape[0]]**2)
+        for x in range(a.shape[0] - 1):
+            cov[a[x]:a[x + 1], a[x]:a[x + 1]] = - rhs[a[x]:a[x + 1], a[x]:a[x + 1]]
+        cov -= np.diag(np.diag(cov))
+        cov += diag + np.diag(np.full(model.weights.shape[0], eps))
+
+        return cov
+
     def prepare_and_run(self):
 
-        self.baseline()
         data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed, cval=self.k_fold)
+        data.create_cv_split()
+        self.baseline(data)
         models, aggregate, sampler = self.run(data, self.model_loader)
 
         return models, aggregate
@@ -339,12 +370,32 @@ class Coordinator(object):
                     write_str += ", " + 'nan'
         print(write_str, file=self.csv_writer)
 
-    def write_progress(self, path, fname):
+    def record_obj(self, i, weights, n, name):
+        px_model = self.baseline_models[i]
+        mu, A = px_model.infer()
+        if weights is not None:
+            np.copyto(px_model.weights, weights)
+            mu, A = px_model.infer()
+            ll = A - np.inner(px_model.statistics, px_model.weights)
+        else:
+            ll = A - np.inner(px_model.statistics, px_model.weights)
+        if ll <= 0:
+            print("P = NP !")
+        obj_str = str(n) + ", " + str(name) + ", " + str(ll)
+        print(obj_str , file=self.obj_writer)
+
+    def write_progress(self, path, fname, fname2):
         with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
             self.csv_writer.seek(0)
             copyfileobj(self.csv_writer, f)
             del self.csv_writer
             self.csv_writer = io.StringIO()
+
+        with open(os.path.join(path, fname2), "w+", encoding='utf-8') as f:
+            self.obj_writer.seek(0)
+            copyfileobj(self.obj_writer, f)
+            del self.obj_writer
+            self.obj_writer = io.StringIO()
 
 
 def main():
@@ -361,117 +412,6 @@ def main():
     pass
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Distributed PGM Experiment Interface")
-
-    parser.add_argument('--data',
-                        metavar='DataSet',
-                        type=str,
-                        help='Name of a Dataset contained in /data',
-                        default="COVERTYPE",
-                        required=False)
-    parser.add_argument('--maxiter',
-                        metavar='Iterations',
-                        type=int,
-                        help='Maximum number of Iteration for each model.',
-                        default=1000,
-                        required=False)
-    parser.add_argument('--load',
-                        metavar='LoadExperiment',
-                        type=int,
-                        help='Identifier(Time in Seconds) found at the end of an experiment folder (e.g. 1583334301)',
-                        required=False)
-    parser.add_argument('--n_models',
-                        metavar='NumModels',
-                        type=int,
-                        help='Number of Local (Distributed) Models',
-                        default=10,
-                        required=False)
-    parser.add_argument('--cv',
-                        metavar='CrossValidation',
-                        type=int,
-                        help='Number of Cross Validation Splits',
-                        default=10,
-                        required=False)
-    parser.add_argument('--epoch',
-                        metavar='Epochs',
-                        type=int,
-                        help="Number of Epochs (Rounds of Data retrieval on each local model) Increases the Amount of data "
-                             "for each local model, each round.",
-                        default=15,
-                        required=False)
-    parser.add_argument('--reg',
-                        metavar='Regularization',
-                        type=str,
-                        help="Choose from available regularization options",
-                        default='None',
-                        choices=['None, l1, l2'],
-                        required=False)
-    parser.add_argument('--mt',
-                        metavar='ModelType',
-                        type=str,
-                        help="Choose from available Modeltypes",
-                        default='mrf',
-                        choices=['mrf, integer'],
-                        required=False)
-    parser.add_argument('--samp',
-                        metavar='Sampler',
-                        type=str,
-                        help="Choose from available Samplers",
-                        default='gibbs',
-                        choices=['gibbs, map_perturb'])
-
-    parser.add_argument('--h',
-                        type=int,
-                        help="Number of Radon Machine Aggregation Steps. Each increment of h increases "
-                             "the number of samples required exponentially by r**h",
-                        default=1)
-    parser.add_argument('--prams',
-                        metavar='SampleParameters',
-                        type=bool,
-                        help="Choose the sample parameter vectors from "
-                             "a normal distribution around the local model parameter vectors.",
-                        default=False)
-
-    parser.add_argument('--n_test',
-                        metavar='TestSubset',
-                        type=int,
-                        help="Predicting a full test set, especially if it is large may take some time."
-                             "Use this to reduce the number of predictions. "
-                             "If n_test > test_size - test_size is chosen for prediction.",
-                        default=50000)
-
-    parser.add_argument('--hoefd_eps',
-                        metavar='HoefdingDistance',
-                        type=float,
-                        help="Hyperparameter for the Hoefding Bound. Used to calculate the number of samples needed"
-                             "to guarantee an upper bound on the distance with probability HoefdingProbability.",
-                        default=1e-1)
-
-    parser.add_argument('--hoefd_delta',
-                        metavar='HoefdingProbability',
-                        type=float,
-                        help="Hyperparameter for the Hoefding Bound. Probability of suff. stats. having at most"
-                             "distance of HoefdingDistance",
-                        default=0.5)
-    parser.add_argument('--gtol',
-                        type=float,
-                        help="Stopping criterion for the prox. gradient descent based on the gradient norm.",
-                        default=1e-7)
-    parser.add_argument('--tol',
-                        type=float,
-                        help="Stopping criterion for the prox. gradient descent based on objective rate of change.",
-                        default=1e-5)
-
-    parser.add_argument('--graphtype',
-                        type=str,
-                        help="GraphType for Probabilistic Graphical Models",
-                        choices=["chain", "tree", "full"],
-                        default="tree")
-    args = parser.parse_args()
-    return args
-
-
 def get_data_class(type):
     type = str.lower(type)
     choices = {'covertype': CoverType,
@@ -481,24 +421,41 @@ def get_data_class(type):
 
 
 if __name__ == '__main__':
-    cmd_args = parse_args()
-    data_class = get_data_class(cmd_args.data)
-    CONFIG.setup(cmd_args)
-    number_of_samples_per_model = 100
-    coordinator = Coordinator(data_set_name=cmd_args.data,
-                              Data=data_class,
-                              exp_loader=cmd_args.load,
-                              n=number_of_samples_per_model,
-                              k=cmd_args.cv,
-                              iters=cmd_args.maxiter,
-                              h=cmd_args.h,
-                              epochs=cmd_args.epoch,
-                              n_models=cmd_args.n_models,
-                              n_test=cmd_args.n_test)
 
-    result, agg = coordinator.prepare_and_run()
+    keywords = ['--data', '--prams', '--reg', '--graphtype']
+    datasets = ['susy', 'dota2', 'covertype']
+    sample_parameters = [True, False]
+    reg = ['None', 'l2']
+    graphtype = ['chain', 'tree', 'star']
+    configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg])]
+    func = lambda x: zip(keywords, x)
+    kwargs = [func(x) for x in configurations]
+    strargs = []
+    for args in kwargs:
+        strargs.append(" ".join([str(name) + " " + str(val) for name, val in args]))
 
-    for key, aggregation_method in agg.items():
-        print(key)
-        for model in aggregation_method:
-            print(str(model['acc']))
+    cmd_arg_list = []
+    for arg in strargs:
+        parser = get_parser()
+        cmd_arg_list.append(parser.parse_args(shlex.split(arg)))
+
+    parser = get_parser()
+    #cmd_args = parser.parse_args()
+
+    for cmd_args in cmd_arg_list:
+        data_class = get_data_class(cmd_args.data)
+
+        CONFIG.setup(cmd_args)
+        number_of_samples_per_model = 100
+        coordinator = Coordinator(data_set_name=cmd_args.data,
+                                  Data=data_class,
+                                  exp_loader=cmd_args.load,
+                                  n=number_of_samples_per_model,
+                                  k=cmd_args.cv,
+                                  iters=cmd_args.maxiter,
+                                  h=cmd_args.h,
+                                  epochs=cmd_args.epoch,
+                                  n_models=cmd_args.n_models,
+                                  n_test=cmd_args.n_test)
+
+        result, agg = coordinator.prepare_and_run()

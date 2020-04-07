@@ -3,7 +3,7 @@ import numpy as np
 
 if importlib.util.find_spec('sklearn'):
     sklearn_available = True
-    from sklearn.metrics import f1_score, accuracy_score, confusion_matrix
+    from sklearn.metrics import f1_score, accuracy_score, confusion_matrix, mean_squared_error
 
 
 def squared_l2_regularization(state_p):
@@ -48,6 +48,10 @@ def sk_f1_score(y_true, y_pred):
 def sk_confusion_matrix(y_true, y_pred):
     if sklearn_available:
         return confusion_matrix(y_true, y_pred)
+
+
+def sk_mse(theta_true, theta_pred):
+    return mean_squared_error(theta_true, theta_pred)
 
 
 def fisher_information(model):

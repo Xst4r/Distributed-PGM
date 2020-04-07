@@ -197,7 +197,7 @@ class RadonMachine(Aggregation):
         try:
             res = self._radon_machine()
             if CONFIG.MODELTYPE == px.ModelType.integer:
-                res = res * np.log(2)
+                res[0] = res[0] * np.log(2)
             self.aggregate_models = res
             self.success = True
             return res
@@ -353,7 +353,12 @@ class KL(Aggregation):
         X = self.X
         if opt:
             data = np.ascontiguousarray(np.concatenate(X), dtype=np.uint16)
-            res = px.train(data=data, graph=self.model[0].graph, opt_regularization_hook=CONFIG.REGULARIZATION)
+            data = np.ascontiguousarray(np.vstack((data, self.states-1)).astype(np.uint16))
+            model = px.train(data=data, graph=self.model[0].graph, iters=0)
+            s = np.ctypeslib.as_array(model.empirical_stats, shape=(model.dimension,))
+            s -= model.phi((self.states-1).ravel())
+            model.num_instances -= 1
+            res = px.train(in_model=model, opt_regularization_hook=CONFIG.REGULARIZATION)
             merged = self.merge_weights(res, self.model[0].states)
             weights = np.ascontiguousarray(merged.weights)
             states = np.ascontiguousarray(self.model[0].states)

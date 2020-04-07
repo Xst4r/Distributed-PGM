@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 import pandas as pd
 import numpy as np
+import scipy.stats
 import pxpy as px
 
 from math import log
@@ -17,6 +18,7 @@ from src.conf.bijective_dict import BijectiveDict
 # Logger Setup
 logger = CONFIG.get_logger()
 ROOT_DIR = CONFIG.ROOT_DIR
+
 
 class Discretization(Enum):
     Quantile = 1
@@ -70,6 +72,9 @@ class Data:
         if url:
             self.url = url
             self.downloader = Download()
+            self.downloader.start()
+            self.extractor = Extract()
+            self.extractor.extract_all()
         elif path:
             self.extractor = Extract()
 
@@ -87,7 +92,7 @@ class Data:
         self.bins = {}
         self.label_column = 0
         self.cv = cval
-
+        self.disc_quantiles = 10
         self.root_dir = os.path.join(path, "model")
 
         if not os.path.exists(self.root_dir):
@@ -122,31 +127,47 @@ class Data:
         mask = self.random_state.rand(n_data) < ratio
         return mask, self.data[mask][holdout_size:], self.data[~mask], self.data[mask][0:holdout_size]
 
-    def k_fold_split(self, i, ratio):
-        if i == 0:
-            instances, variables = self.data.shape
-            index = np.arange(instances)
-            self.random_state.shuffle(index)
-            self.holdout = self.data.iloc[index[:self.holdout_size]]
-            self.split = np.array_split(index[self.holdout_size:], self.cv)
+    def create_cv_split(self):
+        instances, variables = self.data.shape
+        index = np.arange(instances)
+        self.random_state.shuffle(index)
+        self.holdout = self.data.iloc[index[:self.holdout_size]]
+        target_columns = np.delete(np.arange(self.holdout.shape[1]), self.label_column)
+        holdout_disc, _ = px.discretize(np.ascontiguousarray(self.holdout.to_numpy()), num_states=self.disc_quantiles, targets=target_columns)
+        for (col_name, col) in self.holdout.iteritems():
+            if col_name != self.label_column:
+                self.holdout.loc[::,col_name] = holdout_disc[:,col_name]
+        self.split = np.array_split(index[self.holdout_size:], self.cv)
+
+    def reset_cv(self):
+        self.load_cv_split(0)
+
+    def load_cv_split(self, i):
         n_splits = np.arange(self.cv)
         train = n_splits[np.arange(self.cv) != i]
         self.test = self.data.iloc[self.split[i]]
         self.train = self.data.iloc[np.concatenate(np.array(self.split)[train])]
-        new_mask = np.zeros(self.data.shape, dtype=np.bool)
+
+        new_mask = np.zeros(self.data.shape[0], dtype=np.bool)
         new_mask[np.concatenate(np.array(self.split)[train])] = True
         self.masks.append(new_mask)
-
         self.mask = new_mask
 
-        self.discretize()
+        target_columns = np.delete(np.arange(self.train.shape[1]), self.label_column)
+        train_disc, disc_map = px.discretize(np.ascontiguousarray(self.train.values), num_states=self.disc_quantiles, targets=target_columns)
+        test_disc, _ = px.discretize(np.ascontiguousarray(self.test.values), discretization=disc_map, targets=target_columns)
+
+        for (col_name, col) in self.train.iteritems():
+            if col_name != self.label_column:
+                self.train.loc[::, col_name] = train_disc[:,col_name]
+                self.test.loc[::, col_name] = test_disc[:,col_name]
 
         self.test_labels = np.copy(self.test[self.label_column].to_numpy())
 
     def discretize(self):
         quants = np.linspace(0, 1, 9)
         for (col_name, col) in self.train.iteritems():
-            if col_name != self.label_column and np.unique(col).shape[0] > 10:
+            if col_name != self.label_column and np.unique(col).shape[0] > self.disc_quantiles:
                 _, bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
                 self.train.loc[:, col_name] = np.digitize(self.train[col_name], bins)
                 self.test.loc[:, col_name] = np.digitize(self.test[col_name], bins)
@@ -260,6 +281,61 @@ class Data:
         return d, r, h, n
 
 
+class Synthetic(Data):
+
+    def __init__(self, states, edgelist=None, seed=None):
+        super(Synthetic, self).__init__()
+        n_vars = 15
+        n_samples = 1000
+        n_states = 10
+        self.random_state = np.random.RandomState(seed=seed)
+        # Generate random cov
+        cov = self.random_state.randn(n_vars, n_vars)
+        cov = np.dot(cov, cov.T) / n_vars
+
+        # Generate data from normal
+        self.data = pd.DataFrame(scipy.stats.multivariate_normal(mean=np.zeros(n_vars), cov=np.dot(cov, cov.T) / n_vars).rvs(n_samples))
+
+        data_disc, disc_ttt = px.discretize(data= self.data, num_states=n_states)
+
+        # Add sample to ensure same state space for each variable
+        data_disc = np.concatenate([data_disc, np.full(shape=(1, n_vars), fill_value=n_states - 1, dtype=np.uint16)])
+
+        # Generate model
+        self.global_model = px.train(data_disc, graph=px.GraphType.auto_tree, mode=px.ModelType.mrf, iters=0)
+        self.global_weights = np.copy(self.global_model.weights)
+        # TODO: Remove the statistics for full point.
+
+        edgelist = self.global_model.graph.edgelist
+        stats = self.global_model.statistics
+
+    def set_weights(self, weights):
+        np.copyto(self.global_model.weights, weights)
+
+    def ll(self):
+        mu, A = self.global_model.infer()
+        return - (np.inner(self.global_model.statistics, self.global_model.weights) - A)
+
+    def load_cv_split(self, i, ratio):
+        n_splits = np.arange(self.cv)
+        train = n_splits[np.arange(self.cv) != i]
+        self.test = self.data.iloc[self.split[i]]
+        self.train = self.data.iloc[np.concatenate(np.array(self.split)[train])]
+        new_mask = np.zeros(self.data.shape[0], dtype=np.bool)
+        new_mask[np.concatenate(np.array(self.split)[train])] = True
+        self.masks.append(new_mask)
+
+        self.mask = new_mask
+
+        train_disc, disc_map = px.discretize(self.train.values)
+        test_disc, _ = px.discretize(self.test.values, discretization=disc_map)
+
+        self.train[:] = train_disc
+        self.test[:] = test_disc
+
+        self.test_labels = np.copy(self.test[self.label_column].to_numpy())
+
+
 class Dota2(Data):
 
     def __init__(self, url=None, path=None, mask=None, seed=None,
@@ -277,20 +353,31 @@ class Dota2(Data):
 
         self.ratio = train_test_ratio
         self.holdout_size = 10000
-
+        self.validation = None
+        try:
+            self.load()
+        except FileNotFoundError as fe:
+            raise RuntimeError("Beep Boop We didn't find the file you were looking for.")
         self.load_json()
-        self.data_header()
+        self.mapping = self.prepare_data(self.data)
 
-        self.test_labels = np.copy(self.test['Result'].to_numpy())
-        # self.test['Result'] = -1
+        for (i, (col_name, col)) in enumerate(self.data.iteritems()):
+            self.validation.loc[:,col_name] = col.replace(self.mapping[i])
 
-        self.mapping = self.prepare_data(self.train)
-
-        for (i, (col_name, col)) in enumerate(self.test.iteritems()):
-            self.test[col_name] = col.replace(self.mapping[i])
-
-        for (i, (col_name, col)) in enumerate(self.holdout.iteritems()):
-            self.holdout[col_name] = col.replace(self.mapping[i])
+    def load(self):
+        """
+        Dota2 has a separate Test/Validation set.
+        """
+        data_dir = self.path
+        os.chdir(data_dir)
+        train = "dota2Train.csv"
+        test  = "dota2Test.csv"
+        try:
+            self.data = pd.read_csv(train, header=None)
+            self.validation = pd.read_csv(test, header=None)
+        except Exception as e:
+            logger.debug("Unable to load file : " + "\nException :" + str(e))
+        os.chdir(ROOT_DIR)
 
     def load_json(self):
         with open(os.path.join(ROOT_DIR, 'data', 'DOTA2', 'heroes.json')) as file:
@@ -313,13 +400,9 @@ class Dota2(Data):
     def data_header(self):
         header = ['Result', 'ClusterID', 'GameMode', 'GameType'] + self.hero_list
         self.data.reset_index()
-        self.train.reset_index()
-        self.test.reset_index()
-        self.holdout.reset_index()
         self.data.columns = header
-        self.test.columns = header
-        self.train.columns = header
-        self.holdout.columns = header
+        self.validation.reset_index()
+        self.validation.columns = header
 
     def sample_match(self):
         matches = self.data.shape[0]

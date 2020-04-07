@@ -227,32 +227,32 @@ class Model:
                 if i >= n_models:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
+            tmp = np.ascontiguousarray(
+                np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
             data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
-            model = px.train(data=data,
-                             graph=self.graph,
-                             iters=iters,
+            data = np.vstack((data, tmp))
+            model = px.train(data=data, graph=self.graph, mode=CONFIG.MODELTYPE, iters=0, k=4)
+            model = self.scale_phi_emp(model)
+
+            model = px.train(iters=iters,
                              shared_states=False,
                              opt_progress_hook=self.opt_progress_hook,
                              mode=CONFIG.MODELTYPE,
+                             in_model=model,
                              initial_stepsize=1e-2,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              k=4)
             self.reset_train()
-
-            phis = []
-            for d in data:
-                phis.append(model.phi(d).astype(np.uint8))
-
             if len(split) > 1:
                 self.px_batch_local[self.epoch][i] = model
-                model = self.merge_weights(model)
+                #model = self.merge_weights(model)
             if self.epoch == 1:
                 models.append(model)
                 if CONFIG.MODELTYPE == px.ModelType.integer:
-                    scaled_models.append(self.scale_model(model))
+                    scaled_models.append(self.scale_model(model, data))
             else:
                 self.px_model[i] = model
-                scaled_model = self.scale_model(model)
+                scaled_model = self.scale_model(model, data)
                 if CONFIG.MODELTYPE == px.ModelType.integer:
                     self.px_model_scaled[i] = scaled_model
             iter_time = time.time()
@@ -273,9 +273,24 @@ class Model:
         self.prev_obj = np.infty
         self.stop_counter = 0
 
-    def scale_model(self, model):
+    def scale_phi_emp(self, model):
+        tmp = np.ascontiguousarray(
+            np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
+        if model.vtype == 3:
+            s = np.ctypeslib.as_array(model.empirical_stats, shape=(model.dimension,)).view('uint64')
+            s -= model.phi(tmp.ravel()).astype(np.uint64)
+        else:
+            s = np.ctypeslib.as_array(model.empirical_stats, shape=(model.dimension,))
+            s -= model.phi(tmp.ravel())
+        model.num_instances -= 1
+        return model
+
+    def scale_model(self, model, data):
         weights = np.log(2) * np.ascontiguousarray(np.copy(model.weights))
-        return px.Model(weights=weights, graph=self.graph, states=self.state_space + 1)
+        res = px.train(data=data, graph=self.graph, iters=0)
+        res = self.scale_phi_emp(res)
+        np.copyto(res.weights, weights)
+        return res
 
     def merge_weights(self, px_model):
         """
@@ -434,11 +449,11 @@ class Model:
         -------
         :class:`numpy.ndarray` containing the state space for each feature.
         """
-        data = self.data_set.train.append(self.data_set.test)
+        data = self.data_set.train
         statespace = np.arange(data.shape[1], dtype=np.uint64)
         for i, column in enumerate(data.columns):
             self.state_mapping[column] = i
-            statespace[i] = np.max(data[column].to_numpy().astype(np.uint64))
+            statespace[i] = np.min([np.max(data[column].to_numpy().astype(np.uint64)) + 1, self.data_set.disc_quantiles - 1]) - 1
 
         return statespace
 
@@ -537,11 +552,11 @@ class Dota2(Model):
 
 class Susy(Model):
 
-    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, epsilon=1e-1):
+    def __init__(self, data, weights=None, states=None, statespace=None, path=None, delta=0.5, epsilon=1e-1, epochs=15):
 
         self.data = data
 
-        super(Susy, self).__init__(data, weights, states, statespace, path, delta=delta, eps=epsilon)
+        super(Susy, self).__init__(data, weights, states, statespace, path, delta=delta, eps=epsilon, epochs=epochs)
 
         if states is None:
             self.states = self._states_from_data()
@@ -550,7 +565,11 @@ class Susy(Model):
 
     def predict(self, px_model=None, n_test=None):
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
-        test[:, self.data_set.label_column] = -1
+        if isinstance(self.data_set.label_column, str):
+            label_column_idx = self.data_set.test.columns.get_loc(self.data_set.label_column)
+            test[:, label_column_idx] = -1
+        else:
+            test[:, self.data_set.label_column] = -1
         if n_test is None:
             n_test = test.shape[0] - 1
         else:

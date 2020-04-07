@@ -53,6 +53,7 @@ get_logger( LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
 
 import os
 import logging
+import argparse
 from pxpy import ModelType, SamplerType, GraphType
 from src.data.metrics import squared_l2_regularization, prox_l1, default
 from logging.handlers import RotatingFileHandler
@@ -79,6 +80,9 @@ class Config(object):
         self.GTOL = None
         self.TOL = None
         self.GRAPHTYPE = None
+        self.PRAMS = False
+        self.CV = None
+        self.EPOCHS = None
 
     def set_sampler(self, type):
         choices = {'gibbs': SamplerType.gibbs,
@@ -123,8 +127,18 @@ class Config(object):
     def set_graphtype(self, type):
         choices = {'chain': GraphType.chain,
                    'tree': GraphType.auto_tree,
-                   'full': GraphType.full}
+                   'full': GraphType.full,
+                   'star': GraphType.star}
         self.GRAPHTYPE = choices[type]
+
+    def set_parameter_samples(self, type):
+        self.PRAMS = type
+
+    def set_cv(self, type):
+        self.CV = type
+
+    def set_epochs(self, type):
+        self.EPOCHS = type
 
     def get_logger(self,
             LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -183,7 +197,9 @@ class Config(object):
         self.set_hoefding_delta(cmd_args.hoefd_delta)
         self.set_gtol(cmd_args.gtol)
         self.set_tol(cmd_args.tol)
+        self.set_parameter_samples(cmd_args.prams)
         self.set_graphtype(cmd_args.graphtype)
+        self.set_cv(cmd_args.cv)
 
     def write_readme(self, path):
         with open(os.path.join(path, 'readme.md'), "w+") as readme:
@@ -197,4 +213,112 @@ class Config(object):
 
 CONFIG = Config()
 
+def get_parser():
 
+    parser = argparse.ArgumentParser(description="Distributed PGM Experiment Interface")
+
+    parser.add_argument('--data',
+                        metavar='DataSet',
+                        type=str,
+                        help='Name of a Dataset contained in /data',
+                        default="COVERTYPE",
+                        required=False)
+    parser.add_argument('--maxiter',
+                        metavar='Iterations',
+                        type=int,
+                        help='Maximum number of Iteration for each model.',
+                        default=2000,
+                        required=False)
+    parser.add_argument('--load',
+                        metavar='LoadExperiment',
+                        type=int,
+                        help='Identifier(Time in Seconds) found at the end of an experiment folder (e.g. 1583334301)',
+                        required=False)
+    parser.add_argument('--n_models',
+                        metavar='NumModels',
+                        type=int,
+                        help='Number of Local (Distributed) Models',
+                        default=10,
+                        required=False)
+    parser.add_argument('--cv',
+                        metavar='CrossValidation',
+                        type=int,
+                        help='Number of Cross Validation Splits',
+                        default=10,
+                        required=False)
+    parser.add_argument('--epoch',
+                        metavar='Epochs',
+                        type=int,
+                        help="Number of Epochs (Rounds of Data retrieval on each local model) Increases the Amount of data "
+                             "for each local model, each round.",
+                        default=2,
+                        required=False)
+    parser.add_argument('--reg',
+                        metavar='Regularization',
+                        type=str,
+                        help="Choose from available regularization options",
+                        default='None',
+                        choices=['None', 'l1', 'l2'],
+                        required=False)
+    parser.add_argument('--mt',
+                        metavar='ModelType',
+                        type=str,
+                        help="Choose from available Modeltypes",
+                        default='mrf',
+                        choices=['mrf, integer'],
+                        required=False)
+    parser.add_argument('--samp',
+                        metavar='Sampler',
+                        type=str,
+                        help="Choose from available Samplers",
+                        default='gibbs',
+                        choices=['gibbs, map_perturb'])
+
+    parser.add_argument('--h',
+                        type=int,
+                        help="Number of Radon Machine Aggregation Steps. Each increment of h increases "
+                             "the number of samples required exponentially by r**h",
+                        default=1)
+    parser.add_argument('--prams',
+                        metavar='SampleParameters',
+                        type=bool,
+                        help="Choose the sample parameter vectors from "
+                             "a normal distribution around the local model parameter vectors.",
+                        default=False)
+
+    parser.add_argument('--n_test',
+                        metavar='TestSubset',
+                        type=int,
+                        help="Predicting a full test set, especially if it is large may take some time."
+                             "Use this to reduce the number of predictions. "
+                             "If n_test > test_size - test_size is chosen for prediction.",
+                        default=100000)
+
+    parser.add_argument('--hoefd_eps',
+                        metavar='HoefdingDistance',
+                        type=float,
+                        help="Hyperparameter for the Hoefding Bound. Used to calculate the number of samples needed"
+                             "to guarantee an upper bound on the distance with probability HoefdingProbability.",
+                        default=1e-1)
+
+    parser.add_argument('--hoefd_delta',
+                        metavar='HoefdingProbability',
+                        type=float,
+                        help="Hyperparameter for the Hoefding Bound. Probability of suff. stats. having at most"
+                             "distance of HoefdingDistance",
+                        default=0.5)
+    parser.add_argument('--gtol',
+                        type=float,
+                        help="Stopping criterion for the prox. gradient descent based on the gradient norm.",
+                        default=1e-7)
+    parser.add_argument('--tol',
+                        type=float,
+                        help="Stopping criterion for the prox. gradient descent based on objective rate of change.",
+                        default=1e-5)
+
+    parser.add_argument('--graphtype',
+                        type=str,
+                        help="GraphType for Probabilistic Graphical Models",
+                        choices=["chain", "tree", "full", "star"],
+                        default="tree")
+    return parser

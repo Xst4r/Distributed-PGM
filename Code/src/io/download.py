@@ -26,7 +26,7 @@ class Download:
             for key, value in CONFIG.URLS.items():
                 self.dl_queue.put((key, value))
         else:
-            self.dl_queue.put((' ',url))
+            self.dl_queue.put((' ', url))
 
     def progress(self):
         pass
