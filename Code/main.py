@@ -99,7 +99,8 @@ class Coordinator(object):
             self.baseline_models.append(model)
         self.baseline_metrics['acc'] = accs
         self.baseline_metrics['f1'] = f1
-        np.save(os.path.join(self.experiment_path, 'baseline', 'split'), np.stack(self.data.split))
+        for cv_idx, split in enumerate(self.data.split):
+            np.save(os.path.join(self.experiment_path, 'baseline', 'split_' + str(cv_idx)), split)
         np.save(os.path.join(self.experiment_path, 'baseline', 'accuracy'), np.array(accs))
         pd.DataFrame(self.baseline_metrics).to_csv(os.path.join(baseline_path, "baseline_metrics.csv"))
         self.data.reset_cv()
@@ -502,6 +503,5 @@ if __name__ == '__main__':
                                   epochs=cmd_args.epoch,
                                   n_models=cmd_args.n_models,
                                   n_test=cmd_args.n_test)
-        del coordinator
         logger.info("=== MAIN === DONE===")
         result, agg = coordinator.prepare_and_run()
