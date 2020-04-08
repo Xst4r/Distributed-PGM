@@ -1,6 +1,7 @@
 from src.model.aggregation import RadonMachine, Mean, WeightedAverage, KL, Variance
 from src.model.model import Susy as SusyModel
 from src.preprocessing.sampling import Random
+from src.data.metrics import sk_f1_score
 from src.conf.settings import CONFIG, get_parser, CovType
 from src.data.dataset import CoverType, Susy, Dota2
 from time import time
@@ -8,6 +9,7 @@ import io, shlex, os
 from shutil import copyfileobj
 
 import numpy as np
+import pandas as pd
 from scipy.stats import random_correlation
 import pxpy as px
 import itertools
@@ -48,15 +50,18 @@ class Coordinator(object):
         self.random_state = np.random.RandomState(seed=self.seed)
         self.csv_writer = io.StringIO()
         self.obj_writer = io.StringIO()
+        self.f1_writer = io.StringIO()
         print("n_data, name, obj", file=self.obj_writer)
         self.baseline_models = []
         self.res = None
+        self.baseline_metrics = {}
         CONFIG.write_readme(self.experiment_path)
 
     def baseline(self, data):
 
         models = []
         accs = []
+        f1 = []
         for i in range(CONFIG.CV):
             data.load_cv_split(i)
             test_size = np.min([self.n_test, data.test.shape[0] - 1])
@@ -68,6 +73,7 @@ class Coordinator(object):
             y_true = data.test_labels[:test_size]
             accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / data.test_labels[:test_size].shape[0]
             accs.append(accuracy)
+            f1.append(sk_f1_score(y_true, y_pred))
             print("GLOBAL Model " + str(i) + " : " + str(accuracy))
 
             if not os.path.isdir(os.path.join(self.experiment_path, 'baseline')):
@@ -78,13 +84,17 @@ class Coordinator(object):
             else:
                 self.baseline_models.append(model.px_model[0])
             self.record_obj(i, None, model.px_model[0].num_instances, 'baseline_' + str(i))
-            np.save(os.path.join(self.experiment_path, 'baseline', 'y_true_' + str(i)), y_true)
-            np.save(os.path.join(self.experiment_path, 'baseline', 'y_pred_' + str(i)), y_pred)
-            np.save(os.path.join(self.experiment_path, 'baseline', 'mask_' + str(i)), data.mask)
-            model.write_progress_hook(os.path.join(self.experiment_path, 'baseline'), 'stats ' + str(i) + ".csv")
+            baseline_path = os.path.join(self.experiment_path, 'baseline')
+            np.save(os.path.join(baseline_path, 'y_true_' + str(i)), y_true)
+            np.save(os.path.join(baseline_path, 'y_pred_' + str(i)), y_pred)
+            np.save(os.path.join(baseline_path, 'mask_' + str(i)), data.mask)
+            model.write_progress_hook(baseline_path, 'stats ' + str(i) + ".csv")
             models.append(model)
+        self.baseline_metrics['acc'] = accs
+        self.baseline_metrics['f1'] = f1
         np.save(os.path.join(self.experiment_path, 'baseline', 'split'), np.stack(data.split))
         np.save(os.path.join(self.experiment_path, 'baseline', 'accuracy'), np.array(accs))
+        pd.DataFrame(self.baseline_metrics).to_csv(os.path.join(baseline_path, "baseline_metrics.csv"))
         data.reset_cv()
         return models
 
@@ -125,11 +135,12 @@ class Coordinator(object):
                 y_pred = np.copy(predictions[:, model.data_set.label_column])
                 y_true = np.copy(data.test_labels[:test_size])
                 accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / y_true.shape[0]
+                f1 = sk_f1_score(y_true, y_pred)
                 self.record_obj(self.curr_split, aggregate_model.weights, model.n_local_data, aggregator.__class__.__name__)
                 if accuracy < 0.4:
                     print("test")
                 logger.info(aggregator.__class__.__name__ + ": " + str(accuracy))
-                return {'px_model': aggregate_model, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy}
+                return {'px_model': aggregate_model, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy, 'f1': f1}
             return {}
         except ValueError or TypeError as e:
             print(e)
@@ -212,8 +223,8 @@ class Coordinator(object):
 
                     theta_arr = None
                     if CONFIG.COVTYPE != CovType.none:
-                        theta_samples_unif, theta_samples_fisher, theta_old = self.sample_parameters(trained_model)
-                        theta_arr = np.concatenate(theta_samples_fisher, axis=1)
+                        theta_samples, theta_old = self.sample_parameters(trained_model)
+                        theta_arr = np.concatenate(theta_samples, axis=1)
 
                     # Aggregation
                     logger.info("Aggregating Model No. " + str(i))
@@ -223,6 +234,7 @@ class Coordinator(object):
                     local_predictions = None
                     local_predictions = trained_model.predict(n_test=self.n_test)
                     local_acc = []
+                    local_f1 = []
                     local_y_pred = []
                     if not local_predictions is None:
                         for local_indexer, local_pred in enumerate(local_predictions):
@@ -231,17 +243,21 @@ class Coordinator(object):
                             acc = np.where(np.equal(y_pred, y_true))[
                                       0].shape[0] / data.test_labels[:self.n_test].shape[
                                       0]
+                            local_f1.append(sk_f1_score(y_true, y_pred))
                             local_acc.append(acc)
                             local_y_pred.append(y_pred)
                             logger.info(str(acc))
                             self.record_obj(i, model.px_model[local_indexer].weights, model.n_local_data, "local_" + str(local_indexer) )
                     aggregation = self.aggregate(trained_model, data, trained_model.graph, trained_model.state_space,
                                                  theta_arr, kl_samples)
-                    self.record_progress(aggregation, model.n_local_data, i, self.experiment_path, local_acc)
+                    self.record_progress(aggregation, model.n_local_data, i, self.experiment_path, local_acc,
+                                         self.csv_writer, 'acc')
+                    self.record_progress(aggregation, model.n_local_data, i, self.experiment_path, local_acc,
+                                         self.f1_writer, 'f1')
                     aggregates[model.n_local_data] = aggregation
                     if model.n_local_data > sampler.split_idx[0].shape[0]:
                         break
-                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv")
+                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv", "f1.csv")
                 models.append(trained_model)
                 model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
                                           fname="obj_progress" + ".csv")
@@ -322,9 +338,6 @@ class Coordinator(object):
     def gen_semi_random_cov(self, model, eps = 0):
         a = np.insert(np.cumsum([model.states[u] * model.states[v] for u, v in model.graph.edgelist]), 0, 0)
         marginals, A = model.infer()
-        eigs = self.random_state.rand(model.weights.shape[0])
-        eigs = eigs / np.sum(eigs) * eigs.shape[0]
-        # cov = random_correlation.rvs(eigs, random_state=self.random_state)
         cov = np.zeros((model.weights.shape[0],model.weights.shape[0]))
         rhs = np.outer(marginals, marginals)
         diag = np.diag(marginals[:model.weights.shape[0]] - marginals[:model.weights.shape[0]]**2)
@@ -344,7 +357,7 @@ class Coordinator(object):
 
         return models, aggregate
 
-    def record_progress(self, model_dict, d, k, experiment_path, local_info):
+    def record_progress(self, model_dict, d, k, experiment_path, local_info, dest, metric):
         """
 
         Parameters
@@ -362,19 +375,19 @@ class Coordinator(object):
         if not os.path.isdir(path):
             header = "n_local_data, "
             os.makedirs(path)
-            header += ", ".join(["local_acc_" + str(k) for k in range(len(local_info))])
+            header += ", ".join(["local_" + metric + "_" + str(k) for k in range(len(local_info))])
             header += ", "
-            header += ", ".join([name + "_acc" for name, _ in model_dict.items()])
-            print(header, file=self.csv_writer)
+            header += ", ".join([name + "_" + metric for name, _ in model_dict.items()])
+            print(header, file=dest)
 
         write_str += ", ".join([str(inf) for inf in local_info]) + ", "
         for method, results in model_dict.items():
             for stats in results:
                 if stats:
-                    write_str += ", " + str(stats['acc'])
+                    write_str += ", " + str(stats[metric])
                 else:
                     write_str += ", " + 'nan'
-        print(write_str, file=self.csv_writer)
+        print(write_str, file=dest)
 
     def record_obj(self, i, weights, n, name):
         px_model = self.baseline_models[i]
@@ -390,7 +403,7 @@ class Coordinator(object):
         obj_str = str(n) + ", " + str(name) + ", " + str(ll)
         print(obj_str , file=self.obj_writer)
 
-    def write_progress(self, path, fname, fname2):
+    def write_progress(self, path, fname, fname2, fname3):
         with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
             self.csv_writer.seek(0)
             copyfileobj(self.csv_writer, f)
@@ -402,6 +415,12 @@ class Coordinator(object):
             copyfileobj(self.obj_writer, f)
             del self.obj_writer
             self.obj_writer = io.StringIO()
+
+        with open(os.path.join(path, fname3), "w+", encoding='utf-8') as f:
+            self.f1_writer.seek(0)
+            copyfileobj(self.f1_writer, f)
+            del  self.f1_writer
+            self.f1_writer = io.StringIO()
 
 
 def main():
@@ -448,19 +467,24 @@ if __name__ == '__main__':
     #cmd_args = parser.parse_args()
 
     for cmd_args in cmd_arg_list:
-        data_class = get_data_class(cmd_args.data)
+        try:
+            data_class = get_data_class(cmd_args.data)
 
-        CONFIG.setup(cmd_args)
-        number_of_samples_per_model = 100
-        coordinator = Coordinator(data_set_name=cmd_args.data,
-                                  Data=data_class,
-                                  exp_loader=cmd_args.load,
-                                  n=number_of_samples_per_model,
-                                  k=cmd_args.cv,
-                                  iters=cmd_args.maxiter,
-                                  h=cmd_args.h,
-                                  epochs=cmd_args.epoch,
-                                  n_models=cmd_args.n_models,
-                                  n_test=cmd_args.n_test)
+            CONFIG.setup(cmd_args)
+            number_of_samples_per_model = 100
+            coordinator = Coordinator(data_set_name=cmd_args.data,
+                                      Data=data_class,
+                                      exp_loader=cmd_args.load,
+                                      n=number_of_samples_per_model,
+                                      k=cmd_args.cv,
+                                      iters=cmd_args.maxiter,
+                                      h=cmd_args.h,
+                                      epochs=cmd_args.epoch,
+                                      n_models=cmd_args.n_models,
+                                      n_test=cmd_args.n_test)
 
-        result, agg = coordinator.prepare_and_run()
+            result, agg = coordinator.prepare_and_run()
+        except Exception as e:
+            with open("exceptions.txt", 'a+') as errfile:
+                errfile.write("Experiment Failed for: " + cmd_args.data + " " + cmd_args.covtype + " " + cmd_args.reg + ".\n")
+                errfile.write("With " + str(e) + "\n")
