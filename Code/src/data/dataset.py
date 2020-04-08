@@ -133,7 +133,7 @@ class Data:
         self.random_state.shuffle(index)
         self.holdout = self.data.iloc[index[:self.holdout_size]]
         target_columns = np.delete(np.arange(self.holdout.shape[1]), self.label_column)
-        holdout_disc, _ = px.discretize(np.ascontiguousarray(self.holdout.to_numpy()), num_states=self.disc_quantiles, targets=target_columns)
+        holdout_disc, _ = px.discretize(np.ascontiguousarray(self.holdout.to_numpy().astype(np.float64)), num_states=self.disc_quantiles, targets=target_columns)
         for (col_name, col) in self.holdout.iteritems():
             if col_name != self.label_column:
                 self.holdout.loc[::,col_name] = holdout_disc[:,col_name]
@@ -154,8 +154,8 @@ class Data:
         self.mask = new_mask
 
         target_columns = np.delete(np.arange(self.train.shape[1]), self.label_column)
-        train_disc, disc_map = px.discretize(np.ascontiguousarray(self.train.values), num_states=self.disc_quantiles, targets=target_columns)
-        test_disc, _ = px.discretize(np.ascontiguousarray(self.test.values), discretization=disc_map, targets=target_columns)
+        train_disc, disc_map = px.discretize(np.ascontiguousarray(self.train.values).astype(np.float64), num_states=self.disc_quantiles, targets=target_columns)
+        test_disc, _ = px.discretize(np.ascontiguousarray(self.test.values).astype(np.float64), discretization=disc_map, targets=target_columns)
 
         for (col_name, col) in self.train.iteritems():
             if col_name != self.label_column:
@@ -380,7 +380,7 @@ class Dota2(Data):
         os.chdir(ROOT_DIR)
 
     def load_json(self):
-        with open(os.path.join(ROOT_DIR, 'data', 'DOTA2', 'heroes.json')) as file:
+        with open(os.path.join(ROOT_DIR, 'data', 'dota2', 'heroes.json')) as file:
             data = json.load(file)
 
             heroes = list(data.values())
