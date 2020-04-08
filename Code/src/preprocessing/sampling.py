@@ -55,7 +55,6 @@ class Sampler:
 
         self.sample_complexity = sample_complexity
         self.split_idx = None
-        self._stratified()
 
         self.data_dim = data.train.shape[1]
 

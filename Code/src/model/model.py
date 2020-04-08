@@ -566,7 +566,8 @@ class Susy(Model):
         if statespace is None and self.state_space is None:
             self.state_space = self._statespace_from_data()
 
-    def predict(self, px_model=None, n_test=None):
+    def predict(self, weights=None, n_test=None):
+        logger.info("===PREDICT PREPARE DATA===")
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
         if isinstance(self.data_set.label_column, str):
             label_column_idx = self.data_set.test.columns.get_loc(self.data_set.label_column)
@@ -578,7 +579,9 @@ class Susy(Model):
         else:
             np.min([n_test, test.shape[0] - 1])
         test = np.ascontiguousarray(test[:n_test])
-        if px_model is None:
+        logger.info("===PREDICT START PREDICTIONS===")
+        if weights is None:
+            logger.info("===PREDICT ALL LOCAL MODELS===")
             if self.trained:
                 if CONFIG.MODELTYPE == px.ModelType.integer:
                     return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
@@ -587,4 +590,6 @@ class Susy(Model):
                     return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
                             self.px_model]
         else:
+            logger.info("===PREDICT INPUT MODEL===")
+            px_model = px.Model(weights=weights, graph=px.create_graph(self.edgelist), states=self.state_space+1)
             return px_model.predict(test[:n_test])
