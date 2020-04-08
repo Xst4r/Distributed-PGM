@@ -237,7 +237,7 @@ def get_parser():
                         metavar='Iterations',
                         type=int,
                         help='Maximum number of Iteration for each model.',
-                        default=100,
+                        default=5000,
                         required=False)
     parser.add_argument('--load',
                         metavar='LoadExperiment',
@@ -254,14 +254,14 @@ def get_parser():
                         metavar='CrossValidation',
                         type=int,
                         help='Number of Cross Validation Splits',
-                        default=2,
+                        default=10,
                         required=False)
     parser.add_argument('--epoch',
                         metavar='Epochs',
                         type=int,
                         help="Number of Epochs (Rounds of Data retrieval on each local model) Increases the Amount of data "
                              "for each local model, each round.",
-                        default=2,
+                        default=15,
                         required=False)
     parser.add_argument('--reg',
                         metavar='Regularization',
@@ -296,7 +296,7 @@ def get_parser():
                         help="Predicting a full test set, especially if it is large may take some time."
                              "Use this to reduce the number of predictions. "
                              "If n_test > test_size - test_size is chosen for prediction.",
-                        default=20)
+                        default=100000)
 
     parser.add_argument('--hoefd_eps',
                         metavar='HoefdingDistance',
@@ -314,7 +314,7 @@ def get_parser():
     parser.add_argument('--gtol',
                         type=float,
                         help="Stopping criterion for the prox. gradient descent based on the gradient norm.",
-                        default=1e-7)
+                        default=1e-6)
     parser.add_argument('--tol',
                         type=float,
                         help="Stopping criterion for the prox. gradient descent based on objective rate of change.",
