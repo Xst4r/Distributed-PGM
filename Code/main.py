@@ -360,12 +360,15 @@ class Coordinator(object):
 
     def prepare_and_run(self):
 
+        logger.info("=== PREPARE === DATA ===")
         self.data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed,
                                   cval=self.k_fold)
         self.data.create_cv_split()
+        logger.info("=== PREPARE === BASELINE===")
         self.baseline()
+        logger.info("=== PREPARE === LOCAL AGG===")
         models, aggregate, sampler = self.run(self.model_loader)
-
+        logger.info("=== PREPARE === DONE===")
         return models, aggregate
 
     def record_progress(self, model_dict, k, local_info, dest, metric):
@@ -466,7 +469,7 @@ def get_data_class(type):
 if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--graphtype']
-    datasets = ['covertype']
+    datasets = ['covertype', 'dota2', 'susy']
     sample_parameters = ['none', 'unif', 'random', 'fish']
     reg = ['None', 'l2']
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg])]
@@ -499,5 +502,6 @@ if __name__ == '__main__':
                                   epochs=cmd_args.epoch,
                                   n_models=cmd_args.n_models,
                                   n_test=cmd_args.n_test)
-
+        del coordinator
+        logger.info("=== MAIN === DONE===")
         result, agg = coordinator.prepare_and_run()
