@@ -320,12 +320,13 @@ class KL(Aggregation):
                 self.graph = px.create_graph(graph)
             else:
                 self.graph = graph
-            self.states = states
+            self.states = np.ascontiguousarray(np.copy(states))
             self.weights = self.model
             self.model = [px.Model(weights=weights, graph=graph, states=states) for weights in self.model.T]
         else:
-            self.graph = self.model[0].graph
-            self.states = self.model[0].states
+            self.states = np.ascontiguousarray(np.copy(self.model[0].states))
+            self.edgelist = np.ascontiguousarray(np.copy(self.model[0].graph.edgelist))
+            self.graph = px.create_graph(self.edgelist)
 
         if samples is not None:
             self.X = [np.copy(sample) for sample in samples]
@@ -333,7 +334,6 @@ class KL(Aggregation):
             self.X = [model.sample(num_samples=n, sampler=CONFIG.SAMPLER) for model in self.model]
 
         self.K = len(self.model)
-        self.phi = [model.phi for model in self.model]
         self.obj = np.infty
         self.eps = eps
 
@@ -354,15 +354,16 @@ class KL(Aggregation):
         if opt:
             data = np.ascontiguousarray(np.concatenate(X), dtype=np.uint16)
             data = np.ascontiguousarray(np.vstack((data, self.states-1)).astype(np.uint16))
-            model = px.train(data=data, graph=self.model[0].graph, iters=0)
+            model = px.train(data=data, graph=self.graph, iters=0)
             s = np.ctypeslib.as_array(model.empirical_stats, shape=(model.dimension,))
             s -= model.phi((self.states-1).ravel())
             model.num_instances -= 1
             res = px.train(in_model=model, opt_regularization_hook=CONFIG.REGULARIZATION)
-            merged = self.merge_weights(res, self.model[0].states)
+            merged = self.merge_weights(res, self.states)
             weights = np.ascontiguousarray(merged.weights)
-            states = np.ascontiguousarray(self.model[0].states)
-            kl_model = px.Model(weights=weights.astype(np.float64), graph=self.model[0].graph, states=states)
+            states = np.ascontiguousarray(self.states)
+            kl_model = px.Model(weights=weights.astype(np.float64), graph=self.graph, states=states)
+        """
         else:
             average_statistics = []
             for i, samples in enumerate(X):
@@ -375,11 +376,10 @@ class KL(Aggregation):
                           states=np.copy(self.model[0].states))
             res = minimize(obj, x0, callback=self.callback, tol=self.eps, options={"maxiter": 50, "gtol": 1e-3})
             kl_model = px.Model(weights=res.x, graph=self.model[0].graph, states=self.model[0].states)
-
-        kl_m, kl_A = kl_model.infer()
-        naivekl += kl_model.weights
+        """
+        naivekl += np.copy(kl_model.weights)
         # self.test(kl_model)
-
+        """
         try:
             fisher_matrix = []
             inverse_fisher = []
@@ -388,6 +388,7 @@ class KL(Aggregation):
                 inverse_fisher.append(np.linalg.inv(fisher_matrix[i]))
         except np.linalg.LinAlgError as e:
             pass
+        """
 
         return kl_model.weights
 
@@ -501,20 +502,20 @@ class Variance(Aggregation):
         self.edgelist = []
         self.local_data = []
         self.y_true = []
-        self.graph = graph
         self.states = states
         if isinstance(self.model, np.ndarray):
             if graph is None or states is None:
                 raise ValueError("Models were provided as Collection of weight vectors. "
                                  "Graph or States were None, but need to be specified.")
             if isinstance(graph, np.ndarray):
-                self.graph = px.create_graph(edgelist=graph)
+                self.graph = px.create_graph(graph)
             self.weights = self.model
             self.model = [px.Model(weights=weights, graph=self.graph, states=self.states) for weights in self.model.T]
         else:
-            self.graph = self.model[0].graph
-            self.states = self.model[0].states
-            self.weights = np.array([mod.weights for mod in self.model])
+            self.px_edgelist = np.ascontiguousarray(np.copy(self.model[0].graph.edgelist))
+            self.graph = px.create_graph(self.px_edgelist)
+            self.states = np.ascontiguousarray(np.copy(self.model[0].states))
+            self.weights = np.array([np.copy(mod.weights) for mod in self.model])
         if edgelist is None:
             self.edgelist = self._full_graph(len(self.model))
         for sample in samples:

@@ -434,8 +434,8 @@ class Model:
             when creating this object.
         """
         holdout = np.ascontiguousarray(self.data_set.holdout.to_numpy().astype(np.uint16))
-        self.edgelist = px.train(data=holdout, graph=CONFIG.GRAPHTYPE, iters=1, mode=CONFIG.MODELTYPE,
-                                 opt_regularization_hook=CONFIG.REGULARIZATION).graph.edgelist
+        self.edgelist = np.copy(px.train(data=holdout, graph=CONFIG.GRAPHTYPE, iters=1, mode=CONFIG.MODELTYPE,
+                                 opt_regularization_hook=CONFIG.REGULARIZATION).graph.edgelist)
         self.graph = self._px_create_graph()
         self.weights = self.init_weights()
 
