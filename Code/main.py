@@ -338,9 +338,13 @@ class Coordinator(object):
         return np.diag(np.ones(n_dim)) * eps
 
     def gen_random_cov(self, n_dim):
-        eigs = self.random_state.rand(n_dim)
-        eigs = eigs / np.sum(eigs) * eigs.shape[0]
-        return random_correlation.rvs(eigs, random_state=self.random_state)
+        try:
+            eigs = self.random_state.rand(n_dim)
+            eigs = eigs / np.sum(eigs) * eigs.shape[0]
+            return random_correlation.rvs(eigs, random_state=self.random_state)
+        except Exception as e:
+            cov = self.random_state.randn(n_dim, n_dim)
+            return np.dot(cov, cov.T) / n_dim
 
     def gen_fisher_cov(self, phi, mu):
         return np.outer(mu - phi, (mu - phi).T)
@@ -470,7 +474,7 @@ if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--graphtype']
     datasets = ['covertype', 'dota2', 'susy']
-    sample_parameters = ['none', 'unif', 'random', 'fish']
+    sample_parameters = ['random']
     reg = ['None', 'l2']
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg])]
     func = lambda x: zip(keywords, x)
@@ -507,6 +511,7 @@ if __name__ == '__main__':
             result, agg = coordinator.prepare_and_run()
         except Exception as e:
             with open("exceptions.txt", "a+") as file:
+                logger.error("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
                 file.write("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
                 file.write(str(e) + "\n")
 
