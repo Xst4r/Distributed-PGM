@@ -474,7 +474,7 @@ if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--graphtype']
     datasets = ['covertype', 'dota2', 'susy']
-    sample_parameters = ['random']
+    sample_parameters = ["unif", "random", "fish", "none"]
     reg = ['None', 'l2']
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg])]
     func = lambda x: zip(keywords, x)
