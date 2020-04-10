@@ -277,7 +277,8 @@ class Coordinator(object):
                     self.finalize(i, aggregates, sampler.split_idx, local_y_pred)
                 except Exception as e:
                     print(e)
-        np.save(os.path.join(self.experiment_path, 'split'), np.stack(self.data.split))
+        for cv_idx, split in enumerate(self.data.split):
+            np.save(os.path.join(self.experiment_path, str(cv_idx), 'split_' + str(cv_idx)), split)
         return models, k_aggregates, sampler
 
     def finalize(self, i, aggregates, splits, local_y_pred):
@@ -489,19 +490,25 @@ if __name__ == '__main__':
     # cmd_args = parser.parse_args()
 
     for cmd_args in cmd_arg_list:
-        data_class = get_data_class(cmd_args.data)
+        try:
+            data_class = get_data_class(cmd_args.data)
 
-        CONFIG.setup(cmd_args)
-        number_of_samples_per_model = 100
-        coordinator = Coordinator(data_set_name=cmd_args.data,
-                                  Data=data_class,
-                                  exp_loader=cmd_args.load,
-                                  n=number_of_samples_per_model,
-                                  k=cmd_args.cv,
-                                  iters=cmd_args.maxiter,
-                                  h=cmd_args.h,
-                                  epochs=cmd_args.epoch,
-                                  n_models=cmd_args.n_models,
-                                  n_test=cmd_args.n_test)
-        logger.info("=== MAIN === DONE===")
-        result, agg = coordinator.prepare_and_run()
+            CONFIG.setup(cmd_args)
+            number_of_samples_per_model = 100
+            coordinator = Coordinator(data_set_name=cmd_args.data,
+                                      Data=data_class,
+                                      exp_loader=cmd_args.load,
+                                      n=number_of_samples_per_model,
+                                      k=cmd_args.cv,
+                                      iters=cmd_args.maxiter,
+                                      h=cmd_args.h,
+                                      epochs=cmd_args.epoch,
+                                      n_models=cmd_args.n_models,
+                                      n_test=cmd_args.n_test)
+            logger.info("=== MAIN === DONE===")
+            result, agg = coordinator.prepare_and_run()
+        except Exception as e:
+            with open("exceptions.txt", "a+") as file:
+                file.write("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
+                file.write(str(e) + "\n")
+
