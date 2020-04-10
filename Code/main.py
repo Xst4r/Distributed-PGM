@@ -277,8 +277,6 @@ class Coordinator(object):
                     self.finalize(i, aggregates, sampler.split_idx, local_y_pred)
                 except Exception as e:
                     print(e)
-        for cv_idx, split in enumerate(self.data.split):
-            np.save(os.path.join(self.experiment_path, str(cv_idx), 'split_' + str(cv_idx)), split)
         return models, k_aggregates, sampler
 
     def finalize(self, i, aggregates, splits, local_y_pred):
