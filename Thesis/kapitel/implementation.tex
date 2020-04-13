@@ -1,0 +1,18 @@
+% implementation.tex
+
+\chapter{Implementation}
+\label{chapter:ch4}
+
+The implementation of the algorithms and methods is done in pure python.
+The learning part is outsourced to PX and the resulting models with trained parameters are used in the aggregation.
+The aggregation can be used with both numpy array, representing just weights, as well as PX Model Objects directly.
+
+\section{Structure}
+We have a Coordinator, Data and Model wrapper Class as well as several utility metohds for downloading and unpacking datasets.
+General Structure is an Interface that implements basic functions for the class and can be specialized by creating a new subclass.
+\section{Model Training}
+For training we use the PX Library
+\section{Model Aggregation}
+Model Aggregation is done in python with numpy,scipy to improve runtimes of matrix-vector operations.
+\section{Evaluation}
+For evaluation we use accuracy and f1 score either computed in pure python or supported bei the sklearn machine learning library.

@@ -1,0 +1,48 @@
+% einleitung.tex
+\chapter{Introduction}
+With an increasing number of devices and thus data collected on these devices the task of machine learning becomes increasingly difficult.
+While the best case scenario in terms of model quality is transferring the data to a central node and then training models on the complete and ever increasing data it is in practice not feasible to do so.
+One would incur a large communication overhead by sending the raw data to a central node. 
+Doing this for all applications would generally break the communication system. 
+Another concern is the need for privacy. We usually do not want to and should not concede our data to central servers.
+Even anonymized data can be profiled and tracked back to certain users [TODO CITE].
+Therefore, we want to apply machine learning on edge.
+Using the devices itself to learn models and then convergecasting some metadata to a central node such a model parameters.
+This requires several things, such as energy efficient computing while having limited processing power available.
+Furthermore memory and disk-space are also limited especially in the context of mobile or sensor devices.
+We propose an aggregation scheme for a distributed or federated learning system. [TODO FEDERATED vs. DISTRIBUTED?]
+
+\section{Motivation and Background}
+Communication between devices is inefficient.
+Local Models usually have a large variance between each other on the same data/distribution.
+Two staple methods, ensembling and aggregation.
+Ensembling aims to decide the label of a class by accounting for each decision on the local models e.g. majority vote.
+Aggregation aims to aggregate the approximated function, i.e., its parameters to create a new aggregated model, which then predicts the labels.
+After aggregation we only need to predict once and not on every local model.
+Models introduce non-linearity, which in turn might introduce an error in the aggregation as e.g. averaging is a linear operation.
+Model aggregation has been studied by several people.
+Aggregation requires communication between local models in a non-centralized approach or communication between local nodes and a coordinator (Federated learning).
+
+Several problems are associated with distributed learning:
+Amount of communication required.
+Stopping criteria for local models, i.e., when are models close enough to stop training and this includes the question of sample complexity.
+Model aggregation itself.
+
+%Eine Referenz~\cite{AggarwalV88}.
+\section{Related Work}
+Related Work for Model Aggregation, Local Thresholding(Ran Wolff, Assaf Schuster, Michael Kamp), Sample Complexity , Communication effieciency.
+
+
+Motivation for this topic, why do we need distributed learning or even resource constrained ?
+
+The related work to this thesis divides itself upon several reserach areas. 
+For one we have the general approach to model aggregation and specifically in the distributed setting.
+Then we have to consider the sample complexity, i.e., having a general idea bout how much data we need on each device.
+This can be done by using a general network approach or using existing bounds such as the hoefding bound to guarentee the models being somewhat close.
+
+What as already been done ?
+Naive Kullback Leibler Aggregation with Bootstrapping, Radon Machines for Model Ensembling, simple averaging.
+
+What guarentees do we have ? 
+hoefding Bound, Regret etc.
+\section{Thesis Structure}

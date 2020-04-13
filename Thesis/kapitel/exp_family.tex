@@ -1,0 +1,78 @@
+% kapitel2.tex
+\chapter{Background}
+\label{chapter:kap2}
+\section{Notation}
+\section{Probability Theory}
+\section{Exponential Families}
+\subsection{Asymptotic Normality}
+\section{Probabilistic Graphical Models}
+
+\section{Distributed Learning}
+There are mainly two different architectural approaches to distributed learning. 
+The first approach is a decentralized approach without coordinator.
+Communication between nodes is allowed and necessary to transmit some amount of data to reach an overall conclusion to the learning task.
+The other approach involves a centralised coordinator node that broadcasts intermediate results or correction terms to local nodes.
+The nodes in this approach send their data to the coordinator. 
+Hybrid-Methods, where both types of architerure are mixed are also possible.
+This work will focus on the second type, while also giving some theoretical insights to the decentralized approach.
+
+\subsection{Sample Complexity}
+One of the key questions of distributed learning is the number of samples required to obtain local models that are sufficiently good, i.e., when to stop learning and either start communication with the coordinator
+or to terminate the algorithm and produce a final aggregate model. 
+One such upper bound can be found by applying the Hoefding-Inequality to the expectation of the difference between the sufficient statistics of a probabislitc graphical model.
+Given two average sufficient statistics we can employ the Hoefding Bound to guarantee the distance between these two to be smaller than some $\epsilon$ with probability $\delta$
+
+\subsection{Model Aggregation}
+
+\subsubsection{Averaging}
+The most intuitive approach to model aggregation is done by simply computing the unbiased average of all model parameters.
+\begin{equation}
+    \frac{1}{n} \sum_{i=1}^n \theta^i
+\end{equation}
+\subsubsection{Weighted Averaging}
+The first step towards a more refined approach to model aggregation is to turn the uninformative prior, that is, the equally weighted aggreagtes into an informed prior by some means.
+\begin{equation}
+     \sum_{i=1}^n \lambda_i \theta^i
+\end{equation}
+
+While this sounds quite easy in theory, the research on informative priors and prior-based learning is still prevalent and actively pursued.
+One method involves weighting the local model parameters by its likelihood given probability distribution over these parameters.
+Since the Maximum Likelihood Estimator for canonical exponential families is asymptotically normal we may use the likelihood of a gaussian normal as weights:
+\begin{equation}
+    \lambda_i = \frac{\log p(\theta \lvert \psi)}{\sum_{x\in \mathcal{X}} \log p(\theta \lvert \psi)}
+\end{equation}
+where the denominator is the normalizer for the probability distribution used, either discrete or continuous.
+In case of a normal distribution we then have
+\begin{equation}
+    p(\theta \lvert \psi) = \mathcal{N}(\theta \lvert \vec{\mu}, \vec{\Sigma})
+\end{equation}
+
+\begin{equation}
+    \lambda_i = \log \frac{1}{\sqrt{2\pi\lvert \vec{\Sigma} \rvert}} \cdot \exp^{-\frac{1}{2} \cdot (\vec{\theta} - \vec{\mu})^T\vec{\Sigma}^{-1}(\vec{\theta} - \vec{\mu}}
+\end{equation}
+\subsubsection{Radon Machines}
+A more robust method to solve the issue of model aggregation is the computation of the geometric median.
+While the geometric median is well defined, there exists no algorithm to exactly compute the geometric median in $\mathbb{R}^n$ dimensions.
+However [CITE] introduced Radon Machines as method for model ensembling.
+Computing the radon point of a set of points is a variant of the geometric median and closely related to the tukey depth. 
+The solution to the equation is obtained by solving a system of linear equations.
+However, this requires the computation of the radon point, which in euclidean space has $\mathbb{R}^n + 2$ dimensions.
+This requires us to have at least $\mathbb{R}^n + 2$ models readily available and with further aggregation $\mathbb{R}^{r^n}$ as each hierachichal step increases the number of models required exponentially.
+
+\subsubsection{Bootstrap Aggregagation}
+With generative modelling we can easily sample additional data from local models by transferring the local model parameters to the coordinator node.
+Sampling can be realized in various different ways such as Gibbs Sampling or Perturb and Map.
+We then create a new Dataset from our samples and use this to train a new global model. 
+This has been shown to work in CITE and for canonical expoential families this approach is analogous to computing the expected average sufficient statistics:
+TODO PROOF:
+
+
+\subsubsection{Performance-Weighted-Averaging}
+Instead of using a federated approach we can also rely on a federated-decentralized hybrid approach. 
+That is, we generate weights vor a weighted average based on some measure of local performance.
+While this this does not gurantee good results for local performance of a single model, we can attempt to measure performance of local models on other local devices.
+This approach essentially incorporates the idea of decentralized thresholding as featured in CITE RAN WOLFF.
+Local Nodes communicate with each other and in this specific case we excchange parameter vectors to perform some kind of performance measure on the local data of each device.
+This method still gurantees minimal computation cost, while also guranteeing the local data to remain private.
+We then formulate some performance measure such as average accuracy on all other local data and use this to compute the weighted average on the coordinator.
+
