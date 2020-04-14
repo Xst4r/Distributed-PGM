@@ -262,7 +262,7 @@ class Coordinator(object):
                     logger.info("===RUN=== RECORD SCORES===")
                     self.record_progress(aggregation, i, local_acc,
                                          self.csv_writer, 'acc')
-                    self.record_progress(aggregation, i, local_acc,
+                    self.record_progress(aggregation, i, local_f1,
                                          self.f1_writer, 'f1')
                     aggregates[self.curr_model.n_local_data] = aggregation
                     if self.curr_model.n_local_data > sampler.split_idx[0].shape[0]:
@@ -507,8 +507,8 @@ if __name__ == '__main__':
                                       epochs=cmd_args.epoch,
                                       n_models=cmd_args.n_models,
                                       n_test=cmd_args.n_test)
-            logger.info("=== MAIN === DONE===")
             result, agg = coordinator.prepare_and_run()
+            logger.info("=== MAIN === DONE===")
         except Exception as e:
             with open("exceptions.txt", "a+") as file:
                 logger.error("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
