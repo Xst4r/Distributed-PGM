@@ -124,6 +124,9 @@ class Model:
         self.n_local_data = 0
 
         self.prev_obj = np.infty
+        self.best_obj = np.infty
+        self.obj_delta = 0
+        self.best_params = None
         self.best_objs = {}
         self.best_weights = {}
 
@@ -340,16 +343,37 @@ class Model:
         contents = state_p.contents
         # self.best_weights[self.train_counter][self.curr_model] = np.copy(contents.best_weights)
         if CONFIG.MODELTYPE != px.ModelType.integer:
-            if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
+            obj = np.copy(contents.obj).ravel()
+            self.best_objs[self.epoch][self.curr_model] = np.min(
+                [self.best_objs[self.epoch][self.curr_model], obj])
+            if self.check_convergence(obj, np.copy(contents.gradient)):
                 if self.stop_counter == 100:
                     logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
                     contents.iteration = self.maxiter
                 self.stop_counter += 1
             else:
                 self.stop_counter = 0
-        self.prev_obj = contents.obj
-        self.best_objs[self.epoch][self.curr_model] = np.min(
-            [self.best_objs[self.epoch][self.curr_model], np.copy(contents.obj).ravel()])
+            self.prev_obj = contents.obj
+        else:
+            obj = np.int64(np.array(np.copy(contents._obj)).view(np.uint64).flatten()[0])
+            self.best_objs[self.epoch][self.curr_model] = np.min(
+                [self.best_objs[self.epoch][self.curr_model], obj])
+            if self.best_obj - obj  == self.obj_delta or self.best_obj - obj < 0:
+                self.stop_counter = self.stop_counter + 1
+            else:
+                print(str(self.stop_counter))
+                self.stop_counter = 0
+            if self.best_obj - obj >= 0:
+                self.obj_delta = self.best_obj - obj
+            self.best_obj = np.min([self.best_obj, obj])
+            self.prev_obj = obj
+            if self.stop_counter == 400:
+                logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
+                contents.iteration = self.maxiter
+                self.best_obj = np.infty
+                self.prev_obj = np.infty
+                self.obj_delta = 0
+                np.copyto(contents.weights, contents.best_weights)
         print(str(self.curr_model) + "," + str(contents.obj) + "," + str(self.n_local_data), file=self.csv_writer)
         self.curr_iter += 1
 

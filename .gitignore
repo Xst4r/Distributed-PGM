@@ -1,3 +1,10 @@
+# Data
+*.npy
+*.px
+*.csv
+*.data
+/Code/experiments
+
 # Prerequisites
 *.d
 
