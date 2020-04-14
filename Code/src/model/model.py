@@ -116,8 +116,8 @@ class Model:
         self.curr_model = 0
         self.stop_counter = 0
 
-        self.delta = delta
-        self.eps = eps
+        self.delta = CONFIG.HOEFD_DELTA
+        self.eps = CONFIG.HOEFD_EPS
         self.sample_func = lambda x: 0.1 * x ** 2
         self.suff_data = int(np.ceil(self.hoefding_bound(self.delta, self.eps)))
         self.data_delta = int(np.ceil(self.suff_data / self.sample_func(epochs)))
@@ -239,7 +239,6 @@ class Model:
                              opt_progress_hook=self.opt_progress_hook,
                              mode=CONFIG.MODELTYPE,
                              in_model=model,
-                             initial_stepsize=1e-2,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              k=4)
             self.reset_train()
@@ -344,7 +343,7 @@ class Model:
             if self.check_convergence(np.copy(contents.obj), np.copy(contents.gradient)):
                 if self.stop_counter == 100:
                     logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
-                    state_p.contents.iteration = self.maxiter
+                    contents.iteration = self.maxiter
                 self.stop_counter += 1
             else:
                 self.stop_counter = 0

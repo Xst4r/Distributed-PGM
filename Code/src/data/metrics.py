@@ -41,11 +41,14 @@ def sk_accuracy(y_true, y_pred):
 
 
 def sk_f1_score(y_true, y_pred):
-    if sklearn_available:
-        if np.unique(y_true).shape[0] > 2 or np.unique(y_pred).shape[0] > 2:
-            return f1_score(y_true, y_pred, average='macro')
-        else:
-            return f1_score(y_true, y_pred)
+    try:
+        if sklearn_available:
+            if np.unique(y_true).shape[0] > 2 or np.unique(y_pred).shape[0] > 2:
+                return f1_score(y_true, y_pred, average='macro')
+            else:
+                return f1_score(y_true, y_pred)
+    except ValueError as e:
+        return np.nan
 
 
 def sk_confusion_matrix(y_true, y_pred):
