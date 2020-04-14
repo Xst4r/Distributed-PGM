@@ -5,13 +5,19 @@
 First we evaluate the difference between the true parameter vector, the local and aggregates by creating an artifical data set. We sample a multivariate gaussian, discretize the data and train a global model, which we assume to be the true parameters.
 Then we compare local models with limited access to the original data and their aggregates. We evaluate the models based on likelihood and MSE.
 
-The synthetic data for local models is obtained by sampling from the true model with an apx perturb and map approach introducing some noise to the sample data. 
+For the experiments we evaluate five different aggregation methods on [3,4] data sets with four different covariance sampling methods.
+All models are trained without regularization (vanilla) and l2 regularization. 
+We compare rate of convergence (relative to the global model), accuracy and f1 score.
 
-For the experiments we evaluate five different aggregation methods on [3,4] data sets on three different structures (chain, tree and full) with and without regularization.
-We discretized the features of each data set into its 10 quantiles to obtain comparable results to. 
+The features of each data set were discretized into its 10 quantiles thus obtaining comparable results to Piatkowski \cite{piatkowski2019distributed}. 
 Additionally we used a 10-fold cross validation approach for the global models, while splitting the training data for the local models further into 10 subsets.
-While increasing or decreasing the number of local models is always possible, again we chose this values to be in line with the experiments presented by
+While increasing or decreasing the number of local models is always possible, again we chose this according to the experiments already conducted by Piatkowski.
 
+\section{Experimental Setup}
+
+\section{Experiments}
+
+\section{Evaluation}
 We want to investigate:
 \begin{itemize}
     \item Performance of local and aggregated models compared to the global model
@@ -19,7 +25,7 @@ We want to investigate:
     \item Communication cost, computational complexity and memory efficiency for the aggregation methods
 \end{itemize}
 
-to achiev this we evaluate:
+to achieve this we evaluate:
 
 \begin{itemize}
     \item Likelihood of the local and aggregated weight vectors when plugged into the baseline model 

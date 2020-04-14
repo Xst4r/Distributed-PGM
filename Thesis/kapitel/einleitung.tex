@@ -28,6 +28,8 @@ Amount of communication required.
 Stopping criteria for local models, i.e., when are models close enough to stop training and this includes the question of sample complexity.
 Model aggregation itself.
 
+
+
 %Eine Referenz~\cite{AggarwalV88}.
 \section{Related Work}
 Related Work for Model Aggregation, Local Thresholding(Ran Wolff, Assaf Schuster, Michael Kamp), Sample Complexity , Communication effieciency.
@@ -45,4 +47,24 @@ Naive Kullback Leibler Aggregation with Bootstrapping, Radon Machines for Model 
 
 What guarentees do we have ? 
 hoefding Bound, Regret etc.
+
+Transitioning from a central computing device to a set of distributed devices requires careful planning and execution, even moreso when considering mobile devices, as limited processing power and power conservation have to be taken into account.
+This task has also been explored using the term \textit{federated learning}.
+McMahan et al. \cite{mcmahan2016communication} introduced federated learning for dealing with distributed data.
+Here, the data is usually distributed on several devices and can not be communicated between these or a central node. 
+Therefore, the models have to be learned on each device and then sent to a central node to compute an aggregate.
+Depending on the data distribution type, either horizontally or vertically, we need to approach this task differently. 
+Consider for example a distributed network of sensors.
+Here we would assume the data to be vertically distributed as each sensor gathers data associated with a certain subset of features.
+Instead, for this work we assume the former, which implies that all features are available on each device, with each device only containing a small subset of the data.
+For each device we perform the intended machine learning task with respect to the underlying problem.
+We will then aggregate these models using different mechanisms to create a more accurate and robust local or global model, which performs as well as or as close as possible to the model obtained by a central computing node that has access to the complete data.
+Here local model refers to an individual model for each device.
+We measure model performance by defining suitable statistics such as classification accuracy, robustness, generalisation capability or some error function.
+While one can argue, that with a sufficient amount of data on each device, we are able to create a reasonably well performing model, we usually do not have the required amount of data available to achieve a sufficiently well performing model.
+
+Performing the task on a set of devices allows us to significantly reduce the communication cost as we are not required to transfer data.
+Instead, we are only required to send the model parameters or certain statistics, which are then aggregated to create a composite model.
+Depending on the overall structure we may only be able create these composite models on the local device, i.e. we are limited to aggregating models individually by receiving information from connected (neighbouring) devices.
+For this work we will focus on distributed probabilistic graphical models as our structure of choice for the distributed environment.
 \section{Thesis Structure}

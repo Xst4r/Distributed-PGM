@@ -2,10 +2,41 @@
 \chapter{Background}
 \label{chapter:kap2}
 \section{Notation}
+Let us first define our notation. 
+Random Variables will be noted as $X$ and random vectors $\vect{X} = \{X_1, X_2, \ldots, X_n\}$ will be denoted in bold.
+The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and for a random vector likewise as $\vect{\mathcal{X}}$.
+Parameters of a probability density function in the context of the canocical exponential family will usually be noted as $\vect{\theta}$.
+Model parameters on the ith local device will be noted as $\vect{\theta^i}$, while $\vect{\theta_i}$ is the value at position i of the parameter vecttor.
+For a multivariate gaussian normal $\vect{\theta} = \{\vect{\mu}, \vect{\Sigma}\}$ the model parameters usually consist of mean $\vect{\mu}$ and covariance matrix $\vect{\Sigma}$.
+If necessary additional notations for model parameters will be introduced if necessary.
+This may be the case when talking about the distribution of $\vect{\theta}$ to distinguish between the model parameters and the distribution of model parameters.
+
+When talking about optimality of $\vect{\theta}$ \wrt the canocical exponential family we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
+Then, $\vect{\hat{\theta}}$ is the oracle, that has seen all data and is the reference point for comparing local models and aggregates.
+Furthermore, $\vect{\tilde{\theta}}$ denotes a local parameter vector and $\vect{\tilde{\theta}}^i$ the ith local parameter vector respectively.
 \section{Probability Theory}
 \section{Exponential Families}
 \subsection{Asymptotic Normality}
 \section{Probabilistic Graphical Models}
+When estimating parameters of a distribution we may consider each feature a random variable and the data generated a result of a stochastic process based on this random variables.
+Probabilistic Graphical Models (PGM) are a powerful tool to model conditional independencies between random variables. 
+We express each random variable as a node in a graph and each edge between two nodes represents a dependency. 
+With the exception of trees and graphs with bounded treewidth performing exact inference in such a Graph is NP-Hard.
+This is a result from having to compute the marginal distribution, i.e., summing over all possible states of all maximum cliques inside the graph.
+However, methods exist, such as loopy belief propagation to perform approximate inference.
+We may also apply a junction tree algorithm to transform the graph into a tree, where exact inference is possible in polynomial time.
+
+When considering probabilistic graphical models we usually utilize parametric distributions, that are part of the exponential family. 
+Our goal is to estimate the parameters of such a distribution, which optimizes some criterion e.g. Maximum Likelihood or Maximum Entropy.
+
+
+After estimating the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
+Distributed integer probabilistic graphical models \cite{piatkowski2019distributed} have recently been considered by Piatkowski.
+In this specific scenario the models were aggregated using the average over all local models.
+Other existing aggregation mechanics are discussed in section.
+Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, which means we require some kind of convergence.
+This is usually the case when most devices have a similar local model.
+In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
 
 \section{Distributed Learning}
 There are mainly two different architectural approaches to distributed learning. 
@@ -44,11 +75,11 @@ Since the Maximum Likelihood Estimator for canonical exponential families is asy
 where the denominator is the normalizer for the probability distribution used, either discrete or continuous.
 In case of a normal distribution we then have
 \begin{equation}
-    p(\theta \lvert \psi) = \mathcal{N}(\theta \lvert \vec{\mu}, \vec{\Sigma})
+    p(\theta \lvert \psi) = \mathcal{N}(\theta \lvert \vect{\mu}, \vect{\Sigma})
 \end{equation}
 
 \begin{equation}
-    \lambda_i = \log \frac{1}{\sqrt{2\pi\lvert \vec{\Sigma} \rvert}} \cdot \exp^{-\frac{1}{2} \cdot (\vec{\theta} - \vec{\mu})^T\vec{\Sigma}^{-1}(\vec{\theta} - \vec{\mu}}
+    \lambda_i = \log \frac{1}{\sqrt{2\pi\lvert \vect{\Sigma} \rvert}} \cdot \exp^{-\frac{1}{2} \cdot (\vect{\theta} - \vect{\mu})^T\vect{\Sigma}^{-1}(\vect{\theta} - \vect{\mu}}
 \end{equation}
 \subsubsection{Radon Machines}
 A more robust method to solve the issue of model aggregation is the computation of the geometric median.
