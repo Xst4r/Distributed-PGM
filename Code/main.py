@@ -472,11 +472,12 @@ def get_data_class(type):
 
 if __name__ == '__main__':
 
-    keywords = ['--data', '--covtype', '--reg', '--graphtype']
-    datasets = ['covertype', 'dota2', 'susy']
-    sample_parameters = ["unif", "random", "fish", "none"]
+    keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
+    datasets = ['covertype', 'susy', 'dota2']
+    sample_parameters = ["fish",'none','random','unif']
     reg = ['None', 'l2']
-    configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg])]
+    eps = [1e-1, 5e-2]
+    configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
     func = lambda x: zip(keywords, x)
     kwargs = [func(x) for x in configurations]
     strargs = []

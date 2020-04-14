@@ -381,7 +381,7 @@ class Model:
         if CONFIG.MODELTYPE == px.ModelType.integer:
             return self.prev_obj - curr_obj < CONFIG.TOL
         else:
-            return self.prev_obj - curr_obj < CONFIG.TOL and np.linalg.norm(grad, np.infty) < CONFIG.GTOL
+            return self.prev_obj - curr_obj < CONFIG.TOL
 
     def parallel_train(self, split=None):
         # This is slow and bad, maybe distribute proc   esses among devices.

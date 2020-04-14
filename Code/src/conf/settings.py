@@ -314,11 +314,11 @@ def get_parser():
     parser.add_argument('--gtol',
                         type=float,
                         help="Stopping criterion for the prox. gradient descent based on the gradient norm.",
-                        default=1e-6)
+                        default=1e-8)
     parser.add_argument('--tol',
                         type=float,
                         help="Stopping criterion for the prox. gradient descent based on objective rate of change.",
-                        default=1e-5)
+                        default=1e-8)
 
     parser.add_argument('--graphtype',
                         type=str,
