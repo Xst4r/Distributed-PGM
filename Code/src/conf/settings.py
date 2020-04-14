@@ -237,7 +237,7 @@ def get_parser():
                         metavar='Iterations',
                         type=int,
                         help='Maximum number of Iteration for each model.',
-                        default=4000,
+                        default=10000,
                         required=False)
     parser.add_argument('--load',
                         metavar='LoadExperiment',
@@ -296,7 +296,7 @@ def get_parser():
                         help="Predicting a full test set, especially if it is large may take some time."
                              "Use this to reduce the number of predictions. "
                              "If n_test > test_size - test_size is chosen for prediction.",
-                        default=10000)
+                        default=100000)
 
     parser.add_argument('--hoefd_eps',
                         metavar='HoefdingDistance',

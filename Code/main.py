@@ -473,9 +473,9 @@ def get_data_class(type):
 if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
-    datasets = ['covertype', 'susy', 'dota2']
+    datasets = ['susy']
     sample_parameters = ["fish",'none','random','unif']
-    reg = ['None', 'l2']
+    reg = ['None']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
     func = lambda x: zip(keywords, x)
