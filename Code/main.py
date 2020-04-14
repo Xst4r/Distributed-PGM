@@ -78,7 +78,7 @@ class Coordinator(object):
             predictions = model.predict(n_test=test_size)
             y_pred = predictions[0][:, self.data.label_column]
             y_true = self.data.test_labels[:test_size]
-            accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / self.data.test_labels[:test_size].shape[0]
+            accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / test_size
             accs.append(accuracy)
             f1.append(sk_f1_score(y_true, y_pred))
             print("GLOBAL Model " + str(i) + " : " + str(accuracy))
@@ -473,9 +473,9 @@ def get_data_class(type):
 if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
-    datasets = ['susy']
+    datasets = ['susy', 'covertype', 'dota2']
     sample_parameters = ["fish",'none','random','unif']
-    reg = ['None']
+    reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
     func = lambda x: zip(keywords, x)
