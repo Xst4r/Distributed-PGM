@@ -349,7 +349,7 @@ class Model:
             self.best_objs[self.epoch][self.curr_model] = np.min(
                 [self.best_objs[self.epoch][self.curr_model], obj])
             if self.check_convergence(obj, np.copy(contents.gradient)):
-                if self.stop_counter == 3000:
+                if self.stop_counter == 100:
                     logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
                     contents.iteration = self.maxiter
                 self.stop_counter += 1
