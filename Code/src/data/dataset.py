@@ -134,15 +134,7 @@ class Data:
         self.holdout = self.data.iloc[index[:self.holdout_size]]
         target_columns = np.delete(np.arange(self.holdout.shape[1]), self.label_column)
 
-        for i, (col_name, col) in enumerate(self.holdout.iteritems()):
-            if col_name != self.label_column:
-                if np.unique(col).shape[0] > self.disc_quantiles:
-                    holdout_disc, _ = px.discretize(np.ascontiguousarray(self.holdout.to_numpy().astype(np.float64)),
-                                                    num_states=self.disc_quantiles, targets=np.array(i))
-                    holdout_disc = holdout_disc[:,i]
-                else:
-                    holdout_disc = col.to_numpy().astype(np.uint16)
-                self.holdout.loc[::,col_name] = holdout_disc
+        self.discretize_holdout()
         self.split = np.array_split(index[self.holdout_size:], self.cv)
 
     def reset_cv(self):
@@ -158,7 +150,21 @@ class Data:
         new_mask[np.concatenate(np.array(self.split)[train])] = True
         self.masks.append(new_mask)
         self.mask = new_mask
+        self.discretize()
+        self.test_labels = np.copy(self.test[self.label_column].to_numpy())
 
+    def px_discretize_holdout(self):
+        for i, (col_name, col) in enumerate(self.holdout.iteritems()):
+            if col_name != self.label_column:
+                if np.unique(col).shape[0] > self.disc_quantiles:
+                    holdout_disc, _ = px.discretize(np.ascontiguousarray(self.holdout.to_numpy().astype(np.float64)),
+                                                    num_states=self.disc_quantiles, targets=np.array(i))
+                    holdout_disc = holdout_disc[:,i]
+                else:
+                    holdout_disc = col.to_numpy().astype(np.uint16)
+                self.holdout.loc[::,col_name] = holdout_disc
+
+    def px_discretize(self):
         for i, (col_name, col) in enumerate(self.train.iteritems()):
             if col_name != self.label_column:
                 if np.unique(col).shape[0] > self.disc_quantiles:
@@ -174,16 +180,20 @@ class Data:
                 self.train.loc[::, col_name] = train_disc
                 self.test.loc[::, col_name] = test_disc
 
-        self.test_labels = np.copy(self.test[self.label_column].to_numpy())
+    def discretize_holdout(self):
+        quants = np.linspace(0, 1, self.disc_quantiles)
+        for (col_name, col) in self.holdout.iteritems():
+            out , bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
+            self.holdout.loc[:, col_name] = out
 
     def discretize(self):
         quants = np.linspace(0, 1, self.disc_quantiles)
         for (col_name, col) in self.train.iteritems():
             if col_name != self.label_column and np.unique(col).shape[0] > self.disc_quantiles:
-                _, bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
-                self.train.loc[:, col_name] = np.digitize(self.train[col_name], bins)
-                self.test.loc[:, col_name] = np.digitize(self.test[col_name], bins)
-                self.holdout.loc[:, col_name] = np.digitize(self.holdout[col_name], bins)
+                out, bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
+                self.train.loc[:, col_name] = out
+                out_test = pd.cut(self.test[col_name], bins, labels=False, include_lowest=True)
+                self.test.loc[:, col_name] = out_test
                 self.bins[col_name] = bins
 
     def vertices(self):

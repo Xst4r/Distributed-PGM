@@ -234,7 +234,8 @@ class Model:
                 np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
             data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
             data = np.vstack((data, tmp))
-            model = px.train(data=data, graph=self.graph, mode=CONFIG.MODELTYPE, iters=0, k=4)
+            model = px.train(data=data, graph=self.graph, mode=CONFIG.MODELTYPE, opt_regularization_hook=CONFIG.REGULARIZATION, iters=0, k=4)
+
             model = self.scale_phi_emp(model)
 
             model = px.train(iters=iters,
@@ -244,6 +245,7 @@ class Model:
                              in_model=model,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              k=4)
+
             self.reset_train()
             if len(split) > 1:
                 self.px_batch_local[self.epoch][i] = model
@@ -347,7 +349,7 @@ class Model:
             self.best_objs[self.epoch][self.curr_model] = np.min(
                 [self.best_objs[self.epoch][self.curr_model], obj])
             if self.check_convergence(obj, np.copy(contents.gradient)):
-                if self.stop_counter == 100:
+                if self.stop_counter == 3000:
                     logger.info("Optimization Done after " + str(self.curr_iter) + " Iterations")
                     contents.iteration = self.maxiter
                 self.stop_counter += 1
@@ -600,7 +602,7 @@ class Susy(Model):
         if n_test is None:
             n_test = test.shape[0] - 1
         else:
-            np.min([n_test, test.shape[0] - 1])
+            n_test = np.min([n_test, test.shape[0] - 1])
         test = np.ascontiguousarray(test[:n_test])
         logger.info("===PREDICT START PREDICTIONS===")
         if weights is None:
