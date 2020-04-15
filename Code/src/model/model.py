@@ -478,7 +478,7 @@ class Model:
         statespace = np.arange(data.shape[1], dtype=np.uint64)
         for i, column in enumerate(data.columns):
             self.state_mapping[column] = i
-            statespace[i] = np.min([np.max(data[column].to_numpy().astype(np.uint64)) + 1, self.data_set.disc_quantiles - 1]) - 1
+            statespace[i] = np.min([np.max(data[column].to_numpy().astype(np.uint64)) + 1, self.data_set.disc_quantiles]) - 1
 
         return statespace
 

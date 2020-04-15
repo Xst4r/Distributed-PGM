@@ -181,18 +181,28 @@ class Data:
                 self.test.loc[::, col_name] = test_disc
 
     def discretize_holdout(self):
-        quants = np.linspace(0, 1, self.disc_quantiles)
+        quants = np.linspace(0, 1, self.disc_quantiles + 1)
         for (col_name, col) in self.holdout.iteritems():
             out , bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
             self.holdout.loc[:, col_name] = out
 
     def discretize(self):
-        quants = np.linspace(0, 1, self.disc_quantiles)
+        quants = np.linspace(0, 1, self.disc_quantiles + 1)
         for (col_name, col) in self.train.iteritems():
             if col_name != self.label_column and np.unique(col).shape[0] > self.disc_quantiles:
                 out, bins = pd.qcut(col, quants, labels=False, retbins=True, duplicates='drop')
                 self.train.loc[:, col_name] = out
+
+                # Squish values of test data if they exceed the bins
+                left_interval = np.where(self.test[col_name] < bins[0])
+                right_interval = np.where(self.test[col_name] > bins[-1])
+                if np.any(left_interval):
+                    self.test.loc[:,col_name].iloc[left_interval] = bins[0]
+                if np.any(right_interval):
+                    self.test.loc[:,col_name].iloc[right_interval] = bins[-1]
+
                 out_test = pd.cut(self.test[col_name], bins, labels=False, include_lowest=True)
+                assert not np.any(np.where(out_test.isna()))
                 self.test.loc[:, col_name] = out_test
                 self.bins[col_name] = bins
 
