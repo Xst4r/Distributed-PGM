@@ -592,7 +592,7 @@ class Susy(Model):
             self.state_space = self._statespace_from_data()
 
     def predict(self, weights=None, n_test=None):
-        logger.info("===PREDICT PREPARE DATA===")
+        logger.debug("===PREDICT PREPARE DATA===")
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
         if isinstance(self.data_set.label_column, str):
             label_column_idx = self.data_set.test.columns.get_loc(self.data_set.label_column)
@@ -604,9 +604,9 @@ class Susy(Model):
         else:
             n_test = np.min([n_test, test.shape[0] - 1])
         test = np.ascontiguousarray(test[:n_test])
-        logger.info("===PREDICT START PREDICTIONS===")
+        logger.debug("===PREDICT START PREDICTIONS===")
         if weights is None:
-            logger.info("===PREDICT ALL LOCAL MODELS===")
+            logger.debug("===PREDICT ALL LOCAL MODELS===")
             if self.trained:
                 if CONFIG.MODELTYPE == px.ModelType.integer:
                     return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
@@ -615,6 +615,6 @@ class Susy(Model):
                     return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
                             self.px_model]
         else:
-            logger.info("===PREDICT INPUT MODEL===")
+            logger.debug("===PREDICT INPUT MODEL===")
             px_model = px.Model(weights=weights, graph=px.create_graph(self.edgelist), states=self.state_space+1)
             return px_model.predict(test[:n_test])

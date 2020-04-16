@@ -48,6 +48,7 @@ class Aggregation:
         self.model = model
         self.aggregate_models = []
         self.success = False
+        self.hint = ""
 
     def aggregate(self, opt, **kwargs):
         """
@@ -306,14 +307,14 @@ class KL(Aggregation):
         states :
         eps :
         """
-        logger.info("===KL INIT===")
+        logger.debug("===KL INIT===")
         super(KL, self).__init__(models)
 
         if not (all(isinstance(x, px.Model) for x in models) or isinstance(models, np.ndarray)):
             raise TypeError("Models have to be either a list of pxpy models or a numpy ndarray containing weights")
 
         if isinstance(self.model, np.ndarray):
-            logger.info("===KL MODEL IS NDARRAY===")
+            logger.debug("===KL MODEL IS NDARRAY===")
             if graph is None or states is None:
                 raise ValueError("Graph and States must be supplied.")
             if isinstance(graph, np.ndarray):
@@ -326,14 +327,16 @@ class KL(Aggregation):
             self.weights = self.model
             self.model = [px.Model(weights=weights, graph=graph, states=states) for weights in self.model.T]
         else:
-            logger.info("===KL MODEL IS PX MODEL===")
+            logger.debug("===KL MODEL IS PX MODEL===")
             self.states = np.ascontiguousarray(np.copy(self.model[0].states))
             self.edgelist = np.ascontiguousarray(np.copy(self.model[0].graph.edgelist))
             self.graph = px.create_graph(self.edgelist)
 
         if samples is not None:
+            self.hint = "_BootsMap "
             self.X = [np.copy(sample) for sample in samples]
         else:
+            self.hint = "_Bootstrap "
             self.X = [model.sample(num_samples=n, sampler=CONFIG.SAMPLER) for model in self.model]
 
         self.K = len(self.model)
@@ -342,7 +345,7 @@ class KL(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
-            logger.info("===KL AGGREGATE===")
+            logger.debug("===KL AGGREGATE===")
             opt = True
             res = self._aggregate(opt, **kwargs)
             self.success = True
@@ -356,20 +359,20 @@ class KL(Aggregation):
         K = self.K
         X = self.X
         if opt:
-            logger.info("===KL CREATE DATA===")
-            data = np.ascontiguousarray(np.concatenate(X), dtype=np.uint16)
+            logger.debug("===KL CREATE DATA===")
+            data = np.ascontiguousarray(np.stack(X), dtype=np.uint16)
             data = np.ascontiguousarray(np.vstack((data, self.states-1)).astype(np.uint16))
-            logger.info("===KL CREATE DUMMY MODEL===")
+            logger.debug("===KL CREATE DUMMY MODEL===")
             model = px.train(data=data, graph=self.graph, iters=0)
             s = np.ctypeslib.as_array(model.empirical_stats, shape=(model.dimension,))
             s -= model.phi((self.states-1).ravel())
             model.num_instances -= 1
-            logger.info("===KL TRAIN BOOTSTRAP===")
+            logger.debug("===KL TRAIN BOOTSTRAP===")
             res = px.train(in_model=model, opt_regularization_hook=CONFIG.REGULARIZATION)
-            logger.info("===KL MERGE WEIGHTS===")
+            logger.debug("===KL MERGE WEIGHTS===")
             weights = np.ascontiguousarray(np.copy(res.weights))
             states = np.ascontiguousarray(self.states)
-            logger.info("===KL CREATE RESULT MODEL===")
+            logger.debug("===KL CREATE RESULT MODEL===")
             kl_model = px.Model(weights=weights.astype(np.float64), graph=self.graph, states=states)
         """
         else:
@@ -505,7 +508,7 @@ class KL(Aggregation):
 class Variance(Aggregation):
 
     def __init__(self, model, samples, label, graph=None, states=None, edgelist=None):
-        logger.info("===VAR INIT===")
+        logger.debug("===VAR INIT===")
         super(Variance, self).__init__(model)
 
         self.edgelist = []
@@ -513,7 +516,7 @@ class Variance(Aggregation):
         self.y_true = []
         self.states = states
         if isinstance(self.model, np.ndarray):
-            logger.info("===VAR INIT MODEL IS NUMPY===")
+            logger.debug("===VAR INIT MODEL IS NUMPY===")
             if graph is None or states is None:
                 raise ValueError("Models were provided as Collection of weight vectors. "
                                  "Graph or States were None, but need to be specified.")
@@ -522,13 +525,13 @@ class Variance(Aggregation):
             self.weights = self.model
             self.model = [px.Model(weights=weights, graph=self.graph, states=self.states) for weights in self.model.T]
         else:
-            logger.info("===VAR INIT MODEL IS PX===")
+            logger.debug("===VAR INIT MODEL IS PX===")
             self.px_edgelist = np.ascontiguousarray(np.copy(self.model[0].graph.edgelist))
             self.graph = px.create_graph(self.px_edgelist)
             self.states = np.ascontiguousarray(np.copy(self.model[0].states))
             self.weights = np.array([np.copy(mod.weights) for mod in self.model])
         if edgelist is None:
-            logger.info("===VAR INIT CREATE EDGELIST===")
+            logger.debug("===VAR INIT CREATE EDGELIST===")
             self.edgelist = self._full_graph(len(self.model))
         for sample in samples:
             self.y_true.append(np.copy(sample[:, label]))
@@ -537,7 +540,7 @@ class Variance(Aggregation):
 
     def aggregate(self, opt, **kwargs):
         try:
-            logger.info("===VAR AGGREGATE===")
+            logger.debug("===VAR AGGREGATE===")
             res = self._aggregate(opt, **kwargs)
             if CONFIG.MODELTYPE == px.ModelType.integer:
                 res = res * np.log(2)
@@ -590,7 +593,7 @@ class Variance(Aggregation):
             return mean, variance
 
         scores = []
-        logger.info("===VAR AGGREGATE MODELS===")
+        logger.debug("===VAR AGGREGATE MODELS===")
         for i, model in enumerate(self.model):
             # (print(str(i)))
             data = self.local_data[i]
@@ -603,7 +606,7 @@ class Variance(Aggregation):
                 count, mean, M2 = update(self.model[i], count, mean, M2, node, y_true)
             mean, variance = finalize(count, mean, M2)
             scores.append((mean, variance))
-        logger.info("===VAR AGGREGATE RESULT===")
+        logger.debug("===VAR AGGREGATE RESULT===")
         mean_weights = np.array(scores)[:, 0] / np.sum(np.array(scores)[:, 0])
         res = np.matmul(self.weights.T, mean_weights)
         return res

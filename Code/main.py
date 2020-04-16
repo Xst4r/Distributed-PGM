@@ -132,40 +132,40 @@ class Coordinator(object):
         test_size = np.min([self.n_test, self.data.test.shape[0] - 1])
         graph = px.create_graph(self.curr_model.edgelist)
         try:
-            logger.info("===AGGREGATION HELPER=== AGGREGATE ===")
+            logger.debug("===AGGREGATION HELPER=== AGGREGATE ===")
             aggregator.aggregate(None)
             aggregate = aggregator.aggregate_models
             if aggregator.success:
                 if np.sum([(states[row[0]] + 1) * (states[row[1]] + 1) for row in graph.edgelist]) != \
                         aggregate[0].shape[0]:
                     print("that's not right")
-                logger.info("===AGGREGATION HELPER=== NEW PX MODEL===")
+                logger.debug("===AGGREGATION HELPER=== NEW PX MODEL===")
                 weights = np.ascontiguousarray(np.copy(aggregate[0]))
-                logger.info("===AGGREGATION HELPER=== PREDICT AGGREGATE===")
+                logger.debug("===AGGREGATION HELPER=== PREDICT AGGREGATE===")
                 predictions = self.curr_model.predict(weights=weights, n_test=test_size)
-                logger.info("===AGGREGATION HELPER=== GET ACC AND F1===")
+                logger.debug("===AGGREGATION HELPER=== GET ACC AND F1===")
                 y_pred = np.copy(predictions[:, self.curr_model.data_set.label_column])
                 y_true = np.copy(self.data.test_labels[:test_size])
                 accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / y_true.shape[0]
                 f1 = sk_f1_score(y_true, y_pred)
-                logger.info("===AGGREGATION HELPER=== RECORD AGGREGATE LL===")
+                logger.debug("===AGGREGATION HELPER=== RECORD AGGREGATE LL===")
                 self.record_obj(self.curr_split, weights, aggregator.__class__.__name__)
-                logger.info(aggregator.__class__.__name__ + ": " + str(accuracy))
-                logger.info("===AGGREGATION HELPER=== RETURN DICT===")
+                logger.info(aggregator.__class__.__name__  + aggregator.hint + ": " + str(accuracy))
+                logger.debug("===AGGREGATION HELPER=== RETURN DICT===")
                 return {'px_model': weights, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy, 'f1': f1}
             return {}
         except ValueError or TypeError as e:
             print(e)
             return {}
 
-    def aggregate(self, weights=None, idx=None):
+    def aggregate(self, weights=None, idx=None, bootsmap=None):
 
         test_size = np.min([self.n_test, self.data.test.shape[0] - 1])
-        methods = ['mean', 'radon', 'wa', 'kl', 'var']
+        methods = ['mean', 'radon', 'wa', 'kl', 'var', 'bootsmap']
         aggregates = {k: [] for k in methods}
         sample_size = np.ceil(
             (self.curr_model.sample_func(self.curr_model.epoch) * self.curr_model.data_delta) / 2)
-        logger.info("===AGGREGATE=== CREATE AGGREGATORS===")
+        logger.debug("===AGGREGATE=== CREATE AGGREGATORS===")
         if weights is not None:
             aggr = [Mean(weights),
                     RadonMachine(weights, self.r, self.h),
@@ -173,7 +173,9 @@ class Coordinator(object):
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
                        states=self.curr_model.state_space, samples=None, n=int(sample_size)),
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
-                             states=self.curr_model.state_space, samples=idx, label=-1)]
+                             states=self.curr_model.state_space, samples=idx, label=-1),
+                    KL(self.curr_model.px_model, graph=self.curr_model.graph,
+                       states=self.curr_model.state_space, samples=bootsmap, n=int(sample_size))]
         else:
             aggr = [Mean(self.curr_model),
                     RadonMachine(self.curr_model, self.r, self.h),
@@ -181,11 +183,14 @@ class Coordinator(object):
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
                        states=self.curr_model.state_space, samples=None, n=int(sample_size)),
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
-                             states=self.curr_model.state_space, samples=idx, label=-1)]
+                             states=self.curr_model.state_space, samples=idx, label=-1),
+                    KL(self.curr_model.px_model, graph=self.curr_model.graph,
+                       states=self.curr_model.state_space, samples=bootsmap, n=int(sample_size))
+                    ]
         weights = None
         if isinstance(self.curr_model, np.ndarray):
             weights = self.curr_model
-        logger.info("===AGGREGATE=== CALL AGGREGATE===")
+        logger.debug("===AGGREGATE=== CALL AGGREGATE===")
         for name, aggregator in zip(methods, aggr):
             aggregates[name].append(
                 self.aggregation_helper(aggregator=aggregator,
@@ -231,19 +236,25 @@ class Coordinator(object):
                     if CONFIG.COVTYPE != CovType.none:
                         theta_samples, theta_old = self.sample_parameters(self.curr_model)
                         theta_arr = np.concatenate(theta_samples, axis=1)
-
+                    test_arr = None
+                    if theta_arr is not None:
+                        for theta in theta_arr.T:
+                            px_map = px.Model(weights=np.ascontiguousarray(theta), states=np.copy(self.curr_model.state_space + 1),
+                                              graph = px.create_graph(self.curr_model.edgelist))
+                            test_arr = px_map.MAP() if test_arr is None else np.vstack((test_arr,px_map.MAP()))
+                            px_map.delete()
                     # Aggregation
-                    logger.info("Aggregating Model No. " + str(i))
+                    logger.debug("Aggregating Model No. " + str(i))
                     kl_samples = [np.ascontiguousarray(
                         self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
                         dtype=np.uint16) for idx in sampler.split_idx]
                     local_predictions = None
-                    logger.info("===RUN=== PREDICT LOCAL ACC===")
+                    logger.debug("===RUN=== PREDICT LOCAL ACC===")
                     local_predictions = self.curr_model.predict(n_test=self.n_test)
                     local_acc = []
                     local_f1 = []
                     local_y_pred = []
-                    logger.info("===RUN=== PRINT AND RECORD LOCAL ACC===")
+                    logger.debug("===RUN=== PRINT AND RECORD LOCAL ACC===")
                     if not local_predictions is None:
                         for local_indexer, local_pred in enumerate(local_predictions):
                             y_pred = local_pred[:, self.curr_model.data_set.label_column]
@@ -254,12 +265,13 @@ class Coordinator(object):
                             local_f1.append(sk_f1_score(y_true, y_pred))
                             local_acc.append(acc)
                             local_y_pred.append(y_pred)
-                            logger.info(str(acc))
+                            logger.debug(str(acc))
                             self.record_obj(i, np.copy(self.curr_model.px_model[local_indexer].weights),
                                             "local_" + str(local_indexer))
-                    logger.info("===RUN=== AGGREGATE LOCAL MODELS===")
-                    aggregation = self.aggregate(theta_arr, kl_samples)
-                    logger.info("===RUN=== RECORD SCORES===")
+
+                    logger.debug("===RUN=== AGGREGATE LOCAL MODELS===")
+                    aggregation = self.aggregate(theta_arr, kl_samples, test_arr)
+                    logger.debug("===RUN=== RECORD SCORES===")
                     self.record_progress(aggregation, i, local_acc,
                                          self.csv_writer, 'acc')
                     self.record_progress(aggregation, i, local_f1,
@@ -364,15 +376,15 @@ class Coordinator(object):
 
     def prepare_and_run(self):
 
-        logger.info("=== PREPARE === DATA ===")
+        logger.debug("=== PREPARE === DATA ===")
         self.data = self.data_obj(path=os.path.join("data", self.name), mask=self.mask, seed=self.seed,
                                   cval=self.k_fold)
         self.data.create_cv_split()
-        logger.info("=== PREPARE === BASELINE===")
+        logger.debug("=== PREPARE === BASELINE===")
         self.baseline()
-        logger.info("=== PREPARE === LOCAL AGG===")
+        logger.debug("=== PREPARE === LOCAL AGG===")
         models, aggregate, sampler = self.run(self.model_loader)
-        logger.info("=== PREPARE === DONE===")
+        logger.debug("=== PREPARE === DONE===")
         return models, aggregate
 
     def record_progress(self, model_dict, k, local_info, dest, metric):
@@ -411,20 +423,20 @@ class Coordinator(object):
 
     def record_obj(self, i, weights, name):
         n = self.curr_model.n_local_data
-        logger.info("===RECORD OBJ=== GET BASELINE PX===")
+        logger.debug("===RECORD OBJ=== GET BASELINE PX===")
         px_model = self.baseline_px_models[i]
-        logger.info("===RECORD OBJ=== INFER BASELINE PX===")
+        logger.debug("===RECORD OBJ=== INFER BASELINE PX===")
         mu, A = px_model.infer()
         if weights is not None:
             weights = np.ascontiguousarray(weights)
-            logger.info("===RECORD OBJ=== GET LOCAL LL===")
+            logger.debug("===RECORD OBJ=== GET LOCAL LL===")
             np.copyto(px_model.weights, weights)
             mu, A = px_model.infer()
             ll = A - np.inner(px_model.statistics, px_model.weights)
         else:
-            logger.info("===RECORD OBJ=== GET GLOBAL LL===")
+            logger.debug("===RECORD OBJ=== GET GLOBAL LL===")
             ll = A - np.inner(px_model.statistics, px_model.weights)
-        logger.info("===RECORD OBJ=== WRITE LL===")
+        logger.debug("===RECORD OBJ=== WRITE LL===")
         obj_str = str(n) + ", " + str(name) + ", " + str(ll)
         print(obj_str, file=self.obj_writer)
 
@@ -509,7 +521,7 @@ if __name__ == '__main__':
                                       n_models=cmd_args.n_models,
                                       n_test=cmd_args.n_test)
             result, agg = coordinator.prepare_and_run()
-            logger.info("=== MAIN === DONE===")
+            logger.debug("=== MAIN === DONE===")
         except Exception as e:
             with open("exceptions.txt", "a+") as file:
                 logger.error("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")

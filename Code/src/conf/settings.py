@@ -75,7 +75,7 @@ class Config(object):
         self.SAMPLER = SamplerType.gibbs
         self.DEBUG = True
         self.ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-        self.LOG_LEVEL = logging.DEBUG
+        self.LOG_LEVEL = logging.ERROR
         self.URLS = {"DOTA2":"https://archive.ics.uci.edu/ml/machine-learning-databases/00367/dota2Dataset.zip",
                      "SUSY":"https://archive.ics.uci.edu/ml/machine-learning-databases/00279/SUSY.csv.gz",
                      "COVERTYPE": "https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.data.gz"}
@@ -159,6 +159,7 @@ class Config(object):
             LOG_FILE_DEBUG = os.path.join('logs', 'dbg.log')):
 
         log = logging.getLogger(LOG_NAME)
+        log.setLevel(self.LOG_LEVEL)
 
         # comment this to suppress console output
         if not os.path.isdir(os.path.join(".", "logs")):
@@ -318,7 +319,7 @@ def get_parser():
     parser.add_argument('--tol',
                         type=float,
                         help="Stopping criterion for the prox. gradient descent based on objective rate of change.",
-                        default=1e-8)
+                        default=1e-5)
 
     parser.add_argument('--graphtype',
                         type=str,
