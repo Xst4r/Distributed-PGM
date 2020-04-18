@@ -1,11 +1,11 @@
 % header.tex
-\documentclass[a4paper,11pt,twoside,english,color]{book}
+\documentclass[a4paper,11pt,twoside,english]{book}
 \usepackage[a4paper,left=3.5cm,right=2.5cm,bottom=3.5cm,top=3cm]{geometry}
-
+\usepackage{todonotes}
 \usepackage[english]{babel}
 
-\usepackage[pdftex]{graphicx,color}
-\usepackage{amsmath,amssymb,subfigure}
+%usepackage[pdftex]{graphicx}
+\usepackage{amsmath,amssymb}
 
 
 % Theorem-Umgebungen
@@ -22,11 +22,14 @@
 \usepackage{enumerate}
 \usepackage{acronym}
 \usepackage{tcolorbox}
+\usepackage{csquotes}
+\usepackage[hidelinks]{hyperref}
+
 
 
 % Bibtex deutsch
 %\usepackage{bibgerm}
-\usepackage[citestyle=numeric,bibstyle=alphabetic,backend=biber]{biblatex}
+\usepackage[citestyle=numeric,bibstyle=alphabetic,backend=biber, backref=true]{biblatex}
 \addbibresource{literature.bib}
 % URLs
 \usepackage{url}
@@ -107,14 +110,14 @@
 \newcommand{\og}{o.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]g.\@\xspace}
 \newcommand{\oBdA}{o.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]B.\nolinebreak[4]\hspace{0.125em}d.\nolinebreak[4]\hspace{0.125em}A.\@\xspace}
 \newcommand{\OBdA}{O.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]B.\nolinebreak[4]\hspace{0.125em}d.\nolinebreak[4]\hspace{0.125em}A.\@\xspace}
-
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\lvert#1\rvert}
 \let\vec\mathbf
 \newcommand{\vect}[1]{\boldsymbol{#1}}
 % Leere Seite ohne Seitennummer, naechste Seite rechts
 \newcommand{\blankpage}{
  \clearpage{\pagestyle{empty}\cleardoublepage}
 }
-
 % Keine einzelnen Zeilen beim Anfang eines Abschnitts (Schusterjungen)
 \clubpenalty = 10000
 % Keine einzelnen Zeilen am Ende eines Abschnitts (Hurenkinder)

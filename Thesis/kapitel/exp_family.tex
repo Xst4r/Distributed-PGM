@@ -1,23 +1,62 @@
 % kapitel2.tex
 \chapter{Background}
 \label{chapter:kap2}
-\section{Notation}
-Let us first define our notation. 
-Random Variables will be noted as $X$ and random vectors $\vect{X} = \{X_1, X_2, \ldots, X_n\}$ will be denoted in bold.
-The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and for a random vector likewise as $\vect{\mathcal{X}}$.
-Parameters of a probability density function in the context of the canocical exponential family will usually be noted as $\vect{\theta}$.
-Model parameters on the ith local device will be noted as $\vect{\theta^i}$, while $\vect{\theta_i}$ is the value at position i of the parameter vecttor.
-For a multivariate gaussian normal $\vect{\theta} = \{\vect{\mu}, \vect{\Sigma}\}$ the model parameters usually consist of mean $\vect{\mu}$ and covariance matrix $\vect{\Sigma}$.
-If necessary additional notations for model parameters will be introduced if necessary.
-This may be the case when talking about the distribution of $\vect{\theta}$ to distinguish between the model parameters and the distribution of model parameters.
 
-When talking about optimality of $\vect{\theta}$ \wrt the canocical exponential family we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
-Then, $\vect{\hat{\theta}}$ is the oracle, that has seen all data and is the reference point for comparing local models and aggregates.
-Furthermore, $\vect{\tilde{\theta}}$ denotes a local parameter vector and $\vect{\tilde{\theta}}^i$ the ith local parameter vector respectively.
+\section{Notation}
+\label{sec:nota}
+Let us first define our notation. 
+Random Variables will be noted as $X$ and vectors will be written in bold letters, e.g. a vector of random variables $\vect{X} = \{X_1, X_2, \ldots, X_m\} \in \mathbb{R}^m$.
+The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and the statespace for  a random vector likewise as $\vect{\mathcal{X}}$.
+Parameters of a probability density function in the context of the canocical exponential family will usually be noted as $\vect{\theta} \in \mathbb{R}^n, \quad \mathbb{N}^+$.
+Here $\mathbb{N}^+$ is defined as $ \mathbb{N}^+ = \mathbb{N} \setminus \{0\}$.
+Model parameters on the i$^{th}$ local device will be noted as $\vect{\theta^i}$, while $\vect{\theta_i}$ is the entry at the i$^{th}$ position of the parameter vector.
+A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
+Additional notations for model parameters will be introduced if necesesary.
+\todo{More generally any variable denothed with \* is optimal, \^ is global and \~ is local}
+In the context of optimization and optimality we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
+The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data is denoted as  $\vect{\hat{\theta}}$.
+Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\tilde{\theta}}^{(i)}$ the i$^{th}$ local parameter vector respectively.
+
+
 \section{Probability Theory}
+This is the Bayes Theorem:
+\begin{equation}
+    P (A \lvert B) = \frac{P(B \lvert A) \cdot P(A)}{P(B)}
+\end{equation}
+
+
 \section{Exponential Families}
+\label{sec:expf}
+
+We will now introduce a convenient property of parameters from canonical exponential families, asymptotic normality of the maximum likelihood estimator. 
+
 \subsection{Asymptotic Normality}
+\label{ssec:asymp}
+The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
+Implying, that the paremeters follow a normal distribution with the  true parameter vector as mean an the inverse fisher information as covariance, with 
+
+\begin{equation}
+    i(\theta^*) = \frac{\partial}{\partial^2 \vect{\theta}} p(x \lvert \vect{\theta})
+\end{equation}
+
+being the fisher information matrix.
+
+We can interpret this result in such way that a set of parameter vectors obtained from data sets $\{\mathcal{D}_1, \ldots \mathcal{D}_n\}$ is normally distributed around the true parameter vector for a sample size of $n \leftarrow \infty$. 
+This in turn implies that we can treat parameter vectors of local devices as samples from such a distribution and use this to estimate the maximum likelihood of the parameter space.
+Addtionally we can use some $\vect{\theta}$ and assume this to be $\theta^*$ and use the result for sampling additional models.
+
+
 \section{Probabilistic Graphical Models}
+\label{sec:pgm}
+When dealing with statistical (bayesian) models our goal usually is to estimate a set of parameters of a predetermined distribution that reduces the risk of predicting the wrong outcome (Risk Minimization). 
+This is usually done by maximizing the Likelihood of the parameters having generated the data set $\mathcal{D}$ (see \ref{ssec:train}).
+
+Let $\vect{X}$ be a random vector as defined in secition \ref{sec:nota}. 
+Each entry in $X_i \in \vect{X}$ corresponds to a single random variable.
+The most simple statistical models model each random variable individually while not accounting for dependencies between two or more variables.
+This leads to worse estimates as the model can not capture the full scope of the underlying distribution.
+With Probabilistic Graphical Models we can capture the underlying dependencies between these random variables in order to create a better estimate for the assumed distribution $\mathcal{D}$ adheres to.
+
 When estimating parameters of a distribution we may consider each feature a random variable and the data generated a result of a stochastic process based on this random variables.
 Probabilistic Graphical Models (PGM) are a powerful tool to model conditional independencies between random variables. 
 We express each random variable as a node in a graph and each edge between two nodes represents a dependency. 
@@ -38,6 +77,47 @@ Additionally we need to define a stopping criterion where every device will stop
 This is usually the case when most devices have a similar local model.
 In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
 
+\subsection{Structure}
+\label{ssec:struc}
+We model the independency structure of $\vect{X}$ as a graph, where each vertex corresponds to a random variable and each edge is a dependency between two variables.
+Formally, let $G = (\vect{X},E)$ be a Graph with $\vect{X} =\{X_1 \ldots, X_n\}$, $\vect{\mathcal{X}} = \{\mathcal{X}_1, \ldots, \mathcal{X}_n\}$ and $E \subseteq \vect{X} \times \vect{X}$
+\paragraph{Markov Property}
+
+\subsubsection{Structure Learning}
+    Determining the Structure for the graph is important as we want to model the actual dependencie
+    between random variables. 
+    We may decide to drop dependencies in order to simplify the model, which allows for faster and exact training(in case the graph is a tree).
+    
+    We will use the Chow-Liu algorithm to approximate a independency structure, which always results in a tree.
+    The algorithm computes the cross entropy for every pair of nodes and then computing the minimum spanning tree to 
+    obtain the edges with the largest correlation.
+    This limits the clique size in the graph to two, resulting in a tree, but also limiting the number of nodes that depend on each other.
+
+    In this work the Chow-Liu algorithm is used for all independency structure approximations.
+\subsection{Training}
+\label{ssec:train}
+
+Exponential Family is family of parametrized densities
+Parameters have to be estimated
+Maximum Likelihood Estimation
+Given Data maximize Likelihood of Data being generated by distribution
+Maximization over Distribution Parameters 
+Negative Average Log Likelihood to prevent numerical errors
+In general no closed form solution
+Derivative is average sufficient statistics + expectation of $\vect{X}$
+Log Partition is P-Complete, however solvable in poly time for trees.
+
+optimization via Belief Propagation -> Inference
+\subsection{Inference}
+\label{ssec:inf}
+
+Computing Clique Marginals
+Belief Propagation
+Exact for Trees 
+Loopy Belief Propagation for non-tree Graphs
+
+Since we are using the Chow-Lio algorithm to approximate the independency structure it is sufficient to use Belief Propagation for inference as this is guaranteed to be optimal and deterministic on trees.
+
 \section{Distributed Learning}
 There are mainly two different architectural approaches to distributed learning. 
 The first approach is a decentralized approach without coordinator.
@@ -50,60 +130,48 @@ This work will focus on the second type, while also giving some theoretical insi
 \subsection{Sample Complexity}
 One of the key questions of distributed learning is the number of samples required to obtain local models that are sufficiently good, i.e., when to stop learning and either start communication with the coordinator
 or to terminate the algorithm and produce a final aggregate model. 
-One such upper bound can be found by applying the Hoefding-Inequality to the expectation of the difference between the sufficient statistics of a probabislitc graphical model.
+The problem to find the number of samples required is known to be hard \todo{cite} and as such no exacty solution to this problem exists.
+However, an upper bound on the sample complexity is given by the Hoefding-Bound. 
+We apply the Hoefding-Inequality on the pairwise difference between average sufficient statistics of local models.
+
+The Hoefding-Inequality is given by
+\begin{equation}
+    P(\vect{\bar{X}} - \mathbb{E}[\vect{\bar{X}}] \geq t ) \leq \exp^{-2\abs{\mathcal{D}]t^2}},
+\end{equation}
+
+where for some constant $t$ the probability of the difference between the empirical mean of a random variable and its expectation is begin greater than $t$ is negatively exponential bounded by the amount of data seen.
+
+It can be shown that for $t = \frac{\sqrt{(c+1) \log d}}{2\abs{\mathcal{D}}}$ the difference between two average sufficient statistics $\vect{\mu}^i = \frac{1}{\mathcal{D}_i} \sum_{x \in \mathcal{D}} \vect{\phi(x)}, \quad \vect{\phi(x)} \in \mathbb{R}^d$ of a probabilistic graphical model is bounded by
+\begin{equation}
+    \norm{\mu^{i} -  \mu^{j}}_\infty \leq 2 \sqrt{
+        \frac{(c+1) \log d}
+        {2\abs{\mathcal{D^{'}}}}
+        } = \epsilon
+\end{equation},
+with probability of at least $\delta= (1- 2 \exp(-c \log d))$. Here $D^{'} = \min(\abs{\mathcal{D}^i}, \abs{\mathcal{D}^j})$.
+The proof is provided by Piatkowski \cite{piatkowski2019distributed}. \todo{Maybe put this in appendix}
+Addtionally, as the average sufficient statistics approach each other so do the model parameters to some degree as shown by \todo{CITE}.
+
+As the model parameters approach each other, we can show by Popoviciu's Theorem
+\begin{theorem}[Upper Bound on the Variance]
+    Let $\vect{X}$ be a bounded random variable with $\inf(\vect{X}) = b$ and $\sup(\vect{X}) = a$, 
+    then the variance $\sigma^2$ is bounded by 
+    \begin{equation}
+        \sigma^2 \leq \bigg(\frac{a-b}{2}\bigg)^{2}
+    \end{equation}
+\end{theorem}
+
+\input{kapitel/proofs/popoviciu.tex}
+
+It follows that
+\begin{equation*}
+    Var[\vect{X}] \leq f(\frac{a-b}{2}) \leq  \frac{1}{4} \cdot \mathbb{E}\bigg[\big((\vect{X} - b) - (\vect{X} - a)\big)^2\bigg]  =  \bigg(\frac{a-b}{2}\bigg)^2 
+\end{equation*}\qed
+
+Recall that $\norm{\vect{\mu}^{i} -  \vect{\mu}^{j}}_\infty \leq  \epsilon$, where $\epsilon$ provides the largest difference between two entries of the average sufficient statistics hence let $a - b = \mu^{i}_k - \mu^{j} = epsilon$.
+This means that there exists no larger difference between the two vectors resulting in an upper bound for the variance of the average sufficient statistics with $a - b = \epsilon$ 
+\begin{equation*}
+    Var[\vect{\mu}^{i}_k -  \vect{\mu}^{j}_k] \leq \frac{\epsilon^2}{4} \quad \forall i,j,k
+\end{equation*}.
 Given two average sufficient statistics we can employ the Hoefding Bound to guarantee the distance between these two to be smaller than some $\epsilon$ with probability $\delta$
-
-\subsection{Model Aggregation}
-
-\subsubsection{Averaging}
-The most intuitive approach to model aggregation is done by simply computing the unbiased average of all model parameters.
-\begin{equation}
-    \frac{1}{n} \sum_{i=1}^n \theta^i
-\end{equation}
-\subsubsection{Weighted Averaging}
-The first step towards a more refined approach to model aggregation is to turn the uninformative prior, that is, the equally weighted aggreagtes into an informed prior by some means.
-\begin{equation}
-     \sum_{i=1}^n \lambda_i \theta^i
-\end{equation}
-
-While this sounds quite easy in theory, the research on informative priors and prior-based learning is still prevalent and actively pursued.
-One method involves weighting the local model parameters by its likelihood given probability distribution over these parameters.
-Since the Maximum Likelihood Estimator for canonical exponential families is asymptotically normal we may use the likelihood of a gaussian normal as weights:
-\begin{equation}
-    \lambda_i = \frac{\log p(\theta \lvert \psi)}{\sum_{x\in \mathcal{X}} \log p(\theta \lvert \psi)}
-\end{equation}
-where the denominator is the normalizer for the probability distribution used, either discrete or continuous.
-In case of a normal distribution we then have
-\begin{equation}
-    p(\theta \lvert \psi) = \mathcal{N}(\theta \lvert \vect{\mu}, \vect{\Sigma})
-\end{equation}
-
-\begin{equation}
-    \lambda_i = \log \frac{1}{\sqrt{2\pi\lvert \vect{\Sigma} \rvert}} \cdot \exp^{-\frac{1}{2} \cdot (\vect{\theta} - \vect{\mu})^T\vect{\Sigma}^{-1}(\vect{\theta} - \vect{\mu}}
-\end{equation}
-\subsubsection{Radon Machines}
-A more robust method to solve the issue of model aggregation is the computation of the geometric median.
-While the geometric median is well defined, there exists no algorithm to exactly compute the geometric median in $\mathbb{R}^n$ dimensions.
-However [CITE] introduced Radon Machines as method for model ensembling.
-Computing the radon point of a set of points is a variant of the geometric median and closely related to the tukey depth. 
-The solution to the equation is obtained by solving a system of linear equations.
-However, this requires the computation of the radon point, which in euclidean space has $\mathbb{R}^n + 2$ dimensions.
-This requires us to have at least $\mathbb{R}^n + 2$ models readily available and with further aggregation $\mathbb{R}^{r^n}$ as each hierachichal step increases the number of models required exponentially.
-
-\subsubsection{Bootstrap Aggregagation}
-With generative modelling we can easily sample additional data from local models by transferring the local model parameters to the coordinator node.
-Sampling can be realized in various different ways such as Gibbs Sampling or Perturb and Map.
-We then create a new Dataset from our samples and use this to train a new global model. 
-This has been shown to work in CITE and for canonical expoential families this approach is analogous to computing the expected average sufficient statistics:
-TODO PROOF:
-
-
-\subsubsection{Performance-Weighted-Averaging}
-Instead of using a federated approach we can also rely on a federated-decentralized hybrid approach. 
-That is, we generate weights vor a weighted average based on some measure of local performance.
-While this this does not gurantee good results for local performance of a single model, we can attempt to measure performance of local models on other local devices.
-This approach essentially incorporates the idea of decentralized thresholding as featured in CITE RAN WOLFF.
-Local Nodes communicate with each other and in this specific case we excchange parameter vectors to perform some kind of performance measure on the local data of each device.
-This method still gurantees minimal computation cost, while also guranteeing the local data to remain private.
-We then formulate some performance measure such as average accuracy on all other local data and use this to compute the weighted average on the coordinator.
 
