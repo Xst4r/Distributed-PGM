@@ -1,16 +1,25 @@
 % einleitung.tex
 \chapter{Introduction}
-With an increasing number of devices and thus data collected on these devices the task of machine learning becomes increasingly difficult.
-While the best case scenario in terms of model quality is transferring the data to a central node and then training models on the complete and ever increasing data it is in practice not feasible to do so.
-One would incur a large communication overhead by sending the raw data to a central node. 
-Doing this for all applications would generally break the communication system. 
-Another concern is the need for privacy. We usually do not want to and should not concede our data to central servers.
-Even anonymized data can be profiled and tracked back to certain users [TODO CITE].
-Therefore, we want to apply machine learning on edge.
-Using the devices itself to learn models and then convergecasting some metadata to a central node such a model parameters.
-This requires several things, such as energy efficient computing while having limited processing power available.
-Furthermore memory and disk-space are also limited especially in the context of mobile or sensor devices.
-We propose an aggregation scheme for a distributed or federated learning system. [TODO FEDERATED vs. DISTRIBUTED?]
+With an increasing number of devices and data collected on these devices, the task of machine learning becomes increasingly challenging.
+Not only do we have to account for the machine learning task itself, we now also have to consider communication and network structure.
+While in the best case in terms of a machine learning remains having all data available at some central device this may not be guaranteed for all applications.
+Hence, creating a model, which utilizes all data available may not be feasible anymore, which requires us to bring machine learning tasks to the edge, i.e., onto individual devices in a distributed setting.
+
+Leading factors, that make this a necessity are the communication cost incurred by sending the data to a central node.
+While developement new technologies in the communication sector with an ever increasing bandwith , such as 5G with up to 1Gbit\todo{Cite}, are still being developed and deployed around the globe, it is still not possible to make use of this technology in all application. 
+Furthermore, attempting to communicate all data for each task may still be too much as projects like IceCube\todo{Cite} produce a total of x TB data each day.
+Additionally, user privacy is a major concern in a setting where we learn from data on user devices, as the data we use for learning tasks may contain sensitive information.
+While some users may allow us to retrieve their data, this is not generally the case and as such it is advantegeous to treat the data as fixed on each device.   
+However, even anonymized data can be profiled and tracked back to certain users [TODO CITE], which requires us to be even more careful about the data that is indeed communicated between devices.
+The need for privacy leads to another, directly related challenge, which is the limited amount of memory and cpu power available on each device.
+Moreover, we do not aim to strain the hardware of users too much as this would impair the devices' functionality as well as strain battery life in case of mobile devices such as smartphones.
+
+All in all there are several limitations in a distributed setting, which requires us to choose our methods and machine learning algorithms carefully in order to keep our footprint as small as possible, while trying to obtain the best possible results.
+
+These restrictions lead to the formulation of machine learning on the edge, that is, applying the machine learning tasks directly on each device and then building and aggregate model out of all available models.
+Using the devices for machine learning and then convergecasting some metadata to a central node such a model parameters is an approach known as Federated Learning \todo{cite}.
+This requires several careful considerations, such as energy efficient computing, preservation of privacy and the availability of limited ressources.
+
 
 \section{Motivation and Background}
 Communication between devices is inefficient.
@@ -29,8 +38,6 @@ Stopping criteria for local models, i.e., when are models close enough to stop t
 Model aggregation itself.
 
 
-
-%Eine Referenz~\cite{AggarwalV88}.
 \section{Related Work}
 Related Work for Model Aggregation, Local Thresholding(Ran Wolff, Assaf Schuster, Michael Kamp), Sample Complexity , Communication effieciency.
 

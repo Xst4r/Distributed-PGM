@@ -112,6 +112,35 @@
 \newcommand{\OBdA}{O.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]B.\nolinebreak[4]\hspace{0.125em}d.\nolinebreak[4]\hspace{0.125em}A.\@\xspace}
 \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
 \newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\independent}{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+\newtcolorbox[auto counter, number within=section, number freestyle={\noexpand\thechapter.\noexpand\arabic{\tcbcounter}}]{threm}[2][]
+{
+  colframe = tuorange!40,
+  colback  = tuorange!20,
+  coltitle = tuorange!20!black,  
+  title    = Theorem~\thetcbcounter: {#2},
+  #1,
+}
+\newtcolorbox[auto counter, number within=section, number freestyle={\noexpand\thechapter.\noexpand\arabic{\tcbcounter}}]{example}[2][]
+{
+  colframe = tugray!40,
+  colback  = tugray!20,
+  coltitle = tugray!20!black,  
+  title    = Example~\thetcbcounter: {#2},
+  #1,
+}
+
+\newtcolorbox[auto counter, number within=section, number freestyle={\noexpand\thechapter.\noexpand\arabic{\tcbcounter}}]{proof}[2][]
+{
+  colframe = tugreen!40,
+  colback  = tugreen!20,
+  coltitle = tugreen!20!black,  
+  title    = Proof~\thetcbcounter: {#2},
+  #1,
+}
+
 \let\vec\mathbf
 \newcommand{\vect}[1]{\boldsymbol{#1}}
 % Leere Seite ohne Seitennummer, naechste Seite rechts
@@ -123,3 +152,20 @@
 % Keine einzelnen Zeilen am Ende eines Abschnitts (Hurenkinder)
 \widowpenalty = 10000 \displaywidowpenalty = 10000
 % EOF
+
+\xdefinecolor{tugreen}{RGB}{132, 184, 24} % source: official
+\xdefinecolor{tudarkgreen}{RGB}{100, 150, 0} % source: official (purpose: web design)
+\xdefinecolor{tulightgreen}{RGB}{224, 234, 204} % source: official (purpose: web design)
+\xdefinecolor{tugray}{RGB}{207, 208, 210} % source: Powerpoint template diagram
+\xdefinecolor{tugraybg}{RGB}{178, 179, 204} % source: official (purpose: web design)
+\xdefinecolor{tuorange}{RGB}{227, 105, 19} % source: another template
+\xdefinecolor{tuyellow}{RGB}{242, 189, 0} % source: another template
+\xdefinecolor{tucitron}{RGB}{249, 219, 0} % source: another template
+\xdefinecolor{tublue}{RGB}{46, 134, 171} % source: imaginary
+\xdefinecolor{tudarkblue}{RGB}{30, 89, 114} % source: imaginary
+\xdefinecolor{tuviolet}{RGB}{61, 52, 139} % source: imaginary
+\xdefinecolor{tumagenta}{RGB}{139, 52, 88} % source: imaginary
+\xdefinecolor{tudarkergreen}{RGB}{75, 98, 44} % source: Stefan Michaelis
+\xdefinecolor{tuolive}{RGB}{83, 145, 45} % source: Stefan Michaelis
+\xdefinecolor{tulime}{RGB}{215, 215, 0} % source: Stefan Michaelis
+\xdefinecolor{tugraygreen}{RGB}{217,233,229} % source: Stefan Michaelis

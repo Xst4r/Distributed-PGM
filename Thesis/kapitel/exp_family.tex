@@ -30,6 +30,11 @@ This is the Bayes Theorem:
 
 We will now introduce a convenient property of parameters from canonical exponential families, asymptotic normality of the maximum likelihood estimator. 
 
+The canonical exponential family is defined as 
+\begin{equation}
+    p(\vect{x} \lvert \vect{\theta}) = \frac{1}{Z(\vect{\theta})} \prod_{c \in \mathcal{C}} \psi_c(\vect{x})
+\end{equation}
+
 \subsection{Asymptotic Normality}
 \label{ssec:asymp}
 The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
@@ -77,11 +82,58 @@ Additionally we need to define a stopping criterion where every device will stop
 This is usually the case when most devices have a similar local model.
 In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
 
-\subsection{Structure}
-\label{ssec:struc}
-We model the independency structure of $\vect{X}$ as a graph, where each vertex corresponds to a random variable and each edge is a dependency between two variables.
+Probabilistic Graphical Models are usually represented as a Graph, i.e., a set of vertices and edges that represent the independency structure of $\vect{X}$.
+Each vertex corresponds to a random variable and each edge is a dependency between two variables.
 Formally, let $G = (\vect{X},E)$ be a Graph with $\vect{X} =\{X_1 \ldots, X_n\}$, $\vect{\mathcal{X}} = \{\mathcal{X}_1, \ldots, \mathcal{X}_n\}$ and $E \subseteq \vect{X} \times \vect{X}$
-\paragraph{Markov Property}
+
+\subsection{Markov Random Fields}
+
+A Markov Random Field is a probabilistic graphical model to represent the joint probability of a random vector $\vect{X}$. 
+Given a set of special properties, the Markov Properties we can express the joint probability distribution in terms of cliques in the graph.
+
+\subsubsection*{Markov Properties}
+Probabilistic graphical models are considered Markov Random Fields if the Graph is undirected and the three markov properties hold for any set of random variables indexed by the vertices of G $\vect{X} = \{X_v\}, v \in V$
+
+\paragraph*{Pairwise Makrov Property}
+\paragraph*{Local Markov Property}
+Given a random variable $X_v$ it is independent of all other variables given its neighbours 
+$X_v \independent X_{V\setminus (v \cup \mathcal{N}(v))} \lvert X_{\mathcal{N}(v)}$
+\paragraph*{Global Makrov Property}
+
+\paragraph*{}
+\paragraph*{Clique Factorization}
+
+A clique is a subset of nodes $C \subseteq V$ such that, $\forall u,v,  \in C, u \neq v: \exists (u,v) \in E$ there exists and edge in $E$ for all nodes in $C$, i.e., the subset is fully connected.
+Now let $\mathcal{C}$ be set set of maximal cliques, i.e., the set of cliques that are not included in any other clique or formally 
+\begin{equation}
+    \forall C_i, C_j \in \mathcal{C}, i \neq j  : C_i \not\subset C_j, C_j \not\subset C_i, C_i \neq C_j
+\end{equation}
+there exists no such pair of cliques in $\mathcal{C}$ such that either one is a true subset or the other.
+This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\max \mathcal{C} = \max \{\abs{\mathcal{C_1}}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
+
+We can then express the joint probability distribution in terms of the set of maximal cliques, by treating each clique as a local probability density function and then factorizing over all maximal cliques. 
+We assign a potential function $\psi_C: \mathcal{X}_C \leftarrow \mathbb{R}$ to the clique that maps any state of the clique $\vect{x}_C \in \mathcal{X}_C$ to a positive real valued number.
+The clique factorization is then defined as:
+
+\begin{equation}
+    \mathbb{P}(\vect{X}=\vect{x}) = \frac{1}{Z} \cdot \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)
+\end{equation},
+where $Z$ is the normalizer of the probability density function, $\mathbb{P}$ is a probability density function, i.e.:
+
+\begin{equation}
+    \sum_{\vect{x}\in \mathcal{\vect{X}}}   \frac{1}{Z} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)  = 1.
+\end{equation}
+
+The partition function $Z$ is therefore defined as sum over factorizions over all possible states:
+\begin{equation}
+    Z = \sum_{x\in \mathcal{X}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)
+\end{equation}
+
+\begin{equation}
+    \psi_C(\vect{x}_c) = \exp(\sum_{i=1}^n \theta_i \cdot \phi(\vect{x})_i)
+\end{equation}
+
+\paragraph*{Exponential Families}
 
 \subsubsection{Structure Learning}
     Determining the Structure for the graph is important as we want to model the actual dependencie
@@ -127,6 +179,24 @@ The nodes in this approach send their data to the coordinator.
 Hybrid-Methods, where both types of architerure are mixed are also possible.
 This work will focus on the second type, while also giving some theoretical insights to the decentralized approach.
 
+Moreover the data may be horizontally or vertically distributed, i.e., either all features are available on each device, but only a small portion of the data or each device has access to all data of a subset of features.
+Sensor Networks are an example for the latter, where each sensor may only generate one or more features such as temperature or magnetic field strength.
+
+The key questions we have to ask ourselves in a distributed settting with horizontally distributed data are:
+\begin{itemize}
+    \item How much data is sufficient to obtain a proper estimate for the model on each device ? 
+    \item When, how much and what do we communicate either between local devices or the coordinator ?
+    \item What are we allowed to communicate ? (in terms of privacy preservation on user devices)
+\end{itemize}
+
+Depending on the task we may have to restrict communication, memory and processor consumption to an absolute minimum.
+Here, statistical models have one major advantage over other models, that is they require less disk space to store and process as only certain statistics need to be preserved.
+These are generally the parameters of the distribution we provide.
+With markov random fields using a probability distribution from the exponential family we do not even have to store the data in memory has we only have to preserve the sufficient statistics for training and inference.
+
+The two major issues we have to deal with are therefore the sample complexity and the model aggregation.
+As the main focus of this work is the model aggregation, which will be featured in chapter \ref{chapter:ch3}, we will now briefly discuss sample complexity.
+
 \subsection{Sample Complexity}
 One of the key questions of distributed learning is the number of samples required to obtain local models that are sufficiently good, i.e., when to stop learning and either start communication with the coordinator
 or to terminate the algorithm and produce a final aggregate model. 
@@ -152,14 +222,16 @@ with probability of at least $\delta= (1- 2 \exp(-c \log d))$. Here $D^{'} = \mi
 The proof is provided by Piatkowski \cite{piatkowski2019distributed}. \todo{Maybe put this in appendix}
 Addtionally, as the average sufficient statistics approach each other so do the model parameters to some degree as shown by \todo{CITE}.
 
-As the model parameters approach each other, we can show by Popoviciu's Theorem
-\begin{theorem}[Upper Bound on the Variance]
+As the model parameters approach each other, we can show by Popoviciu's Theorem \cite{popoviciu1935equations} 
+\begin{threm}{Upper Bound on the Variance}
     Let $\vect{X}$ be a bounded random variable with $\inf(\vect{X}) = b$ and $\sup(\vect{X}) = a$, 
     then the variance $\sigma^2$ is bounded by 
     \begin{equation}
         \sigma^2 \leq \bigg(\frac{a-b}{2}\bigg)^{2}
     \end{equation}
-\end{theorem}
+\end{threm}
+
+For the interested reader we refer to Sharma et al. \cite{sharma2010betterbounds} for more information about upper and lower bounds for variances.
 
 \input{kapitel/proofs/popoviciu.tex}
 
@@ -174,4 +246,15 @@ This means that there exists no larger difference between the two vectors result
     Var[\vect{\mu}^{i}_k -  \vect{\mu}^{j}_k] \leq \frac{\epsilon^2}{4} \quad \forall i,j,k
 \end{equation*}.
 Given two average sufficient statistics we can employ the Hoefding Bound to guarantee the distance between these two to be smaller than some $\epsilon$ with probability $\delta$
+
+
+As the amount of data on each device increases we can also measure how close the sufficient statistics are with probability $\delta$ by rearranging the above equation. 
+This is the most common scenario in distributed learning. As time goes on the amount of data increases allowing us to continuously measure the distance and variance between the sufficient statistics.
+Once we reach our predetermined goal on a device, i.e. $\abs{\mathcal{D}}^^i$ is sufficiently large to satisfy our bound we stop collecting more data send the parameter vector to the coordinator node.
+
+\todo{Equation}
+
+We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$ the distance $\epsilon$ decreases and so does the variance. 
+
+\todo{Maybe Plot eps and delta in 3D}
 
