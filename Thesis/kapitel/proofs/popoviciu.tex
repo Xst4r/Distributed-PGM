@@ -1,0 +1,53 @@
+\begin{proof}{Bound of Variances}
+
+Let $f(t) = \mathbb{E}[(\vect{X} - t)^2]$ for some $t$ and $b = \inf(\vect{X})$, $a = \sup(\vect{X})$ for a bounded random variable $\vect{X}$.
+
+The derivative of $f(t)$ is:
+\begin{equation*}
+    \begin{split}
+        f'(t) &= \frac{d}{dt} \mathbb{E}[(\vect{X} - t)^2]\\ 
+            &= -2\mathbb{E}[\vect{X}] + 2t = 0\\
+    \end{split}
+\end{equation*}
+and takes its minimum at $t = \mathbb{E}[X]$, which is $f(\mathbb{E}[X]) = \mathbb{E}[(\vect{X} - \mathbb{E}[X])^2] = Var[X]$ the variance of the random variable.
+
+Now let  $t=\frac{a-b}{2}$, the arithmetic mean $\sup(\vect{X})$ and $\inf(\vect{X})$, which maximizes the distance between $t$ and $a,b$.
+We obtain the following inequalities for the maximizer:
+
+\begin{equation*}
+    Var[\vect{X}] = f(\mathbb{E}[\vect{X}]) = \mathbb{E}[(\vect{X} - \mathbb{E}[\vect{X}])^2) \leq f(\frac{a-b}{2})
+\end{equation*}
+
+with 
+
+\begin{equation*}
+    f\bigg(\frac{a-b}{2}\bigg) = \mathbb{E}\bigg[\bigg(\vect{X} - \frac{a-b}{2} \bigg)^2\bigg]= \frac{1}{4} \cdot \mathbb{E}\bigg[\big((\vect{X} - b) + (\vect{X} - a)  \big)^2\bigg]
+\end{equation*}
+
+We then have 
+\begin{equation*}
+         \bigg((\vect{X} - b) + (\vect{X} - a)  \bigg)^2 \leq  \bigg((\vect{X} - b) - (\vect{X} - a)  \bigg)^2  = (a-b)^2 
+\end{equation*}
+We now show that the equality on the right hand side holds.
+Let $\vect{X} = a - \epsilon, \quad \epsilon \in [b,a]$ : 
+
+\begin{equation*}
+    \begin{split}
+        \bigg(((a-\epsilon) - b) - ((a-\epsilon) - a)  \bigg)^2  &=  (a-b)^2\\
+        \bigg(((a-\epsilon) - b) + \epsilon  \bigg)^2 &=  (a-b)^2 \\
+        (a-b)^2  &= (a-b)^2,\\
+    \end{split}
+\end{equation*}
+\qed
+thus for any $\epsilon \in [b,a]$ the equality holds.
+
+For the expected value of $\vect{X}$ we then have
+\begin{equation*}
+    \frac{1}{4} \cdot \mathbb{E}\bigg[\big((\vect{X} - b) + (\vect{X} - a)  \big)^2\bigg] \leq \frac{1}{4} \cdot \mathbb{E}\bigg[\big((\vect{X} - b) - (\vect{X} - a)\big)^2\bigg] = \bigg(\frac{a-b}{2}\bigg)^2,
+\end{equation*}\qed
+obtaining the following bound on the variance of a bounded random variable:
+\begin{equation}
+    Var[\vect{X}] = \sigma^2 \leq \bigg(\frac{a-b}{2}\bigg)^2
+\end{equation}
+\qed
+\end{proof}

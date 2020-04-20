@@ -20,6 +20,11 @@ These restrictions lead to the formulation of machine learning on the edge, that
 Using the devices for machine learning and then convergecasting some metadata to a central node such a model parameters is an approach known as Federated Learning \todo{cite}.
 This requires several careful considerations, such as energy efficient computing, preservation of privacy and the availability of limited ressources.
 
+\todo{Federated and Decentralized Learning}
+
+Briefly, given a solution space $\Theta$ containing all possible solutions to some machine learning task, we are trying to find a solution $\bar{\theta} \in \Theta$, from a set of local solutions $\Psi = \{\theta^{(1)}, \ldots \theta^{(n)}\} \subset \Theta$ on n devices.
+
+
 
 \section{Motivation and Background}
 Communication between devices is inefficient.
@@ -39,12 +44,22 @@ Model aggregation itself.
 
 
 \section{Related Work}
-Related Work for Model Aggregation, Local Thresholding(Ran Wolff, Assaf Schuster, Michael Kamp), Sample Complexity , Communication effieciency.
 
+Distributed Learning and Model Aggregation is a large research area that has been a subject to a variety of reserach.
+Applications such as \todo{Application A}, \todo{Application B} or \todo{Application C} arise frequently in different areas of reserach and industry. 
 
-Motivation for this topic, why do we need distributed learning or even resource constrained ?
+Therefore studying different tasks associated with distributed learning such as model aggregation, thresholding and communication optimization is vital for improving and advancing the this research area.
 
-The related work to this thesis divides itself upon several reserach areas. 
+Wolff \cite{wolff2013local} has proposed a way to approach thresholding in distributed system for a network without structural restrictions.
+The proposed algorithm passes the local information about some defined threshold to neighbouring nodes, which is then propagated thorugh the network structure. Nodes/Devices that are within the defined threshold stop sending messages until they receive new messages from neighbours that would lead to the local information not satisfying the conditions.
+This approach can be used to monitor local conditions such as sample size or distances between models in order to find local models that do not satisfy the threshold. These would then continue sending messages, while also continuing to gather data and training the local model. 
+Once all devices fulfill the conditions we have successfully found the model all devices agree on to a certain extent. 
+This is closely related, in terms of sample complexity, to a bound on the number of samples required for models to be sufficiently similar, such as the Hoefding Bound \todo{cite}.
+
+Similar approaches, with a geometric interpretation have been discussed by Keren et al. \cite{sharfman2007geometric}, \cite{keren2011shape}, which interprets the threshold as convex hull. Local information that is outside of the convex hull is assumed to be active and continues sending messages until all local information is inside the same space.
+\todo{this needs more research and work}
+
+Model aggregation has also been studied.
 For one we have the general approach to model aggregation and specifically in the distributed setting.
 Then we have to consider the sample complexity, i.e., having a general idea bout how much data we need on each device.
 This can be done by using a general network approach or using existing bounds such as the hoefding bound to guarentee the models being somewhat close.
@@ -75,3 +90,10 @@ Instead, we are only required to send the model parameters or certain statistics
 Depending on the overall structure we may only be able create these composite models on the local device, i.e. we are limited to aggregating models individually by receiving information from connected (neighbouring) devices.
 For this work we will focus on distributed probabilistic graphical models as our structure of choice for the distributed environment.
 \section{Thesis Structure}
+
+We will start with the necessary Background in Probability Theory, probabilistic graphical models and exponential families.
+Then we will discuss Model Aggregation and different approaches to model aggregation. 
+Afterwards we will have a detailed look at the architecture and its implementation, dependencies and structure.
+Followed by performing experiments on data sets using the different aggregation mechanics and evaluate the results based on standard criteria for likelihood optimization as objective value (likelihood) or accuracy and f1 score when dealing with classification. 
+Furthermore, we evaluate the number of samples required to obtain a stable maximum likelihood estimator and how close the models are in terms of distance between parameters and statistics, while also considering the amount of communication required for each aggregation mechanic.
+Finally we will provide a conclusion to the experiments and the thesis, while also providing a brief outlook on possibly future work and areas that require more research.

@@ -55,9 +55,54 @@ In case of a normal distribution we then have
 \section{Radon Machines}
 A more robust method to solve the issue of model aggregation is the computation of the geometric median.
 While the geometric median is well defined, there exists no algorithm to exactly compute the geometric median in $\mathbb{R}^n$ dimensions.
-However [CITE] introduced Radon Machines as method for model ensembling.
+However Kamp et al. \cite{kamp2017effective} introduced Radon Machines as method for model ensembling.
 Computing the radon point of a set of points is a variant of the geometric median and closely related to the tukey depth. 
 The solution to the equation is obtained by solving a system of linear equations.
+
+\paragraph*{Radon Points}
+Given a pair of convex hulls defined by two sets of points definined the hull $S_1, S_2$, a radon point is a point that is contained within the intersection of the two convex hulls of $S_1, S_2$. 
+Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
+
+\begin{threm}{Radon's Theorem}
+    Given a set of of points in euclidean space
+    \begin{equation}
+        S = \{\vect{x}_1, \ldots \vect{x}_{d+2}\} \subset \mathbb{R}^d,
+    \end{equation}
+   there exists a partition of S into two subsets $S_1, S_2$ such that the intersection of the convex hulls spanned by both sets is not empty, that is
+    
+    \begin{equation}
+        \exists S_1, S_2, \;\; S_1 \cup S_2 = S, \; S_1 \cap S_2 = \emptyset: Conv(S_1) \cap Conv(S_2) \neq \emptyset,
+    \end{equation}
+
+    where $Conv(\cdot)$ is the Convex Hull for a given set.
+    Any point contained  in the intersection between the two convex hulls is a radon point.
+\end{threm}
+
+\paragraph*{Computation of Radon Points}
+
+The problem of finding such as point can be solved by formulating a system of linear equations, where the radon point is defined by the equality of the convex combinations for the two resulting subsets $S_1, S_2$.
+A radon point can be found by solving the following optimization problem
+
+\begin{equation}
+    \begin{split}
+        \min_{\vect{\lambda}} \quad &1 \\
+        s.t. \;\; &\sum_{i=1}^{d+2} \lambda_i \vect{x}_i = \vect{0}\\
+             \;\; &\sum_{i=1}^{d+2} \lambda_i = 0 \\
+             \; \; & \lambda_1 = 1
+    \end{split}
+\end{equation}
+
+Since we have $d+2$ $\mathbb{R}^d$-dimensional points, we have to add an additional constraint by fixing one arbritary variable to a constant. 
+This allows, in absence of linear dependencies, finding a unique solution to the problem.
+However, any solution to the above system of linear equations is a radon point and there may exist multiple solutions.
+One particular issue that we may run into is that the maximum likelihood estimators estimated from samples of the same random variable approch each other in the limit of $n \rightarrow \infty$, which means we may introduce linear dependencies as the amount of data on each device increases.
+While this is an issue for the sytem of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any one solution.
+As all points that satisfy the following condition are considered to be radon points:
+\begin{tcolorbox}
+    Condition for Radon Points    
+\end{tcolorbox}
+
+\paragraph*{Limitations}
 However, this requires the computation of the radon point, which in euclidean space has $\mathbb{R}^n + 2$ dimensions.
 This requires us to have at least $\mathbb{R}^n + 2$ models readily available and with further aggregation $\mathbb{R}^{r^n}$ as each hierachichal step increases the number of models required exponentially.
 
