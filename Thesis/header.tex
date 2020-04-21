@@ -24,9 +24,14 @@
 \usepackage{tcolorbox}
 \usepackage{csquotes}
 \usepackage[hidelinks]{hyperref}
+\usepackage[parfill]{parskip}
 
 
-
+\usepackage{tikz}
+\usetikzlibrary{fit,positioning,arrows,automata}
+\usepackage{tikz-network}
+\usepackage{caption}
+\usepackage{subcaption}
 % Bibtex deutsch
 %\usepackage{bibgerm}
 \usepackage[citestyle=numeric,bibstyle=alphabetic,backend=biber, backref=true]{biblatex}
@@ -58,9 +63,7 @@
 % Definitionen mit \upshape
 \theorembodyfont{\upshape}
 \theoremstyle{change}
-\newtheorem{definition}[theorem]{Definition}
 \theoremstyle{nonumberplain}
-\renewtheorem{definition*}{Definition}
 % Kursive Schrift
 \theoremheaderfont{\itshape}
 \newtheorem{notation}{Notation}
@@ -81,11 +84,11 @@
 \renewtheorem{problem*}{Problem}
 
 % Algorithmen anpassen %
-\renewcommand{\algorithmicrequire}{\textit{Eingabe:}}
-\renewcommand{\algorithmicensure}{\textit{Ausgabe:}}
-\floatname{algorithm}{Algorithmus}
-\renewcommand{\listalgorithmname}{Algorithmenverzeichnis}
-\renewcommand{\algorithmiccomment}[1]{\color{grau}{// #1}}
+\renewcommand{\algorithmicrequire}{\textit{Input:}}
+\renewcommand{\algorithmicensure}{\textit{Output:}}
+\floatname{algorithm}{Algorithm}
+\renewcommand{\listalgorithmname}{List of Algorithms}
+\renewcommand{\algorithmiccomment}[1]{\textcolor{tuorange}{// #1}}
 
 % Zeilenabstand einstellen %
 \renewcommand{\baselinestretch}{1.25}
@@ -114,7 +117,7 @@
 \newcommand{\abs}[1]{\lvert#1\rvert}
 \newcommand{\independent}{\protect\mathpalette{\protect\independenT}{\perp}}
 \def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
-
+\newcommand{\fig}{Figure\@\xspace}
 \newtcolorbox[auto counter, number within=section, number freestyle={\noexpand\thechapter.\noexpand\arabic{\tcbcounter}}]{threm}[2][]
 {
   colframe = tuorange!40,
@@ -138,6 +141,24 @@
   colback  = tugreen!20,
   coltitle = tugreen!20!black,  
   title    = Proof~\thetcbcounter: {#2},
+  #1,
+}
+
+\newtcolorbox[auto counter, number within=section, number freestyle={\noexpand\thechapter.\noexpand\arabic{\tcbcounter}}]{definition}[2][]
+{
+  colframe = tucitron!40,
+  colback  = tucitron!20,
+  coltitle = tucitron!20!black,  
+  title    = Definition~\thetcbcounter: {#2},
+  #1,
+}
+
+\newtcolorbox[auto counter, number within=section, number freestyle={\noexpand\thechapter.\noexpand\arabic{\tcbcounter}}]{algo}[2][]
+{
+  colframe = tugraybg!40,
+  colback  = tugraybg!20,
+  coltitle = tugraybg!20!black,  
+  title    = Algorithm~\thetcbcounter: {#2},
   #1,
 }
 

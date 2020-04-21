@@ -17,40 +17,6 @@ In the context of optimization and optimality we assume $\vect{\theta}^*$ to be 
 The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data is denoted as  $\vect{\hat{\theta}}$.
 Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\tilde{\theta}}^{(i)}$ the i$^{th}$ local parameter vector respectively.
 
-
-\section{Probability Theory}
-This is the Bayes Theorem:
-\begin{equation}
-    P (A \lvert B) = \frac{P(B \lvert A) \cdot P(A)}{P(B)}
-\end{equation}
-
-
-\section{Exponential Families}
-\label{sec:expf}
-
-We will now introduce a convenient property of parameters from canonical exponential families, asymptotic normality of the maximum likelihood estimator. 
-
-The canonical exponential family is defined as 
-\begin{equation}
-    p(\vect{x} \lvert \vect{\theta}) = \frac{1}{Z(\vect{\theta})} \prod_{c \in \mathcal{C}} \psi_c(\vect{x})
-\end{equation}
-
-\subsection{Asymptotic Normality}
-\label{ssec:asymp}
-The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
-Implying, that the paremeters follow a normal distribution with the  true parameter vector as mean an the inverse fisher information as covariance, with 
-
-\begin{equation}
-    i(\theta^*) = \frac{\partial}{\partial^2 \vect{\theta}} p(x \lvert \vect{\theta})
-\end{equation}
-
-being the fisher information matrix.
-
-We can interpret this result in such way that a set of parameter vectors obtained from data sets $\{\mathcal{D}_1, \ldots \mathcal{D}_n\}$ is normally distributed around the true parameter vector for a sample size of $n \leftarrow \infty$. 
-This in turn implies that we can treat parameter vectors of local devices as samples from such a distribution and use this to estimate the maximum likelihood of the parameter space.
-Addtionally we can use some $\vect{\theta}$ and assume this to be $\theta^*$ and use the result for sampling additional models.
-
-
 \section{Probabilistic Graphical Models}
 \label{sec:pgm}
 When dealing with statistical (bayesian) models our goal usually is to estimate a set of parameters of a predetermined distribution that reduces the risk of predicting the wrong outcome (Risk Minimization). 
@@ -133,9 +99,33 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
     \psi_C(\vect{x}_c) = \exp(\sum_{i=1}^n \theta_i \cdot \phi(\vect{x})_i)
 \end{equation}
 
-\paragraph*{Exponential Families}
 
-\subsubsection{Structure Learning}
+\subsection{Exponential Families}
+\label{ssec:expf}
+
+We will now introduce a convenient property of parameters from canonical exponential families, asymptotic normality of the maximum likelihood estimator. 
+
+The canonical exponential family is defined as 
+\begin{equation}
+    p(\vect{x} \lvert \vect{\theta}) = \frac{1}{Z(\vect{\theta})} \prod_{c \in \mathcal{C}} \psi_c(\vect{x})
+\end{equation}
+
+\subsubsection{Asymptotic Normality}
+\label{ssec:asymp}
+The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
+Implying, that the paremeters follow a normal distribution with the  true parameter vector as mean an the inverse fisher information as covariance, with 
+
+\begin{equation}
+    i(\theta^*) = \frac{\partial}{\partial^2 \vect{\theta}} p(x \lvert \vect{\theta})
+\end{equation}
+
+being the fisher information matrix.
+
+We can interpret this result in such way that a set of parameter vectors obtained from data sets $\{\mathcal{D}_1, \ldots \mathcal{D}_n\}$ is normally distributed around the true parameter vector for a sample size of $n \leftarrow \infty$. 
+This in turn implies that we can treat parameter vectors of local devices as samples from such a distribution and use this to estimate the maximum likelihood of the parameter space.
+Addtionally we can use some $\vect{\theta}$ and assume this to be $\theta^*$ and use the result for sampling additional models.
+
+\subsection{Structure Learning}
     Determining the Structure for the graph is important as we want to model the actual dependencie
     between random variables. 
     We may decide to drop dependencies in order to simplify the model, which allows for faster and exact training(in case the graph is a tree).
@@ -225,7 +215,7 @@ Addtionally, as the average sufficient statistics approach each other so do the 
 As the model parameters approach each other, we can show by Popoviciu's Theorem \cite{popoviciu1935equations} 
 \begin{threm}{Upper Bound on the Variance}
     Let $\vect{X}$ be a bounded random variable with $\inf(\vect{X}) = b$ and $\sup(\vect{X}) = a$, 
-    then the variance $\sigma^2$ is bounded by 
+    then the variance $Var[\vect{X}] = \sigma^2$ is bounded by 
     \begin{equation}
         \sigma^2 \leq \bigg(\frac{a-b}{2}\bigg)^{2}
     \end{equation}
@@ -257,4 +247,7 @@ Once we reach our predetermined goal on a device, i.e. $\abs{\mathcal{D}}^^i$ is
 We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$ the distance $\epsilon$ decreases and so does the variance. 
 
 \todo{Maybe Plot eps and delta in 3D}
-
+\subsection{Convergence}
+\section{Sampling}
+\subsection{Perturb and MAP}
+\subsection{Gibbs Sampling}
