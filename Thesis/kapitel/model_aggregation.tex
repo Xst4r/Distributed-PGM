@@ -24,38 +24,41 @@ We then send the intermediate results to a coordinator node to check for converg
 Note, that depeneding on the stopping criterion, we may need to transmit the number of observed samples as well. 
 The stopping criterion may also involve aggregating the intermediate result or computing some distance function $d: \mathbb{R}^d \times \mathbb{R}^d  \rightarrow \mathbb{R}$ in order to determine whether the training should be stopped.
 \begin{algo}{Distributed Model Aggregation}
-\begin{algorithmic}[1]
-    \label{alg:magg}
-    \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{R}^{\abs{V}}$ and Stopping Criterion C \\
-    \ENSURE Aggregate Model $\vect{\tilde{\theta}}$  \\
-    \WHILE{not STOP} \STATE{%
-    \COMMENT{Train models on each device}\\
-    \FORALL{Devices $i = 1, \ldots, k$} 
-    \STATE{
-        $\mathcal{D}_i \leftarrow \text{update}(\mathcal{D}_i)$ \\
-        $\vect{\theta}^{(i)} \leftarrow \text{train}(\mathcal{D}_i,\: G,\: s)$\\
-        $\text{send}(\vect{\theta}^{(i)})$\\
-    } 
-    \ENDFOR
-    }\\
-    \COMMENT{On the Coordinator} \\
-    \IF{C is fulfilled}
-        \STATE{Broadcast STOP} \\
-    \ENDIF
-    \ENDWHILE
-    \FORALL{Devices $i = 1, \ldots, k$}
-    \STATE{$\text{send}(\vect{\theta}^{(i)})$\\}
-    \ENDFOR
-    \STATE{$\vect{\tilde{\theta}} \leftarrow \text{aggregate}((\vect{\theta}^{(1)},\ldots,\: \vect{\theta}^{(k)}))$}\\
-    %\IF{<condition>} \STATE {<text>} \ELSE \STATE{<text>} \ENDIF
-    %\IF{<condition>} \STATE {<text>} \ELSIF{<condition>} \STATE{<text>} \ENDIF
-    %\FOR{<condition>} \STATE {<text>} \ENDFOR
-    %\FOR{<condition> \TO <condition> } \STATE {<text>} \ENDFOR
-    %\REPEAT \STATE{<text>} \UNTIL{<condition>}
-    %\LOOP \STATE{<text>} \ENDLOOP
-    %\AND, \OR, \XOR, \NOT, \TO, \TRUE, \FALSE
-    \RETURN {$\vect{\tilde{\theta}}$}
-\end{algorithmic}
+    \begin{algorithm}[H]
+    \caption{Distributed Learning}
+        \begin{algorithmic}[1]
+            \label{alg:magg}
+            \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{R}^{\abs{V}}$ and Stopping Criterion C \\
+            \ENSURE Aggregate Model $\vect{\tilde{\theta}}$  \\
+            \WHILE{not STOP} \STATE{%
+            \COMMENT{Train models on each device}\\
+            \FORALL{Devices $i = 1, \ldots, k$} 
+            \STATE{
+                $\mathcal{D}_i \leftarrow \text{update}(\mathcal{D}_i)$ \\
+                $\vect{\theta}^{(i)} \leftarrow \text{train}(\mathcal{D}_i,\: G,\: s)$\\
+                $\text{send}(\vect{\theta}^{(i)})$\\
+            } 
+            \ENDFOR
+            }\\
+            \COMMENT{On the Coordinator} \\
+            \IF{C is fulfilled}
+                \STATE{Broadcast STOP} \\
+            \ENDIF
+            \ENDWHILE
+            \FORALL{Devices $i = 1, \ldots, k$}
+            \STATE{$\text{send}(\vect{\theta}^{(i)})$\\}
+            \ENDFOR
+            \STATE{$\vect{\tilde{\theta}} \leftarrow \text{aggregate}((\vect{\theta}^{(1)},\ldots,\: \vect{\theta}^{(k)}))$}\\
+            %\IF{<condition>} \STATE {<text>} \ELSE \STATE{<text>} \ENDIF
+            %\IF{<condition>} \STATE {<text>} \ELSIF{<condition>} \STATE{<text>} \ENDIF
+            %\FOR{<condition>} \STATE {<text>} \ENDFOR
+            %\FOR{<condition> \TO <condition> } \STATE {<text>} \ENDFOR
+            %\REPEAT \STATE{<text>} \UNTIL{<condition>}
+            %\LOOP \STATE{<text>} \ENDLOOP
+            %\AND, \OR, \XOR, \NOT, \TO, \TRUE, \FALSE
+            \RETURN {$\vect{\tilde{\theta}}$}
+        \end{algorithmic}
+    \end{algorithm}
 \end{algo}
 
 Let us now discuss aggregation function $f \in \mathcal{F}$.
@@ -246,37 +249,4 @@ We calculate the weighted average as
 where $\bar{S}_i$ is the average score collected from each neighbour of $i$. 
 The normalization is applied to ensur that $\sum_{i=1}^k S_i = 1$, i.e., the aggregate is a convex combination of the local models.
 
-\begin{figure}[!htb]
-    \begin{subfigure}{.5\textwidth}
-    \center
-    \begin{tikzpicture}
-        \clip (-1,-1) rectangle (6,6);
-        \Vertex[x=0,y=0,color=red,opacity=0.5,label=$\mathcal{M}^{(i)}$, size=1]{a}
-        \Vertex[x=5,y=5,color=tugreen,opacity=0.5,label=$\mathcal{M}^{(j)}$, size=1]{b}
-        \Vertex[x=3.5,y=1,color=tugreen,opacity=0.5,label=$\mathcal{M}^{(k)}$, size=1]{c}
-        \Vertex[x=4.5,y=2,color=white,opacity=0.2,label=$\mathcal{M}^{(l)}$, size=1]{d}
-        \Edge[Direct ,bend=-8.531, label=$\vect{\theta}^{(i)}$](a)(c)
-        \Edge[,bend=-8.531](c)(d)
-        \Edge[,bend=-8.531](d)(b)
-        \Edge[Direct,bend=-8.531, label=$\vect{\theta}^{(i)}$](a)(b)
-        \end{tikzpicture}
-        \caption[Cap]{Node $i$ sending the local parameter vector to its neighbors.}
-    \end{subfigure}
-    \begin{subfigure}{.5\textwidth}
-        \center
-        \begin{tikzpicture}
-            \clip (-1,-1) rectangle (6,6);
-            \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=$\mathcal{M}^{(i)}$, size=1]{a}
-            \Vertex[x=5,y=5,color=red,opacity=0.5,label=$\mathcal{M}^{(j)}$, size=1]{b}
-            \Vertex[x=3.5,y=1,color=red,opacity=0.5,label=$\mathcal{M}^{(k)}$, size=1]{c}
-            \Vertex[x=4.5,y=2,color=white,opacity=0.2,label=$\mathcal{M}^{(l)}$, size=1]{d}
-            \Edge[Direct ,bend=-8.531, label=$S(\vect{\theta}^{(i)})_k$](c)(a)
-            \Edge[,bend=-8.531](c)(d)
-            \Edge[,bend=-8.531](d)(b)
-            \Edge[Direct,bend=-8.531, label=$S(\vect{\theta}^{(i)})_j$](b)(a)
-            \end{tikzpicture}
-            \caption[Cap]{The neighbors returning a score based on the message of node $i$}
-        \end{subfigure}
-    \caption{Example Network with 4 Nodes}
-    \label{fig:network}
-\end{figure}
+\input{kapitel/figures/network_graph.tex}

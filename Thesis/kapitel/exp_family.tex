@@ -3,19 +3,19 @@
 \label{chapter:kap2}
 
 \section{Notation}
-\label{sec:nota}
-Let us first define our notation. 
-Random Variables will be noted as $X$ and vectors will be written in bold letters, e.g. a vector of random variables $\vect{X} = \{X_1, X_2, \ldots, X_m\} \in \mathbb{R}^m$.
-The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and the statespace for  a random vector likewise as $\vect{\mathcal{X}}$.
-Parameters of a probability density function in the context of the canocical exponential family will usually be noted as $\vect{\theta} \in \mathbb{R}^n, \quad \mathbb{N}^+$.
-Here $\mathbb{N}^+$ is defined as $ \mathbb{N}^+ = \mathbb{N} \setminus \{0\}$.
-Model parameters on the i$^{th}$ local device will be noted as $\vect{\theta^i}$, while $\vect{\theta_i}$ is the entry at the i$^{th}$ position of the parameter vector.
-A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
-Additional notations for model parameters will be introduced if necesesary.
-\todo{More generally any variable denothed with \* is optimal, \^ is global and \~ is local}
-In the context of optimization and optimality we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
-The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data is denoted as  $\vect{\hat{\theta}}$.
-Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\tilde{\theta}}^{(i)}$ the i$^{th}$ local parameter vector respectively.
+    \label{sec:nota}
+    Let us first define our notation. 
+    Random Variables will be noted as $X$ and vectors will be written in bold letters, e.g. a vector of random variables $\vect{X} = \{X_1, X_2, \ldots, X_m\} \in \mathbb{R}^m$.
+    The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and the statespace for  a random vector likewise as $\vect{\mathcal{X}}$.
+    Parameters of a probability density function in the context of the canocical exponential family will usually be noted as $\vect{\theta} \in \mathbb{R}^n, \quad \mathbb{N}^+$.
+    Here $\mathbb{N}^+$ is defined as $ \mathbb{N}^+ = \mathbb{N} \setminus \{0\}$.
+    Model parameters on the i$^{th}$ local device will be noted as $\vect{\theta^i}$, while $\vect{\theta_i}$ is the entry at the i$^{th}$ position of the parameter vector.
+    A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
+    Additional notations for model parameters will be introduced if necesesary.
+    \todo{More generally any variable denothed with \* is optimal, \^ is global and \~ is local}
+    In the context of optimization and optimality we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
+    The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data is denoted as  $\vect{\hat{\theta}}$.
+    Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\tilde{\theta}}^{(i)}$ the i$^{th}$ local parameter vector respectively.
 
 \section{Probabilistic Graphical Models}
 \label{sec:pgm}
@@ -99,67 +99,263 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
     \psi_C(\vect{x}_c) = \exp(\sum_{i=1}^n \theta_i \cdot \phi(\vect{x})_i)
 \end{equation}
 
-
-\subsection{Exponential Families}
-\label{ssec:expf}
-
-We will now introduce a convenient property of parameters from canonical exponential families, asymptotic normality of the maximum likelihood estimator. 
-
-The canonical exponential family is defined as 
-\begin{equation}
-    p(\vect{x} \lvert \vect{\theta}) = \frac{1}{Z(\vect{\theta})} \prod_{c \in \mathcal{C}} \psi_c(\vect{x})
-\end{equation}
-
-\subsubsection{Asymptotic Normality}
-\label{ssec:asymp}
-The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
-Implying, that the paremeters follow a normal distribution with the  true parameter vector as mean an the inverse fisher information as covariance, with 
-
-\begin{equation}
-    i(\theta^*) = \frac{\partial}{\partial^2 \vect{\theta}} p(x \lvert \vect{\theta})
-\end{equation}
-
-being the fisher information matrix.
-
-We can interpret this result in such way that a set of parameter vectors obtained from data sets $\{\mathcal{D}_1, \ldots \mathcal{D}_n\}$ is normally distributed around the true parameter vector for a sample size of $n \leftarrow \infty$. 
-This in turn implies that we can treat parameter vectors of local devices as samples from such a distribution and use this to estimate the maximum likelihood of the parameter space.
-Addtionally we can use some $\vect{\theta}$ and assume this to be $\theta^*$ and use the result for sampling additional models.
-
-\subsection{Structure Learning}
-    Determining the Structure for the graph is important as we want to model the actual dependencie
-    between random variables. 
-    We may decide to drop dependencies in order to simplify the model, which allows for faster and exact training(in case the graph is a tree).
+\paragraph*{Sufficient Statistics}
+    For a function $\phi$ it is said to be a sufficient statistic of random variable $\vect{X}$ if the data is conditionally independet of the model parameters given $\phi$, that is iff $\vect{\theta}\independent \mathcal{D} \lvert \phi(\mathcal{D})$
+    The choice of $\phi: \vect{\mathcal{X}} \rightarrow \mathbb{R}^d$ directly determines the shape of  $\mathbb{E}_{\mathbb{P}}[\phi(x)]$.
+    Let $C \in \mathcal{C}(G)$, be a clique in the set of maximum cliques of a graph G and let further
+    $\phi_C: \vect{\mathcal{X}_C} \rightarrow \mathbb{R}^{\abs{\mathcal{X}_C}}$ be the sufficient statistic for that clique.
+    Then if the target variable is binary, i.e., $\mathcal{X}_C \in \{0,1\}^{\abs{\mathcal{X}_C}}$ it is easy to see that  $\mathbb{E}_{\mathbb{P}}[\phi_C(x_C)_i] = P(\phi_C(\vect{x_C})_i = 1)$.
+    Thus, the expectation is equal to the probability that a clique is in state $i$.
     
-    We will use the Chow-Liu algorithm to approximate a independency structure, which always results in a tree.
-    The algorithm computes the cross entropy for every pair of nodes and then computing the minimum spanning tree to 
-    obtain the edges with the largest correlation.
-    This limits the clique size in the graph to two, resulting in a tree, but also limiting the number of nodes that depend on each other.
+    \subsection{Exponential Families}
+    \label{ssec:expf}
+    One important result is the definition of the canonical exponential family as the distribution best suited to fit the observed data.
+    Using the Shannon Entropy we find that
 
-    In this work the Chow-Liu algorithm is used for all independency structure approximations.
-\subsection{Training}
-\label{ssec:train}
+    \begin{equation}
+        P(X) = \exp^{(<\vect{\theta}, \vect{\phi_i(x)} > - A(\theta))},
+    \end{equation}
+    is the distribution that maximizes the entropy.
 
-Exponential Family is family of parametrized densities
-Parameters have to be estimated
-Maximum Likelihood Estimation
-Given Data maximize Likelihood of Data being generated by distribution
-Maximization over Distribution Parameters 
-Negative Average Log Likelihood to prevent numerical errors
-In general no closed form solution
-Derivative is average sufficient statistics + expectation of $\vect{X}$
-Log Partition is P-Complete, however solvable in poly time for trees.
+    Let us start with the definition of Shannon Entropy and why it is necessary to introduce some notion of optimality when it comes to finding a distribution that fits our observed data $\mathcal{D}$.
+    The approach presented here follows the intuition featured by Wainwright and Jordan \cite{wainwright2008graphical}.
 
-optimization via Belief Propagation -> Inference
+    We want to find the distribution $P$ from the space of all probability distributions $\mathcal{P}$, that fits the data  $\mathcal{D}$ the most.
+    However, the problem is that there are many such distributions $P \in \mathcal{P}$ that satisfy the following condition. Let $\phi: \vect{\mathcal{X}}  \rightarrow \mathbb{R}^d$ be some function that maps observations to some real-valued vector, we then want to find a distribution such that:
+    \begin{equation}
+        \label{eq:expecval}
+        \mathbb{E}_P[\phi_d(X)] = \tilde{\mathbb{E}}_{\mathcal{D}}[\phi_d(X)], 
+    \end{equation}
+    for every feature, i.e., entry in $\vect{\mathcal{X}}$ the expected value of the probability distribution matched the expected value obtained from our observed data.
+
+    We can find the best distribution \wrt the entropy by maximizing the Shannon Entropy with \eq\ref{eq:expecval} as constraints on a constrained optimization problem:
+    \begin{equation}
+        \label{eq:entropy}
+        \begin{split}
+            \max_{P\in \mathcal{P}} \quad & H(P) = - \sum_{x\in\mathcal{X}} P(x) \log P(x) \\
+            s.t. \quad & \mathbb{E}_P[\phi_d(X)] = \tilde{\mu}_d  \; \forall d\\
+            & \sum_{x\in \mathcal{X}} p(x) = 1.
+        \end{split}
+    \end{equation}
+    For brevities sake we omit the inequality constraints for $p(x) \geq 0$ as it turns out that these constraints are redundant. 
+    Moreover we introduce lagrange multipliers to express equation \ref{eq:entropy} as an unconstrained optimization problem and turn the optimization into a minimization by multiplying the objective function $\mathcal{L}$ by minus one.
+    \begin{equation}
+        \min_{P\in \mathcal{P}, \vect{\theta}, \vect{\theta_0} } \mathcal{L}(P, \vect{\theta}, \theta_0) = \sum_{x\in\mathcal{X}} P(x) \log P(x) + \sum_{i=1}^d \theta_i (\tilde{\mu}_d - \sum_{x \in \mathcal{x}} p(x) \phi_i(x)) + \theta_0 \sum_{x\in\mathcal{X}} p(x) -1.
+    \end{equation}
+    One Lagrange multplier is introduced for each constraint resulting in a total of $d+1$ Lagrange multipliers.
+    We then compute the derivative of \eq\ref{eq:entropy}\wrt $P(x)$ :
+    \begin{equation}
+        \begin{split}
+        \frac{\partial \mathcal{L}}{\partial P} =  \frac{\partial}{\partial P} \sum_{x\in\mathcal{X}} P(x) \log P(x) &+ \sum_{i=1}^d \theta_i (\tilde{\mu}_i - \sum_{x \in \mathcal{X}} p(x) \phi_i(x)) + \theta_0 \sum_{x\in\mathcal{X}} p(x) -1 \\ 
+        &= 1 + \log P(X) - \sum_{i=1}^d \theta_i  \phi_i(x) + \theta_0 = 0 \\
+        \log P(X) &=  \sum_{i=1}^d \theta_i  \phi_i(x) - \theta_0 - 1 \\
+        P(X) &= \exp^{(\langle\vect{\theta}, \vect{\phi_i(x)} \rangle - \theta_0 - 1)} \\
+    \end{split}
+    \end{equation}
+
+    and it follows that the objective function reaches its optimum when 
+    \begin{equation}   
+    P(x) = \exp^{(<\vect{\theta}, \vect{\phi_i(x)} > - \theta_0 - 1)}
+    \end{equation} 
+    and with setting $\theta_0 = -1 + A(\theta) $ we obtain the form of the canocical exponential family
+
+    \begin{equation}
+        P(X) = \exp^{(\langle\vect{\theta}, \vect{\phi_i(x)} \rangle - A(\theta))},
+    \end{equation}
+    where $A(\theta) = \log \sum_{\vect{x}\in \vect{\mathcal{X}}} \exp(<\vect{\theta}, \phi(\vect{x})>)$ is the log partition function, the normalizer of the probability distribution, ensuring that the second set of constraints from \eq\ref{eq:entropy}is not violated.
+
+        \subsubsection{Asymptotic Normality}
+        \label{ssec:asymp}
+        Parametrized family of densities can be attributed certain properties if they satisfy a set of conditions. 
+        One such property is the asymptotic normality of the maximum likelihood estimator.
+        Given a number of samples $n$ drawn i.i.d. from a random variable $\vect{X}$, we can show that in the limit of $n \rightarrow \infty$ the parameter vectors follows a normal distribution $\mathcal{N}(\vect{\mu}, \vect{\Sigma})$ for some mean and variance.
+
+        \begin{threm}{Berk's Theorem of Asymptotic Normality\cite{berk1972consistency}}
+            Let $\vect{\theta^*} \in \mathbb{R}^d$ denote the true parameter vector and $\vect{\theta} \in \mathbb{R}^d$ some MLE with $\ell'(\vect{\theta}, \mathcal{D}) = 0$.
+            Furthermore let $i(\vect{\theta}^*) \in \mathbb{R}^{d \times d}$ be the fisher information matrix.
+
+            Then for $n \rightarrow \infty$ the MLE $\vect{\theta}$ is asymptotically normal, i.e.
+
+            \begin{equation}
+                \sqrt{n}(\vect{\theta} - \vect{\theta}^*) \dot{\sim} \mathcal{N}(0, i(\vect{\theta}^*)^{-1}),
+            \end{equation}
+            which can be rearranged according to Slutky's Theorem to
+
+            \begin{equation}
+                \vect{\theta} \dot{\sim} \mathcal{N}(\vect{\theta}, i(\vect{\theta}^*)^{-1}/n).
+            \end{equation}
+        \end{threm}
+
+        Since $\vect{\theta}$ is normally distributed around the true parameter vector, for any sample $\mathcal{D}$ drawn i.i.d. from $\vect{X}$ the MLE $\vect{\theta}$ obtained by minimizing the negative average log likelihood $\ell(\vect{\theta}; \mathcal{D})$ can be treated as a sample from a normal distribution.
+
+        Furthermore, the MLE for the mean of a normal distribution $\mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ with mode $\vect{\theta}^*$ is
+        \begin{equation}
+            \vect{\theta}^* = \frac{1}{n} \sum_{i=1}^n \vect{\theta}^{i}.
+        \end{equation}
+        Implying, that in the limit, the arithmetic average of all samples drawn from $\mathcal{N}$ are the true MLE for the normal distribution and thus the true parameter vector for $\mathbb{P}_{\vect{\theta}}(x)$ for a canonical exponential family distribution.
+        
+        Additionally if $\mathcal{N}$ is known or assumed to be know we can sample $\epsilon \sim \mathcal{N}(0, i(\vect{\theta}^*)^{-1})$ to generate new samples, i.e., new models without sampling additional data from $\vect{X}$.
+        If $ i(\vect{\theta}^*)^{-1}$ we may find a proper substitute, that approximates the fisher information matrix or some other covariance matrix.
+
+        This property can be helpful when sampling additional parameter vectors in a perturb and MAP fashion. We will talk about this in section~\ref{ssec:pmap}.
+        
+        \paragraph*{Conditions}
+        There a certain conditions associated with a distribution in order for Berk's Theorem to hold.
+        Distributions from the canocical exponential family satisfy all of these conditions
+        \paragraph*{Fisher Information}
+        \paragraph*{Proof}
+        The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
+        Implying, that the paremeters follow a normal distribution with the  true parameter vector as mean an the inverse fisher information as covariance, with 
+
+        \begin{equation}
+            i(\theta^*) = \frac{\partial}{\partial^2 \vect{\theta}} p(x \lvert \vect{\theta})
+        \end{equation}
+
+        being the fisher information matrix.
+
+        We can interpret this result in such way that a set of parameter vectors obtained from data sets $\{\mathcal{D}_1, \ldots \mathcal{D}_n\}$ is normally distributed around the true parameter vector for a sample size of $n \leftarrow \infty$. 
+        This in turn implies that we can treat parameter vectors of local devices as samples from such a distribution and use this to estimate the maximum likelihood of the parameter space.
+        Addtionally we can use some $\vect{\theta}$ and assume this to be $\theta^*$ and use the result for sampling additional models.
+
+    \subsection{Structure Learning}
+        Determining the Structure for the graph is important as we want to model the actual dependencie
+        between random variables. 
+        We may decide to drop dependencies in order to simplify the model, which allows for faster and exact training(in case the graph is a tree).
+        
+        We will use the Chow-Liu algorithm to approximate a independency structure, which always results in a tree.
+        The algorithm computes the cross entropy for every pair of nodes and then computing the minimum spanning tree to 
+        obtain the edges with the largest correlation.
+        This limits the clique size in the graph to two, resulting in a tree, but also limiting the number of nodes that depend on each other.
+
+        In this work the Chow-Liu algorithm is used for all independency structure approximations.
+
+
+    \subsection{Training}
+    \label{ssec:train}
+
+    Now that we know, which probability distribution maximizes the entropy we have to determine the parameters $\vect{\theta}$.
+    Additionally we have to compute the partition function $A$, which depends on $\vect{\theta}$.
+    Using a first order gradient descent method, we can find the optimum by iteratively updating the parameters of a function $\ell: \mathbb{R}^d \rightarrow \mathbb{R}$, i.e., taking one step in the direction of the derivative, the gradient 
+    \begin{equation}
+        \label{eq:gradesc}
+        \vect{\theta}^{t+1} = \vect{\theta}^{t} + \alpha \nabla \ell(\vect{\theta}^{t}).
+    \end{equation}
+
+    Note that in \eq\ref{eq:gradesc} the $t+1$ does refer to an update of $\vect{\theta}$ as opposed to the usual notation, i.e., the $t+1^{th}$ model. 
+    The choice of $f$ is usually the likelihood function
+    \begin{equation}
+        \label{eq:likelihood}
+        \mathcal{L}(\vect{\theta} ; \mathcal{D}) = \arg\max_{\vect{\theta}}\prod_{\vect{x} \in \mathcal{D}}  \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}),
+    \end{equation}
+    which maximizes the probability of the data being generated by a probability distribution conditioned on $\vect{\theta}$.
+
+    Due to numerical instabilities we usually choose to minimize the negative log likelihood instead,
+    \begin{equation}
+        \label{eq:likelihood:log}
+        \ell(\vect{\theta} ; \mathcal{D}) = \arg\min_{\vect{\theta}} \; - \sum_{\vect{x} \in \mathcal{D}}  \log \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}).
+    \end{equation}
+
+    Since the logarithm is a monotone operator, this transformation does not affect the solution.
+    Additionally, when optimizing via first order methods e.g. gradient descent, it is advantageous to use the negative average log likelihood
+    \begin{equation}
+        \label{eq:likelihood:expfam}
+        \begin{split}
+        \ell(\vect{\theta}, \mathcal{D}) &= - \frac{1}{\abs{\mathcal{D}}} \sum_{\vect{x} \in \mathcal{D}} \log \mathbb{P}_{\vect{\theta}}(x)\\
+        &= - \frac{1}{\abs{\mathcal{D}}} \sum_{\vect{x} \in \mathcal{D}} \inner{\vect{\theta}}{\phi(x)} - A(\vect{\theta})
+    \end{split}
+    \end{equation}
+    instead.
+
+    Optimizers usually minimize a function and thus we just use the negative log likelihood as this turns out to be equivalent to maximizing the likelihood.
+    The reason for taking the average becomes appararent when using first order methods to find the optimum, i.e., the gradient of a function instead of second order methods, which use for example the second derivative, the Hessian.
+
+    Taking the derivative \wrt to $\vect{\theta}$ we get:
+    \begin{equation}
+        \label{eq:likelihood_der}
+        \begin{split}
+            \frac{\partial \ell(\vect{\theta}, \mathcal{D})}{\partial \vect{\theta}} &=  \frac{\partial}{\partial \vect{\theta}}  - \frac{1}{\abs{\mathcal{D}}} \sum_{\vect{x} \in \mathcal{D}} \inner{\vect{\theta}}{\phi(x)} + A(\vect{\theta})\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) +  \frac{\partial}{\partial \vect{\theta}}  A(\vect{\theta}) \\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) +  \frac{\partial}{\partial \vect{\theta}}  \log \sum_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})})\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) +  \frac{1}{Z(\vect{\theta})}\frac{\partial}{\partial \vect{\theta}}  \sum_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})})\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) +  \frac{1}{Z(\vect{\theta})} \sum_{\vect{x} \in \vect{\mathcal{X}}}  \frac{\partial}{\partial \vect{\theta}}  \exp(\inner{\vect{\theta}}{\phi(\vect{x})})\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) +  \frac{1}{Z(\vect{\theta})} \sum_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})}) \frac{\partial}{\partial \vect{\theta}}  \inner{\vect{\theta}}{\phi(\vect{x})}\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) +  \frac{1}{Z(\vect{\theta})} \sum_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})}) \phi(\vect{x})\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) + \sum_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})} - A(\vect{\theta})) \phi(\vect{x})\\
+            &= - \frac{1}{\abs{\mathcal{D}}}  \sum_{\vect{x} \in \mathcal{D}} \phi(x) + \sum_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}) \phi(\vect{x})\\
+            &=  - \tilde{\mathbb{E}}_{\mathcal{D}}[\phi(x)] + \mathbb{E}_{\mathbb{P}}[\phi(x)]
+        \end{split}
+    \end{equation}
+    which is the difference between the expectation of the probability distribution $\mathbb{P}$ and the empirical expectation, i.e., the average sufficient statistics implying that the optimum is located where the empirical expectation matches the distribution's expectation.
+
+    Unfortunately the computation of the gradient requires the computation of the log partition function, which is \#P-Complete.
+    As such there exists no computationally tractable solution to the computation of the log partition in the general case.
+    However, it is possible to find an exact solution to this problem given some structural constraints on the Graph G, such as a limited treewidth or if G is a tree.
+
+    Learning the model parameters requires us to compute the gradient of the likelihood and this in turn requires us to compute the log partition function. 
+    This problem is known as inference, which has no exact solution in the general case, but can be exactly determined in the case where G is a tree.
+
+
 \subsection{Inference}
 \label{ssec:inf}
+Evaluating a statistical model in some way is usually referred to as inference.
+There are several tasks associated with inference such as finding the probability for a given observation or finding the mode of a distribution, that is, the observation with the largest probability.
+Additionally, finding the model parameters $\vect{\theta}$ also requires us to perform inference for each iteration as we have to compute the log partition function as it is dependent on the model parameters, which are updated every iteration.
 
-Computing Clique Marginals
-Belief Propagation
-Exact for Trees 
-Loopy Belief Propagation for non-tree Graphs
+Inference can be broadly categorized into the following four areas, which all include some way or another marginalization and finding the partition function.
 
-Since we are using the Chow-Lio algorithm to approximate the independency structure it is sufficient to use Belief Propagation for inference as this is guaranteed to be optimal and deterministic on trees.
+\paragraph*{Likelihood Computation}
+Given a single observation $\vect{x} \in \vect{\mathcal{X}}$ we want to find its probability on $\mathbb{P}_{\vect{\theta}}$ or the likelihood, which is the log probability.
+\begin{equation}
+    \ell(\vect{\theta}; \vect{x}) = \inner{\vect{\theta}}{\vect{x}} - A(\vect{\theta})
+\end{equation}
 
+\paragraph*{Marginal Distribution}
+Here our goal is the obtain the probability that a subset of states $A \subset V$ is in a specified configuration.
+Hence, we have to marginalize over all other nodes not included in $A$. 
+This is the more general case for the Likelihood Computation, where we obtain the probability $A = V$, an individual, fully observed sample.
+    \begin{equation}
+        \mathbb{P}_{\vect{\theta}}(\vect{X}_A = x_A) = \sum_{\vect{x}_B \in V \setminus\{A\}} \mathbb{P}_{\vect{\theta}}(x_B , x_A), \; A \cap B = \emptyset, A \cup B \subset V
+    \end{equation}
+
+\paragraph*{Conditional Probability}
+Obtaining the conditional probability for an observed subset $B \subset V$ on another disjoint subset $A \subset V$ requires two steps. First we have to marginalize over the joint probability of both sets followed by the probability of observing $B$ on its own.
+    \begin{equation}
+        \mathbb{P}_{\vect{\theta}}(\vect{X}_A = \vect{x}_A \lvert \vect{X}_B = \vect{x}_B) = \frac{\mathbb{P}_{\vect{\theta}}(\vect{X}_A = \vect{x}_A , \vect{X}_B = \vect{x}_B)}{\mathbb{P}_{\vect{\theta}}(\vect{X}_B = \vect{x}_B)}, \;\; A \cap B = \emptyset, A \cup B \subset V
+    \end{equation}
+
+\paragraph*{Maximum a-Posteriori}
+Instead of marginalization, this task requires maximization as we want to obtain the single sample with the highest probability for a distribution. 
+Instead of using the sum-product message passing algorithm we use the max-product message passing instead.
+\begin{equation}
+    \hat{\vect{x}} = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}) = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})} - A(\vect{\theta}))
+\end{equation}
+
+\paragraph*{Belief Propagation}
+Even for a small number of nodes and states per node the computation of the partition function and thus performing any type of inference becomes computationally intractable.
+While we can not obtain the exact solution for the marginalization for a given Graph with arbitrary structe, it is however possible to find an exact solution on trees or an approximate solution.
+
+The algorithm to solve this problem was introduced as Belief Propagation or Sum-Product message passing by Pearl \cite{pearl1982reverend} and was later extended to be exact on polytrees as well \cite{kim1983computational}.
+In case the graph is not a tree we can still find an approxiate solution via loopy belief propagation, which was empirically studied by Murphy et al. \cite{murphy2013loopy}
+
+Belief propagation takes advantage of the distributivity of potentials computed on each node. Instead of computing the same terms over and over we can simply pass them between nodes of the graph in a dynamic programming fashion.
+This allows us to obtain the exact solution for all relevant marginals without having to enumerate over all possible states $\vect{\mathcal{X}}$, that can then be used to calculate the partition function.
+
+
+\begin{equation}
+    Z(\vect{\theta}) = \sum_{x_1 \in \mathcal{X}_1} \sum_{x_1 \in \mathcal{X}_2} \ldots \prod_{uv \in E} \exp(\inner{\vect{\theta}}{\phi_{uv}(\vect{x}_{uv})}).
+\end{equation}
+
+Recall that we can express the probability in terms of a factorization over all cliques. 
+Since all cliques have size two we only need to factorize over every pair of nodes.
+Using distributivity of sums we can write each clique probability as
+
+\begin{equation}
+    P(\vect{X} = x_{uv}) = \frac{\psi_{uv}(\phi_{uv}(x))}{Z} \cdot \sum_{x_1 \in \mathcal{X}_1} \sum_{x_1 \in \mathcal{X}_2} \ldots 
+\end{equation}
+
+This formulation leads the way to Belief Propagation, also called Sum-Product-Message-Passing.
+The general idea is that we only have to pass messages of potentials between neighboring nodes.
+This way we can compute the log partition function by the divide and conquer principle, i.e., passing messages to each node in parallel.
 \section{Distributed Learning}
 There are mainly two different architectural approaches to distributed learning. 
 The first approach is a decentralized approach without coordinator.
@@ -208,10 +404,10 @@ It can be shown that for $t = \frac{\sqrt{(c+1) \log d}}{2\abs{\mathcal{D}}}$ th
         {2\abs{\mathcal{D^{'}}}}
         } = \epsilon
 \end{equation},
+
 with probability of at least $\delta= (1- 2 \exp(-c \log d))$. Here $D^{'} = \min(\abs{\mathcal{D}^i}, \abs{\mathcal{D}^j})$.
 The proof is provided by Piatkowski \cite{piatkowski2019distributed}. \todo{Maybe put this in appendix}
 Addtionally, as the average sufficient statistics approach each other so do the model parameters to some degree as shown by \todo{CITE}.
-
 As the model parameters approach each other, we can show by Popoviciu's Theorem \cite{popoviciu1935equations} 
 \begin{threm}{Upper Bound on the Variance}
     Let $\vect{X}$ be a bounded random variable with $\inf(\vect{X}) = b$ and $\sup(\vect{X}) = a$, 
@@ -220,7 +416,6 @@ As the model parameters approach each other, we can show by Popoviciu's Theorem 
         \sigma^2 \leq \bigg(\frac{a-b}{2}\bigg)^{2}
     \end{equation}
 \end{threm}
-
 For the interested reader we refer to Sharma et al. \cite{sharma2010betterbounds} for more information about upper and lower bounds for variances.
 
 \input{kapitel/proofs/popoviciu.tex}
@@ -237,7 +432,6 @@ This means that there exists no larger difference between the two vectors result
 \end{equation*}.
 Given two average sufficient statistics we can employ the Hoefding Bound to guarantee the distance between these two to be smaller than some $\epsilon$ with probability $\delta$
 
-
 As the amount of data on each device increases we can also measure how close the sufficient statistics are with probability $\delta$ by rearranging the above equation. 
 This is the most common scenario in distributed learning. As time goes on the amount of data increases allowing us to continuously measure the distance and variance between the sufficient statistics.
 Once we reach our predetermined goal on a device, i.e. $\abs{\mathcal{D}}^^i$ is sufficiently large to satisfy our bound we stop collecting more data send the parameter vector to the coordinator node.
@@ -250,4 +444,5 @@ We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$ the distance 
 \subsection{Convergence}
 \section{Sampling}
 \subsection{Perturb and MAP}
+\label{ssec:pmap}
 \subsection{Gibbs Sampling}

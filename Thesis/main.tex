@@ -1,9 +1,11 @@
 %!BIB program = biber
 %!TEX program = pdflatex
 \input{header.tex}
+\input{test.tex}
 \begin{document}
-    \input{kapitel/titelseite}
+    \include{kapitel/titelseite}
     \tableofcontents
+
     \input{kapitel/einleitung}
     \input{kapitel/exp_family}
     \input{kapitel/model_aggregation}
@@ -13,6 +15,8 @@
     \printbibliography
     \input{kapitel/anhang}
     \listoffigures
+    % Algorithmenverzeichnis
     \listofalgorithms
+    \addcontentsline{toc}{chapter}{Algorithmenverzeichnis}
     \input{kapitel/erklaerung}
 \end{document}
