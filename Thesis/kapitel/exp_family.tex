@@ -443,6 +443,36 @@ We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$ the distance 
 \todo{Maybe Plot eps and delta in 3D}
 \subsection{Convergence}
 \section{Sampling}
+Statistical models such as probabilistic graphical models belong to the class of generavtive models.
+These types of models allow not only for solving discriminative tasks such as classification, but also have the ability to freely sample new data.
+Furthermore, we may have some device that only generates partial data with missing entries.
+We may then use the model to fill in the gaps in order to obtain complete observations.
+This is usually based on the configuration with the highest likelihood.
+
+How do we sample from such a distribution? There are several different ways to sample from such a distribution, two of those are the perturb and MAP approach and Gibbs sampling.
+
+
 \subsection{Perturb and MAP}
 \label{ssec:pmap}
+Recall that the maximum a-posteriori state is the sample, that maximizes the probability for a distribution. 
+We continuously sampling from the MAP-state we would always receive the same sample $\hat{\vect{x}}$.
+\begin{equation}
+    \hat{\vect{x}}  = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(\vect{x})
+\end{equation}
+
+However, we can \textbf{perturb} the model parameters with an additional term to obtain a different MAP state such that 
+\begin{equation}
+    \hat{\vect{x}}  = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta} + \epsilon}(\vect{x}), \quad \epsilon \sim f(x),
+\end{equation}
+where $\epsilon$ is a sample from another probability density function $f$.
+The perturbation term may follow a uniform or normal distribution or some other, possibly unknown, distribution.
+
+Now consider the asymptotic normality of exponential families as well as the bound on variances. 
+We can use both in such way that $\epsilon$ is a sample from a normal distribution with variance based on the upper bound of the variance for the Hoefding-Bound.
+This way we can sample from different MAP-States, while still remaining inside the Hoefding-Bound.
+
 \subsection{Gibbs Sampling}
+Gibbs Sampling is another method of obtaining samples $\vect{x} \in \vect{\mathcal{X}}$ from a random variable $\vect{X}$. 
+Roughly, we first sample from a uniform distribution on $[0,1]$ and then proceed to compute the marginal prbabiltieis for a single entry, finding the most probable entry.
+This is repeated for randomly chosen elements and it can be shown that the initially uniform sample approaches the distribution asymptotically.
+However, as this may be computationally inhibitive due to the iterative nature of this method we may stop after a certain number of iterations, obtaining a sample which is roughly from $\vect{X}$.
