@@ -151,6 +151,8 @@ class Coordinator(object):
                 logger.debug("===AGGREGATION HELPER=== RECORD AGGREGATE LL===")
                 self.record_obj(self.curr_split, weights, aggregator.__class__.__name__)
                 logger.info(aggregator.__class__.__name__  + aggregator.hint + ": " + str(accuracy))
+                logger.info(aggregator.__class__.__name__ + aggregator.hint + ": " + str(f1))
+                logger.info(aggregator.__class__.__name__ + aggregator.hint + ": " + str(np.bincount(y_pred)))
                 logger.debug("===AGGREGATION HELPER=== RETURN DICT===")
                 return {'px_model': weights, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy, 'f1': f1}
             return {}
@@ -161,21 +163,24 @@ class Coordinator(object):
     def aggregate(self, weights=None, idx=None, bootsmap=None):
 
         test_size = np.min([self.n_test, self.data.test.shape[0] - 1])
+        num_models = int(self.r ** self.h)
         methods = ['mean', 'radon', 'wa', 'kl', 'var', 'bootsmap']
         aggregates = {k: [] for k in methods}
         sample_size = np.ceil(
             (self.curr_model.sample_func(self.curr_model.epoch) * self.curr_model.data_delta) / 2)
+        bootsmap_size = int(np.ceil(
+            (self.curr_model.sample_func(self.curr_model.epoch) * self.curr_model.data_delta) * self.n_models))
         logger.debug("===AGGREGATE=== CREATE AGGREGATORS===")
         if weights is not None:
-            aggr = [Mean(weights),
-                    RadonMachine(weights, self.r, self.h),
-                    WeightedAverage(weights),
+            aggr = [Mean(weights[:num_models]),
+                    RadonMachine(weights[:num_models], self.r, self.h),
+                    WeightedAverage(weights[:num_models]),
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
                        states=self.curr_model.state_space, samples=None, n=int(sample_size)),
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
                              states=self.curr_model.state_space, samples=idx, label=-1),
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
-                       states=self.curr_model.state_space, samples=bootsmap, n=int(sample_size))]
+                       states=self.curr_model.state_space, samples=bootsmap, n=bootsmap_size)]
         else:
             aggr = [Mean(self.curr_model),
                     RadonMachine(self.curr_model, self.r, self.h),
@@ -265,7 +270,7 @@ class Coordinator(object):
                             local_f1.append(sk_f1_score(y_true, y_pred))
                             local_acc.append(acc)
                             local_y_pred.append(y_pred)
-                            logger.debug(str(acc))
+                            logger.info(str(acc))
                             self.record_obj(i, np.copy(self.curr_model.px_model[local_indexer].weights),
                                             "local_" + str(local_indexer))
 
@@ -313,12 +318,13 @@ class Coordinator(object):
                     np.save(os.path.join(sub_model_path, "y_true"), aggregation[0]['y_true'])
                 if aggregation[0]:
                     np.save(os.path.join(sub_model_path, "y_pred_" + name), aggregation[0]['y_pred'])
-                    np.save(os.path.join(sub_model_path, "weights_" + name), aggregation[0]['weights'])
+                    np.save(os.path.join(sub_model_path, "weights_" + name), aggregation[0]['px_model'])
             for k, px_model in enumerate(self.curr_model.px_batch_local[j + 1]):
                 px_model.save(os.path.join(sub_model_path, "dist_pxmodel " + str(k) + ".px"))
 
     def sample_parameters(self, model, perturb=False):
-        n_samples = self.r ** self.h
+        n_samples = np.max([self.r ** self.h, self.curr_model.n_local_data * self.n_models])
+
         samples_per_model = int(np.ceil(n_samples / len(model.px_model)))
         theta_old = []
         theta_samples = []
