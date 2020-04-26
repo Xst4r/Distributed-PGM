@@ -334,14 +334,23 @@ class KL(Aggregation):
 
         if samples is not None:
             self.hint = "_BootsMap "
-            self.X = [np.copy(sample) for sample in samples]
+            if isinstance(samples, np.ndarray):
+                cols = samples.shape[1]
+                if cols == self.states.shape[0]:
+                    self.X = samples[np.random.choice(np.arange(samples.shape[0]), n, replace=False)]
+            else:
+                self.X = [np.copy(sample) for sample in samples]
+                self.X = np.concatenate(self.X)
         else:
             self.hint = "_Bootstrap "
             self.X = [model.sample(num_samples=n, sampler=CONFIG.SAMPLER) for model in self.model]
-
+            self.X = np.concatenate(self.X)
         self.K = len(self.model)
         self.obj = np.infty
         self.eps = eps
+
+    def _generate_samples(self):
+        pass
 
     def aggregate(self, opt, **kwargs):
         try:
@@ -360,7 +369,7 @@ class KL(Aggregation):
         X = self.X
         if opt:
             logger.debug("===KL CREATE DATA===")
-            data = np.ascontiguousarray(np.stack(X), dtype=np.uint16)
+            data = np.ascontiguousarray(X, dtype=np.uint16)
             data = np.ascontiguousarray(np.vstack((data, self.states-1)).astype(np.uint16))
             logger.debug("===KL CREATE DUMMY MODEL===")
             model = px.train(data=data, graph=self.graph, iters=0)
