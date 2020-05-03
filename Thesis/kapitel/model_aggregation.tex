@@ -86,9 +86,22 @@ While we have no direct knowledge of $\vect{\theta^*}$, we can use the maximum l
 \end{tcolorbox}
 For $\vect{\theta}^i$ we then have $\vect{\mu}_{MLE} = \frac{1}{n} \sum_{i=1}^n \vect{\theta}^i$, which is exactly the average of all local model parameters.
 Thus the arithmetic mean maximizes the likelihood.
-\begin{tcolorbox}
-    Proof maybe 
-\end{tcolorbox}
+\begin{proof}{Maximum Likelihood Estimator Normal Distribution}
+    For $\mathcal{N}(\vect{\theta}^*, i(\vect{\theta})^{-1}/n)$ the we want to find the maximizer for $\vect{\theta}^*$ for the maximum likelihood estimator. 
+    The partial derivative of $\ell$ \wrt $\vect{\theta}^*$ given $\vect{\theta}$ is:
+    \begin{equation}
+        \begin{split}
+        \frac{\partial}{\partial \vect{\theta}^*}&\ell_{\mathcal{N}}(\vect{\theta}^*, \vect{i(\vect{\theta}^*)^{-1}/n}; \mathcal{D}) =  \frac{\partial}{\partial \vect{\theta}^*} \sum_{\vect{\theta} \in \mathcal{D}} \log \mathcal{N}(\vect{\theta}; \vect{\theta}^*, \vect{i(\vect{\theta}^*)^{-1}/n})\\
+        &=  \sum_{\vect{\theta} \in \mathcal{D}} \frac{\partial}{\partial \vect{\theta}^*} \log \frac{1}{\sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n}} \cdot \exp\bigg(\frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) \bigg) \\
+        &=  \sum_{\vect{\theta} \in \mathcal{D}} \frac{\partial}{\partial \vect{\theta}^*} \log (\frac{1}{\sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n}}) + \frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) \\
+        &=  \sum_{\vect{\theta} \in \mathcal{D}} \frac{\partial}{\partial \vect{\theta}^*} \frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) - \log \sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n} \\
+        &= - \frac{1}{2} i(\vect{\theta}^*)/n \sum_{\vect{\theta} \in \mathcal{D}} (\vect{\theta} - \vect{\theta}^*) = 0 \\
+        &\Leftrightarrow \vect{\theta}^* = \frac{1}{\abs{\mathcal{D}}} \sum_{\vect{\theta} \in \mathcal{D}}  \vect{\theta}
+        \end{split}
+    \end{equation}
+    Note, that $i(\vect{\theta}^*)$ is defined \wrt the original probability distribution $\mathbb{P}_{\vect{\theta}}$ and can be treated in the same way $\vect{\Sigma}$ does in the standard proof.
+\end{proof}
+
 
 
 \subsection{Weighted Averaging}
@@ -133,6 +146,31 @@ A radon point can be found in polynomial time \wrt the number of dimensions of t
 \paragraph*{Radon Points}
 Given a pair of convex hulls defined by two sets of points definined the hull $S_1, S_2$, a radon point is a point that is contained within the intersection of the two convex hulls of $S_1, S_2$. 
 Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
+
+\begin{example}{Radon Points in $\mathbb{R}^2$}
+    Consider this example of Radon's Theorem in $\mathbb{R}^2$ with four points $\{(0,0), (3,0), (1.5, 3), (1.5,1)\}$, where the former three form a equilateral triangle and the latter is the center point of that triangle.
+    The solution to the linear equations in terms Radon's Theorem is $\{1,1,1\},\{-3\}$ matching the order of the points.
+    
+    \input{kapitel/figures/radon_example.tex} 
+    The normalizer is then the sum of the weights of either partition
+    \begin{equation}
+        \begin{split}
+            A &= \sum_{i\in I} a_i = - \sum_{j \in J} a_j \\
+            &= 1 + 1 + 1 = -(-3) = 3 \\
+        \end{split}
+    \end{equation}
+    and plugging that into \eq~\ref{eq:radonpoint} we obtain the intersection of the convex hulls as
+    \begin{equation}
+        \begin{split}
+            \bar{\vect{\theta}}_{RAD} &= \sum_{i\in I} \frac{a_i}{A} \vect{\theta}^i = - \sum_{j \in J} \frac{a_j}{A} \vect{\theta}^j \\
+            &= \frac{1}{3} \vect{\theta}^{I_1} + \frac{1}{3} \vect{\theta}^{I_2} + \frac{1}{3} \vect{\theta}^{I_3} = 1 \vect{\theta}^{J_1} \\
+            & =  (1.5, 1)^T = (1.5, 1)^T.
+        \end{split}
+    \end{equation}
+    Note that there are two different cases in $\mathbb{R}^2$, the one shown above and the second one where four points form two intersecting lines. Geometrically, the intersection is then the center point.
+
+\end{example}
+   
 
 \begin{threm}[label=thm:radon]{Radon's Theorem}
     Given a set of of points in euclidean space
@@ -209,10 +247,21 @@ This can be done for each local model up until the required amount of parameters
 With generative modelling we can easily sample additional data from local models by transferring the local model parameters to the coordinator node.
 Sampling can be realized in various different ways such as Gibbs Sampling or Perturb and Map.
 We then create a new Dataset from our samples and use this to train a new global model. 
-This has been shown to work in CITE and for canonical expoential families this approach is analogous to computing the expected average sufficient statistics:
-TODO PROOF:
+Instead of directly aggregating $\vect{\theta}^k$ we first sample new data  $\hat{\vect{x}}^k \sim \mathbb{P}_{\vect{\theta}^k}$ and then train new models on the aquired sample data.
+However, for exponential families training $k$ models with average sufficient statistics $\vect{\mu}^k$ is equal to training a single model with the average of all sufficient statistics:
+\begin{equation}
+    \begin{split}
+        \bar{\vect{\theta}}_{BS} &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \log f(\vect{\theta}; \hat{\vect{x}}^k) \\
+        &=  \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \inner{\phi(\hat{\vect{x}}^k)}{\vect{\theta}} - A(\vect{\theta}) \\
+        &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \inner{\frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \phi(\hat{\vect{x}}^k)}{\vect{\theta}} - A(\vect{\theta}) \\
+        &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \inner{\vect{\mu}^k}{\vect{\theta}} - A(\vect{\theta}) \\
+        & =  \arg\min_{\vect{\theta}} \inner{\frac{1}{k}\sum_{i=1}^k  \vect{\mu}^k}{\vect{\theta}} - A(\vect{\theta})
+    \end{split}
+\end{equation}
 
-
+Alternatively, we can consecutively sample new parameter vectors first
+Recall that according to \ref{ssec:asymp} the MLE is asymptotically normal, then we have $\hat{\theta}^{k_i}  \sim \mathcal{N}(\vect{\theta}^k, i(\vect{\theta}^k)^{-1}/n)$, assuming that each local parameters are the ground truth.
+Followed by using the MAP estimate for each $\vect{x}^{k_i} = \arg\max_{\vect{x}} \mathbb{P}_{\hat{\vect{\theta}}^{k_i}}(\vect{x})$ obtaining data sets of MAP estimates from parameter distributed around the k-th local model.
 \subsection{Performance-Weighted-Averaging}
 
 Instead of using a federated approach we can also rely on a federated-decentralized hybrid approach, establishing connections between local devices to enable communication.

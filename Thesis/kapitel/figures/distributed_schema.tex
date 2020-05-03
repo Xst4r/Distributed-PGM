@@ -1,1 +1,27 @@
-%Tikz Magic
+\begin{figure}[!htb]
+    \center
+    \begin{tikzpicture}
+        \clip (0,-0.5) rectangle (16,12);
+        \Vertex[x=8,y=5,color=tuorange,opacity=0.5,label=Coordinator, size=2, shape=rectangle]{c}
+        \Vertex[x=2,y=2,color=tugray, opacity=0.5,label=Device 1, size=1.5, shape=diamond]{d1}
+        \Vertex[x=6,y=2,color=tugray, opacity=0.5,label=Device 2, size=1.5, shape=diamond]{d2}
+        \Vertex[x=14,y=2,color=tugray, opacity=0.5,label=Device n, size=1.5, shape=diamond]{dn}
+        \Vertex[x=2,y=0,color=white, opacity=0, size=0, shape=diamond]{data1}
+        \Vertex[x=6,y=0,color=white, opacity=0, size=0, shape=diamond]{data2}
+        \Vertex[x=14,y=0,color=white, opacity=0, size=0, shape=diamond]{datan}
+        \Vertex[x=5,y=9,color=tugreen,opacity=0.5,label=Aggregate, size=2, shape=circle]{a}
+        \Edge[Direct ,bend=-10, label=$\vect{\theta}^{1}$](d1)(c)
+        \Edge[Direct ,bend=-10, label=$\vect{\theta}^{2}$](d2)(c)
+        \Edge[Direct ,bend=-10, label=$\vect{\theta}^{n}$](dn)(c)
+        \Edge[Direct ,bend=-10, label=$[\vect{\theta}]$](c)(a)
+        \Edge[Direct,bend=-10](c)(d1)
+        \Edge[Direct,bend=-10](c)(d2)
+        \Edge[Direct,bend=-10](c)(dn)
+        \Edge[Direct, label=$\mathcal{D}_1$](data1)(d1)
+        \Edge[Direct, label=$\mathcal{D}_2$](data2)(d2)
+        \Edge[Direct, label=$\mathcal{D}_n$](datan)(dn)
+        \Edge[Direct ,bend=-10, label=$\hat{\vect{\theta}}$](a)(c)
+        \end{tikzpicture}
+    \caption[Implementation Chart]{Implementation of the continuous structure, which allows for communication between coordinator and all devices. The coordinator then computes the aggregate and may send feedback in form of the aggregate back to all devices. The devices themselves may be connected as well. First the local data $\mathcal{D}_i$ is collected on each device. Then each device obtains the local parameters $\vect{\theta}^i$, which it then sends to the coordinator. Once a sufficient number of parameter vectors have arrived the coordinator computes an aggregate and optionally provides feedback about the quality, e.g., the aggreagate.}
+    \label{fig:network}
+\end{figure}

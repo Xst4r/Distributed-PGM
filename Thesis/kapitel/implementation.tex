@@ -2,16 +2,47 @@
 
 \chapter{Implementation}
 \label{chapter:ch4}
+As our programming language of choice, python was chosen to implement the various aggregation mechanics. 
+This allows for fast and efficient execution and evaluation, while still allowing to interface with C and C++  libraries if necessary.
 
-The implementation of the algorithms and methods is done in pure python.
-The learning part is outsourced to PX and the resulting models with trained parameters are used in the aggregation.
-The aggregation can be used with both numpy array, representing just weights, as well as PX Model Objects directly.
+The module is written in pure python and is mainly using well known python modules such as NumPy, SciPy, Pandas and Scikit-Learn.
+
+Additionally, we use the PX Module for probabilistic graphical modes.
+PX is a module, which allows data-based structure learning as well as all operations necessary for training and evaluating probabilistic graphical models. 
+These include likelihood optimization via first order proximal gradient descent \cite{piatkowski2018exponential}, belief propagation and loopy belief propagation algorithms and direct inference tasks such as MAP-State, Marginal probabilities.
+Furthermore the package features an interface for applying functions to the gradient and weights directly during optimization.
+These so called hooks allow for direct manipulation of the gradient for e.g. custom regularization functions or simply to implmenets ones own convergence criterium for the gradient descent.
+
+Distributed learning is implemented as a simulation between two classes. The Coordinator and the Models, while in a real-world setting we have actual distributed devices, there is no difference between receiving a number of parameter vectors from distributed devices or in a simulated fashion from a list of simulated devices.
+While one could argue that communication between devices may not be as stable, we can simply omit the parameters we do not receive, since they are not known anyhow.
+Depending on the aggregation method the Coordinator has access to different statistics, such as number of models, parameter vectors and objective function value. 
+However, the local data or the average sufficient statistics are never shared with the coordinator node.
+
+Moreover, in a real-world setting the devices may terminate optimization at different times and may send the parameters asynchronous. 
+We assume the process to be synchronous and wait for all local devices to terminate.
+Usually, we can rely on a running aggregate if we receive parameters asynchronously or we wait until a certain number of parameters have been sent to the coordinator to proceed.
+
+
 
 \section{Structure}
-We have a Coordinator, Data and Model wrapper Class as well as several utility metohds for downloading and unpacking datasets.
-General Structure is an Interface that implements basic functions for the class and can be specialized by creating a new subclass.
+
+\input{kapitel/figures/distributed_schema.tex}
+\fig~\todo{REF} illustrates the structure of the module. 
+The central coordinator node receives parameters from distributed devices(models) $\mathcal{M}$, which are then aggregated by any instance of the aggregation module. 
+This makes it further possible to propagate additional messages such as terminations or updates via the coordinator.
+In practice, that is, for testing the coordinator distributes the data in a preprocessing step.
+
+We simulate the data generation by shuffling and equally distributing the data set onto each device, such that the chunks are a partition of the original data.
+Each round we add more data to the local data set, i.e., while the local data set consists of $\abs{D}_i = n$ samples we only add a certain subsample $m \leq n$ to the training. This increases with each round to simulate the data collection on each device. 
+Results are reported for each round.
+
+
 \section{Model Training}
-For training we use the PX Library
+Training is straightforward with PX. 
+Each device keeps its own instance of a PX Model, cotaining the number of samples, the sufficient statistics, objectives and weights.
+We only have to keep in mind that the PX python module is a wrapper around the actual c++ module.
+Hence, we have to treat all arrrays and data as C-Contiguous, i.e., in C Memory order.
+The data is discretized in a previously set number of quantiles, e.g., 10 quantiles and then treates as an unsigned 16-bit integer to further reduce memory requirements.
 \section{Model Aggregation}
 Model Aggregation is done in python with numpy,scipy to improve runtimes of matrix-vector operations.
 \section{Evaluation}

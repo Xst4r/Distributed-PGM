@@ -1,0 +1,15 @@
+\begin{figure}[H]
+    \center
+    \begin{tikzpicture}
+        \clip (-1,-1) rectangle (5,5);
+        \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=1, size=0.5, shape=diamond]{a}
+        \Vertex[x=3,y=0,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{b}
+        \Vertex[x=1.5,y=3,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{c}
+        \Vertex[x=1.5,y=1,color=tuorange, opacity=0.5,label=-3, size=0.5, shape=circle]{d}
+        \Edge(a)(b)
+        \Edge(b)(c)
+        \Edge(c)(a)
+        \end{tikzpicture}
+    \caption[Radon Point]{Example for Radon Point in 2D}
+    \label{fig:radon}
+\end{figure}

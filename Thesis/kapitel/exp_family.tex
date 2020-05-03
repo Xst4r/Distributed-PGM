@@ -5,29 +5,57 @@
 \section{Notation}
     \label{sec:nota}
     Let us first define our notation. 
-    Random Variables will be noted as $X$ and vectors will be written in bold letters, e.g. a vector of random variables $\vect{X} = \{X_1, X_2, \ldots, X_m\} \in \mathbb{R}^m$.
-    The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and the statespace for  a random vector likewise as $\vect{\mathcal{X}}$.
+    Random Variables will be noted as $X$ and vectors will be written in bold letters, e.g. a vector of random variables $\vect{X} = (X_1, X_2, \ldots, X_m)$.
+    The state space of a random variable will be denoted as a cursive letter of that random variable $\mathcal{X}$ and the statespace for  a random vector likewise as $\vect{\mathcal{X}} = (\mathcal{X}_1, \mathcal{X}_2, \ldots, \mathcal{X}_m)$.
+    Samples from $\vect{\mathcal{X}}$ are usually written as lower case letters e.g. $\vect{x} \in \mathcal{X}^m$ for an m-dimensional state space $\vect{\mathcal{X}}$.
+    We usually express each element of a random variable in terms of a subscript, e.g., $\vect{X}_i$ or $\vect{X}_A$, where $A \subset\{1, \ldots, m\} $ indexes multiple random variables at once.
     Parameters of a probability density function in the context of the canocical exponential family will usually be noted as $\vect{\theta} \in \mathbb{R}^n, \quad \mathbb{N}^+$.
     Here $\mathbb{N}^+$ is defined as $ \mathbb{N}^+ = \mathbb{N} \setminus \{0\}$.
     Model parameters on the i$^{th}$ local device will be noted as $\vect{\theta^i}$, while $\vect{\theta_i}$ is the entry at the i$^{th}$ position of the parameter vector.
     A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
     Additional notations for model parameters will be introduced if necesesary.
-    \todo{More generally any variable denothed with \* is optimal, \^ is global and \~ is local}
     In the context of optimization and optimality we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
     The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data is denoted as  $\vect{\hat{\theta}}$.
     Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\tilde{\theta}}^{(i)}$ the i$^{th}$ local parameter vector respectively.
 
 \section{Probabilistic Graphical Models}
 \label{sec:pgm}
-When dealing with statistical (bayesian) models our goal usually is to estimate a set of parameters of a predetermined distribution that reduces the risk of predicting the wrong outcome (Risk Minimization). 
-This is usually done by maximizing the Likelihood of the parameters having generated the data set $\mathcal{D}$ (see \ref{ssec:train}).
+When dealing with statistical models our goal is to estimate a set of parameters $\vect{\theta}$ of a probability distribution $\mathbb{P}_{\vect{\theta}}$, which optimize a function such as the risk or likelihood in order to perform tasks associated with that model.
 
+%Conditional Independency
+While in the case of statistical independency between all elements of a random variable, i.e.
+\begin{equation}
+    \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}) = \prod_{i=1}^m \mathbb{P}_{\vect{\theta}}(\vect{X}_i = \vect{x}_i)
+\end{equation}
+factorization over the marginal probabilities for each element is sufficient to obtain the joint probability, the assumption of statistical independency generally does not hold.
+Hence, it is important to capture dependencies between random variables as accurate as possible, which in turn increases the complexity of a model.
+In the general case no closed form solution for such models exists, but there are some exceptions, e.g. the random variables are only pairwise independent of each other.
+
+\begin{definition}{Conditional Independency}
+    Let $\vect{X}, \vect{Y}$ be two random variables. Two random variables are independent,  $\vect{X} \independent \vect{Y}$, iff
+    \begin{equation}
+        \begin{split}
+        \forall \vect{x} \in \mathcal{X}, \vect{y} \in \mathcal{Y}:  \; \mathbb{P}(\vect{X} = x \lvert \vect{Y} = y) &= \frac{\mathbb{P}(\vect{X} = x , \vect{Y} = y)}{\mathbb{P}(\vect{Y} = \vect{y})} \\
+        &=  \frac{\mathbb{P}(\vect{X} = x) \mathbb{P}(\vect{Y} = \vect{y})}{\mathbb{P}(\vect{Y} = \vect{y})}.  \\
+        \end{split}
+    \end{equation} 
+    Meaning, that the joint probability is equal to the product of the individual probabilities for all elements of either random variable.
+    We extend this definition by the notion of conditional independency. 
+    Two random variables are called conditionally independent if the factorization is independent given a third random variable $\vect{Z}$, that is
+    \begin{equation}
+        \forall \vect{x} \in \mathcal{X}, \vect{y} \in \mathcal{Y}: \mathbb{P}(\vect{X} = x , \vect{Y} = y \lvert \vect{Z} = \vect{z}) =   \mathbb{P}(\vect{X} = x \lvert \vect{Z} = \vect{z}) \mathbb{P}(\vect{Y} = y \lvert \vect{Z} = \vect{z})
+    \end{equation}
+    which will be written as $\vect{X} \independent \vect{Y} \lvert \vect{Z} $
+\end{definition}
+
+% Capturing Dependencies
 Let $\vect{X}$ be a random vector as defined in secition \ref{sec:nota}. 
-Each entry in $X_i \in \vect{X}$ corresponds to a single random variable.
+Each element $\vect{X}_i \in \vect{X}$ corresponds to a dimension of the random variable.
 The most simple statistical models model each random variable individually while not accounting for dependencies between two or more variables.
 This leads to worse estimates as the model can not capture the full scope of the underlying distribution.
 With Probabilistic Graphical Models we can capture the underlying dependencies between these random variables in order to create a better estimate for the assumed distribution $\mathcal{D}$ adheres to.
 
+%Graph representation
 When estimating parameters of a distribution we may consider each feature a random variable and the data generated a result of a stochastic process based on this random variables.
 Probabilistic Graphical Models (PGM) are a powerful tool to model conditional independencies between random variables. 
 We express each random variable as a node in a graph and each edge between two nodes represents a dependency. 
@@ -36,37 +64,82 @@ This is a result from having to compute the marginal distribution, i.e., summing
 However, methods exist, such as loopy belief propagation to perform approximate inference.
 We may also apply a junction tree algorithm to transform the graph into a tree, where exact inference is possible in polynomial time.
 
-When considering probabilistic graphical models we usually utilize parametric distributions, that are part of the exponential family. 
-Our goal is to estimate the parameters of such a distribution, which optimizes some criterion e.g. Maximum Likelihood or Maximum Entropy.
+% Probability Dist. Factorization
+Probability distributions from the exponential family can be expressed in a general form as product of normalizer and some non-negative function $\psi: \mathcal{X}^m \rightarrow \mathbb{R}_+$ usually called the potential function:
+\begin{equation}
+    \label{eq:probpot}
+    \mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \psi(\vect{x}),
+\end{equation}
+where $Z$, the partition function ensures that the probability distribution properly sums to one.
+If all entries in $\vect{X}$ are independent from each other we can write $\mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \prod_{i=1}^m \psi_i(x_i)$ as the probability of a set of independent random variables is the product of each individiual probability.
 
+\begin{example}{Normal Distribution}
+    For a multivariate normal distribution with mean $\vect{\mu}$ and covariance matrix $\vect{\Sigma}$
+    \begin{equation}
+        \mathcal{N}(\vect{x}; \vect{\mu}, \vect{\Sigma}) = \frac{1}{\sqrt{2 \pi \abs{\Sigma}}} \cdot \exp\bigg(-\frac{1}{2} (\vect{x} - \vect{\mu})^T \Sigma^{-1}(\vect{x} - \vect{\mu}))\bigg)
+    \end{equation}
+    we can express the normal distribution in terms of partition and potential function as follows
+    \begin{equation}
+        Z = \sqrt{2 \pi \abs{\Sigma}}, \quad \psi(\vect{x}) = \exp\bigg(-\frac{1}{2} (\vect{x} - \vect{\mu})^T \Sigma^{-1}(\vect{x} - \vect{\mu}))\bigg).
+    \end{equation}
+    Here the partition $Z$ only depends on the covariance matrix and the potential function is expressed in terms of the model parameters $\vect{\mu}, \vect{\Sigma}$
+\end{example}
+%After estimating the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
+%Distributed integer probabilistic graphical models \cite{piatkowski2019distributed} have recently been considered by Piatkowski.
+%In this specific scenario the models were aggregated using the average over all local models.
+%Other existing aggregation mechanics are discussed in section.
+%Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, which means we require some kind of convergence.
+%This is usually the case when most devices have a similar local model.
+%In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
 
-After estimating the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
-Distributed integer probabilistic graphical models \cite{piatkowski2019distributed} have recently been considered by Piatkowski.
-In this specific scenario the models were aggregated using the average over all local models.
-Other existing aggregation mechanics are discussed in section.
-Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, which means we require some kind of convergence.
-This is usually the case when most devices have a similar local model.
-In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
-
-Probabilistic Graphical Models are usually represented as a Graph, i.e., a set of vertices and edges that represent the independency structure of $\vect{X}$.
+%Capturing Statistical Independencies
+However, in practice random variables are rarely fully independent of each other, while they also may not be completely dependent on all other random variables.
+This leads to the notion of conditional independency, i.e., which variables are independent of each other if a certain set of variables is observed.
+Conditional independencies between random variables can be represented in a convenient and interpretable form.
+%TODO Rewrite
+For a graph $G=(V,E)$ the components $\vect{X}_v$ of a random variable $\vect{X}$ are modeled as a node and conditional independencies are edges between these nodes.
 Each vertex corresponds to a random variable and each edge is a dependency between two variables.
 Formally, let $G = (\vect{X},E)$ be a Graph with $\vect{X} =\{X_1 \ldots, X_n\}$, $\vect{\mathcal{X}} = \{\mathcal{X}_1, \ldots, \mathcal{X}_n\}$ and $E \subseteq \vect{X} \times \vect{X}$
 
+This leads to the formulation of Markov Random Fields, which is a Graph structure that represents the conditional independencies between random variables.
+
 \subsection{Markov Random Fields}
+%TODO Graph Representation
+%MRF Defintion
+Markov Random Fields are undirected graphs used to express conditional independencies between random variables. 
+Each vertex of the graph is associated with a single random variable from $\vect{X}$ and connections, edges, between vertices represent the conditional independencies. 
+Formally, let $G = (V,E)$ be a graph with vertices $V=\{1, \ldots m\}$ and $E \subseteq V \times V$. An undirected graph is a graph where vertices are connected in both directions $(u,v) \in E \Leftrightarrow (v,u) \in E$ if that edge exists.
+Markov Random Fields are probabilistic graphical models, that represent the joint probability of a random variable $(\vect{X}_v), \; v \in V$ \wrt to the vertices and their conditional independencies through edges of the graph. 
 
-A Markov Random Field is a probabilistic graphical model to represent the joint probability of a random vector $\vect{X}$. 
-Given a set of special properties, the Markov Properties we can express the joint probability distribution in terms of cliques in the graph.
+For $\vect{X}$ to be considered a Markov Random Field \wrt G we following properties, called Markov Properties have to hold:
 
+%MRF Properties
 \subsubsection*{Markov Properties}
-Probabilistic graphical models are considered Markov Random Fields if the Graph is undirected and the three markov properties hold for any set of random variables indexed by the vertices of G $\vect{X} = \{X_v\}, v \in V$
+Probabilistic graphical models are considered Markov Random Fields if the Graph is undirected and the three markov properties hold for any set of random variables indexed by the vertices of G, $\vect{X} = \{X_v\}, v \in V$
 
 \paragraph*{Pairwise Makrov Property}
+Two random variables $X_u, X_v$ are independent if they are not adjacent i.e. $\not\exists (u,v) \in E$ and given all other random variables:
+\begin{equation}
+    X_u \independent X_v \lvert X_{V \setminus\{u,v\}}
+\end{equation}
+
 \paragraph*{Local Markov Property}
 Given a random variable $X_v$ it is independent of all other variables given its neighbours 
-$X_v \independent X_{V\setminus (v \cup \mathcal{N}(v))} \lvert X_{\mathcal{N}(v)}$
-\paragraph*{Global Makrov Property}
+\begin{equation}
+    X_v \independent X_{V\setminus (v \cup \mathcal{N}(v))} \lvert X_{\mathcal{N}(v)},   
+\end{equation}
+where $\mathcal{N}: V \rightarrow V$ is the Markov Blanket of a node $v \in V$, i.e., the neighbors of $v$ such that $u \in \mathcal{N}(v) \Leftrightarrow (v,u) \vee (u,v) \in E$.
 
-\paragraph*{}
+\paragraph*{Global Makrov Property}
+Let $A, B \subset V, A \cap B = \emptyset$ be two subsets of vertices from G. 
+These subsets are independent if, given a third subset $C$, there exists no path from $A$ to $B$ that contains unobserved variables, i.e., all paths contain at least one variable from $C$:
+
+\begin{equation}
+    X_A \independent X_B \lvert X_C
+\end{equation}
+
+Instead of expressing the probability in terms of a single probability  it can be shown that if $\vect{X}$ satisfies the conditions of a Markov Random Field we can break \eq~\ref{eq:probpot} into a factorization, i.e., a joint probability over cliques potentials in the graph.
+
 \paragraph*{Clique Factorization}
 
 A clique is a subset of nodes $C \subseteq V$ such that, $\forall u,v,  \in C, u \neq v: \exists (u,v) \in E$ there exists and edge in $E$ for all nodes in $C$, i.e., the subset is fully connected.
@@ -75,36 +148,40 @@ Now let $\mathcal{C}$ be set set of maximal cliques, i.e., the set of cliques th
     \forall C_i, C_j \in \mathcal{C}, i \neq j  : C_i \not\subset C_j, C_j \not\subset C_i, C_i \neq C_j
 \end{equation}
 there exists no such pair of cliques in $\mathcal{C}$ such that either one is a true subset or the other.
-This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\max \mathcal{C} = \max \{\abs{\mathcal{C_1}}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
+This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\max \mathcal{C} = \max \{\abs{\mathcal{C}_1}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
 
-We can then express the joint probability distribution in terms of the set of maximal cliques, by treating each clique as a local probability density function and then factorizing over all maximal cliques. 
-We assign a potential function $\psi_C: \mathcal{X}_C \leftarrow \mathbb{R}$ to the clique that maps any state of the clique $\vect{x}_C \in \mathcal{X}_C$ to a positive real valued number.
-The clique factorization is then defined as:
+We can then express the joint probability distribution in terms of the set of maximal cliques, by treating each clique as a local probability density function and then factorizing over all maximal cliques.
+Instead of using the full potential function from \eq~\ref{eq:probpot}, we can express the potential function as a factorization over clique potentials.
+This allows us to break up the potentials into smaller distribitions and compute them individiually. 
+We assign a potential function $\psi_C: \mathcal{X}_C \rightarrow \mathbb{R}$ to every clique in the graph.
 
 \begin{equation}
-    \mathbb{P}(\vect{X}=\vect{x}) = \frac{1}{Z} \cdot \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)
+        \mathbb{P}(\vect{X}=\vect{x}) = \frac{1}{Z} \cdot \psi(\vect{x})= \frac{1}{Z} \cdot \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)
 \end{equation},
-where $Z$ is the normalizer of the probability density function, $\mathbb{P}$ is a probability density function, i.e.:
+where $Z$ is the normalizer of the probability density function, such that $\mathbb{P}$ is a proper probability distribution, i.e.
 
 \begin{equation}
-    \sum_{\vect{x}\in \mathcal{\vect{X}}}   \frac{1}{Z} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)  = 1.
+    \frac{1}{Z} \sum_{\vect{x}\in \mathcal{\vect{X}}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C) = 1 
 \end{equation}
 
-The partition function $Z$ is therefore defined as sum over factorizions over all possible states:
+The partition function $Z$ is therefore defined as sum of all potentials
 \begin{equation}
     Z = \sum_{x\in \mathcal{X}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)
 \end{equation}
 
 \begin{equation}
-    \psi_C(\vect{x}_c) = \exp(\sum_{i=1}^n \theta_i \cdot \phi(\vect{x})_i)
+    \psi_C(\vect{x}_c) = \exp(\inner{\vect{\theta}_C}{\phi_C(\vect{x})})
 \end{equation}
 
-\paragraph*{Sufficient Statistics}
+\paragraph*{Sufficiency}
     For a function $\phi$ it is said to be a sufficient statistic of random variable $\vect{X}$ if the data is conditionally independet of the model parameters given $\phi$, that is iff $\vect{\theta}\independent \mathcal{D} \lvert \phi(\mathcal{D})$
     The choice of $\phi: \vect{\mathcal{X}} \rightarrow \mathbb{R}^d$ directly determines the shape of  $\mathbb{E}_{\mathbb{P}}[\phi(x)]$.
     Let $C \in \mathcal{C}(G)$, be a clique in the set of maximum cliques of a graph G and let further
     $\phi_C: \vect{\mathcal{X}_C} \rightarrow \mathbb{R}^{\abs{\mathcal{X}_C}}$ be the sufficient statistic for that clique.
-    Then if the target variable is binary, i.e., $\mathcal{X}_C \in \{0,1\}^{\abs{\mathcal{X}_C}}$ it is easy to see that  $\mathbb{E}_{\mathbb{P}}[\phi_C(x_C)_i] = P(\phi_C(\vect{x_C})_i = 1)$.
+    Then if the target variable is binary, i.e., $\phi : \mathcal{X}_C \rightarrow \{0,1\}^{\abs{\mathcal{X}_C}}$ it is easy to see that  $\mathbb{E}_{\mathbb{P}}[\phi_C(x_C)_i] = P(\phi_C(\vect{x_C})_i = 1)$, since
+    \begin{equation}
+        \mathbb{E}_{\mathbb{P}}[\vect{X}] = 0 \cdot \mathbb{P}(\vect{X} = 0) + 1 \cdot \mathbb{P}(\vect{X}= 1) = \mathbb{P}(\vect{X} = 1), \quad \mathcal{X} \in \{0,1\}
+    \end{equation}.
     Thus, the expectation is equal to the probability that a clique is in state $i$.
     
     \subsection{Exponential Families}
@@ -113,7 +190,7 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
     Using the Shannon Entropy we find that
 
     \begin{equation}
-        P(X) = \exp^{(<\vect{\theta}, \vect{\phi_i(x)} > - A(\theta))},
+        P(X) = \exp^{(\inner{\vect{\theta}}{\vect{\phi_i(x)}} - A(\theta))},
     \end{equation}
     is the distribution that maximizes the entropy.
 
@@ -155,20 +232,23 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
 
     and it follows that the objective function reaches its optimum when 
     \begin{equation}   
-    P(x) = \exp^{(<\vect{\theta}, \vect{\phi_i(x)} > - \theta_0 - 1)}
+    P(x) = \exp^{(\inner{\vect{\theta}}{\vect{\phi_i(x)}} - \theta_0 - 1)}
     \end{equation} 
     and with setting $\theta_0 = -1 + A(\theta) $ we obtain the form of the canocical exponential family
 
     \begin{equation}
         P(X) = \exp^{(\langle\vect{\theta}, \vect{\phi_i(x)} \rangle - A(\theta))},
     \end{equation}
-    where $A(\theta) = \log \sum_{\vect{x}\in \vect{\mathcal{X}}} \exp(<\vect{\theta}, \phi(\vect{x})>)$ is the log partition function, the normalizer of the probability distribution, ensuring that the second set of constraints from \eq\ref{eq:entropy}is not violated.
+    where $A(\theta) = \log \sum_{\vect{x}\in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})})$ is the log partition function, the normalizer of the probability distribution, ensuring that the second set of constraints from \eq\ref{eq:entropy}is not violated.
 
-        \subsubsection{Asymptotic Normality}
+        \subsubsection*{Asymptotic Normality}
         \label{ssec:asymp}
         Parametrized family of densities can be attributed certain properties if they satisfy a set of conditions. 
         One such property is the asymptotic normality of the maximum likelihood estimator.
         Given a number of samples $n$ drawn i.i.d. from a random variable $\vect{X}$, we can show that in the limit of $n \rightarrow \infty$ the parameter vectors follows a normal distribution $\mathcal{N}(\vect{\mu}, \vect{\Sigma})$ for some mean and variance.
+
+        %The diagonal representation only requires storing an array with $d$ elements and in sparse matrix representation $2d$ elements, one for the value itself and another for the position in the matrix. We do not require both row and column indices as they are equal in this case.
+        %Additionally, for elements $i,j$ beloning to the same clique the left hand side of \eq~\ref{eq:sparsefish} is zero as the probability of observing both $\phi_C(\vect{x})_i$ and $\phi_C(\vect{x})_j$ is by definition zero, i.e., each clique can only assume one state at a single time.
 
         \begin{threm}{Berk's Theorem of Asymptotic Normality\cite{berk1972consistency}}
             Let $\vect{\theta^*} \in \mathbb{R}^d$ denote the true parameter vector and $\vect{\theta} \in \mathbb{R}^d$ some MLE with $\ell'(\vect{\theta}, \mathcal{D}) = 0$.
@@ -179,12 +259,22 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
             \begin{equation}
                 \sqrt{n}(\vect{\theta} - \vect{\theta}^*) \dot{\sim} \mathcal{N}(0, i(\vect{\theta}^*)^{-1}),
             \end{equation}
-            which can be rearranged according to Slutky's Theorem to
+            which can be rearranged according to Slutky's Theorem\cite{casella2002statistical} to
 
             \begin{equation}
                 \vect{\theta} \dot{\sim} \mathcal{N}(\vect{\theta}, i(\vect{\theta}^*)^{-1}/n).
             \end{equation}
         \end{threm}
+
+        The Fisher Information $i(\vect{\theta}) \in \mathbb{R}^{d \times d}$, sometimes called precision matrix
+        \begin{equation*}
+            i(\vect{\theta}) = \mathbb{E}\bigg[- \frac{\partial^2}{\partial \vect{\theta}_i \partial \theta_j} \log f(\vect{X}; \vect{\theta})\bigg] ,
+        \end{equation*} 
+        is the negative hessian of the log likelihood for some probability density function $f$ evaluated at $\vect{\theta}$.
+        The Fisher Information can be interpreted as a measure of precision for a random variable $\vect{X}$, i.e., the information random samples from a distribution contain about the parameters.
+        A random variable having low precision is equates to high variance, that is less information conveyed about the unknown parameters for each sample.
+
+        For the stationary MLE $\vect{\theta}^*$  and $n \rightarrow \infty$, the inverse fisher information $i(\vect{\theta}^*)^{-1}/ n = \frac{1}{n} \vect{\Sigma}$ is an estimator for the covariance matrix, implying that as $n$ increases the covariance decreases and the precision increases in terms of the sample size.
 
         Since $\vect{\theta}$ is normally distributed around the true parameter vector, for any sample $\mathcal{D}$ drawn i.i.d. from $\vect{X}$ the MLE $\vect{\theta}$ obtained by minimizing the negative average log likelihood $\ell(\vect{\theta}; \mathcal{D})$ can be treated as a sample from a normal distribution.
 
@@ -202,7 +292,8 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
         \paragraph*{Conditions}
         There a certain conditions associated with a distribution in order for Berk's Theorem to hold.
         Distributions from the canocical exponential family satisfy all of these conditions
-        \paragraph*{Fisher Information}
+
+
         \paragraph*{Proof}
         The Maximum Likelihood Estimator of canonical exponential families is consistent, regular and thus asymptotic normal i.e. $\sqrt{n}(\theta - \theta^*) \sim \mathcal{N}(0, i(\theta^*)^{-1})$.
         Implying, that the paremeters follow a normal distribution with the  true parameter vector as mean an the inverse fisher information as covariance, with 
@@ -216,24 +307,11 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
         We can interpret this result in such way that a set of parameter vectors obtained from data sets $\{\mathcal{D}_1, \ldots \mathcal{D}_n\}$ is normally distributed around the true parameter vector for a sample size of $n \leftarrow \infty$. 
         This in turn implies that we can treat parameter vectors of local devices as samples from such a distribution and use this to estimate the maximum likelihood of the parameter space.
         Addtionally we can use some $\vect{\theta}$ and assume this to be $\theta^*$ and use the result for sampling additional models.
-
-    \subsection{Structure Learning}
-        Determining the Structure for the graph is important as we want to model the actual dependencie
-        between random variables. 
-        We may decide to drop dependencies in order to simplify the model, which allows for faster and exact training(in case the graph is a tree).
         
-        We will use the Chow-Liu algorithm to approximate a independency structure, which always results in a tree.
-        The algorithm computes the cross entropy for every pair of nodes and then computing the minimum spanning tree to 
-        obtain the edges with the largest correlation.
-        This limits the clique size in the graph to two, resulting in a tree, but also limiting the number of nodes that depend on each other.
-
-        In this work the Chow-Liu algorithm is used for all independency structure approximations.
-
-
     \subsection{Training}
     \label{ssec:train}
 
-    Now that we know, which probability distribution maximizes the entropy we have to determine the parameters $\vect{\theta}$.
+    Now that we know, which probability distribution maximizes the entropy we have to determine the parameters $\vect{\theta} \in \Theta$, where $\Theta = \{\vect{\theta} \;\lvert A(\vect{\theta}) < \infty\} \subset \mathbb{R}^d$ is the set of feasible solutions.
     Additionally we have to compute the partition function $A$, which depends on $\vect{\theta}$.
     Using a first order gradient descent method, we can find the optimum by iteratively updating the parameters of a function $\ell: \mathbb{R}^d \rightarrow \mathbb{R}$, i.e., taking one step in the direction of the derivative, the gradient 
     \begin{equation}
@@ -294,6 +372,21 @@ The partition function $Z$ is therefore defined as sum over factorizions over al
     Learning the model parameters requires us to compute the gradient of the likelihood and this in turn requires us to compute the log partition function. 
     This problem is known as inference, which has no exact solution in the general case, but can be exactly determined in the case where G is a tree.
 
+    \paragraph*{Log Partition Function}
+    For second order methods such as Newton's Method the second derivative of A \wrt $\vect{\theta}$ may also be of interest.
+    It can be shown (see for example \cite{piatkowski2018exponential}), that the second derivative of the log partition function is the Fisher Information matrix, that is:
+
+    \begin{equation}
+        \label{eq:sparsefish}
+        \begin{split}
+        \frac{\partial^2 A(\vect{\theta})}{\partial \vect{\theta}_i \partial \vect{\theta}_j} &= \mathbb{E}[\phi(\vect{X})_i \phi(\vect{X})_j] - \mathbb{E}[\phi(\vect{X})_i] \mathbb{E}[\phi(\vect{X})_j], \\
+        &= \sum_{\vect{x} \in \mathcal{X}} \phi(x)_i \phi(x)_j \mathbb{P}_{\vect{\theta}}(\vect{x}) - \sum_{\vect{x} \in \mathcal{X}} \phi(x)_i \mathbb{P}_{\vect{\theta}} \sum_{\vect{x} \in \mathcal{X}} \phi(x)_i  \mathbb{P}_{\vect{\theta}} \\
+        &= Cov[\phi(\vect{X})_i, \phi(\vect{X})_j].
+        \end{split}
+    \end{equation}
+
+    However, in terms of distributed learning, especially on resource constrained systems, second order methods or the fisher information are of little use as the memory requirement for storing the matrix is quadratical in the number of model parameters.
+    Even for small models the memory requirement is not negligible.
 
 \subsection{Inference}
 \label{ssec:inf}
@@ -327,35 +420,143 @@ Obtaining the conditional probability for an observed subset $B \subset V$ on an
 Instead of marginalization, this task requires maximization as we want to obtain the single sample with the highest probability for a distribution. 
 Instead of using the sum-product message passing algorithm we use the max-product message passing instead.
 \begin{equation}
+    \label{eq:map}
     \hat{\vect{x}} = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}) = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \exp(\inner{\vect{\theta}}{\phi(\vect{x})} - A(\vect{\theta}))
 \end{equation}
 
 \paragraph*{Belief Propagation}
 Even for a small number of nodes and states per node the computation of the partition function and thus performing any type of inference becomes computationally intractable.
-While we can not obtain the exact solution for the marginalization for a given Graph with arbitrary structe, it is however possible to find an exact solution on trees or an approximate solution.
+Consider a graph with 100 nodes representing a random variable with binary states.
+In the worst case, i.e., a fully conected graph we have to iterate over $2^{100} = 1.26\cdot e^{30}$ states
+While we can not obtain the exact solution for the marginalization for a given Graph with arbitrary structe, it is however possible to find an exact solution on trees or an approximate solution on general graphs.
+
 
 The algorithm to solve this problem was introduced as Belief Propagation or Sum-Product message passing by Pearl \cite{pearl1982reverend} and was later extended to be exact on polytrees as well \cite{kim1983computational}.
 In case the graph is not a tree we can still find an approxiate solution via loopy belief propagation, which was empirically studied by Murphy et al. \cite{murphy2013loopy}
 
-Belief propagation takes advantage of the distributivity of potentials computed on each node. Instead of computing the same terms over and over we can simply pass them between nodes of the graph in a dynamic programming fashion.
+Belief propagation takes advantage of the distributivity of potentials computed on each node. 
+Instead of computing the same terms over and over we can simply pass them between nodes of the graph in a dynamic programming fashion.
 This allows us to obtain the exact solution for all relevant marginals without having to enumerate over all possible states $\vect{\mathcal{X}}$, that can then be used to calculate the partition function.
 
-
+When $G=(V,E)$ is a tree, the clique factorization reduces to a product over nodes and edges
 \begin{equation}
-    Z(\vect{\theta}) = \sum_{x_1 \in \mathcal{X}_1} \sum_{x_1 \in \mathcal{X}_2} \ldots \prod_{uv \in E} \exp(\inner{\vect{\theta}}{\phi_{uv}(\vect{x}_{uv})}).
+    \label{eq:edgepot}
+    \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}) = \frac{1}{Z(\vect{\theta})} \prod_{u\in V} \psi_u(x_u) \prod_{u,v \in E} \psi_{uv}(x_{uv}).
+\end{equation}
+This is the case as the set of maximal cliques in a tree is just the set of all nodes and edges.
+The sum-product algorithm is capable of computing the marginal distribution for every node in the graph.
+The marginal distribution for a single node is defined as
+\begin{equation}
+    \mathbb{P}_{\vect{\theta}}(X_v = x_v) = \sum_{\vect{x}' \in \{\vect{x}' \lvert x_v\}} p(\vect{x}'),
+\end{equation}
+which is the sum over all probabilities, where $x_v$ appears.
+
+The sum-product algorithm takes advantage of the property that for any graph G, if G is a tree, any subgraph $G' \subset G$ is also a tree. 
+This way we can break down the factorization from \eq\ref{eq:edgepot} into subproblems again requiring the factorization of a smaller tree.
+This divide an conquer approach can be used to compute all node marginals simultaneously and in parallel by passing theses messages between nodes.
+
+
+Consider an arbitrary vertex $u \in V$ of G, where $\mathcal{N}(s)$ is the set of neighbors of $u$.
+We can then write the factorization in terms of the subgraph $G'=(V', E')$ induced by each neighbor of $u$. 
+Let one of these neighbors be the node $v$ we then have 
+\begin{equation}
+    \mathbb{P}_{\vect{\theta}}(\vect{x}_{V'}\lvert G') \propto \prod_{v \in V'} \psi_v(x_v) \prod_{vw \in E'} \psi_{vw}(x_{vw})
 \end{equation}
 
-Recall that we can express the probability in terms of a factorization over all cliques. 
-Since all cliques have size two we only need to factorize over every pair of nodes.
-Using distributivity of sums we can write each clique probability as
-
+This can be done for every subtree of $v$, which allows us to obtain the marginal distribution for $x_v$
 \begin{equation}
-    P(\vect{X} = x_{uv}) = \frac{\psi_{uv}(\phi_{uv}(x))}{Z} \cdot \sum_{x_1 \in \mathcal{X}_1} \sum_{x_1 \in \mathcal{X}_2} \ldots 
+    \label{eq:normbp}
+    \begin{split}
+    \mathbb{P}_{\vect{\theta}}(X_v = x_v) &= \frac{1}{Z} \cdot \psi_v(x_v) \prod_{t \in \mathcal{N}(v)} m_{t \rightarrow v}(x_v),  \\
+    & \text{with}\\
+    m_{t \rightarrow v}(x_v) &= \sum_{x'_{V_t}} \psi_{vt}(x_v, x_t') p(x'_{V_t} \lvert G_t) \\
+    & = \sum_{x'_{V_t}} \psi_{vt}(x_v, x_t')  \prod_{s\in \mathcal{N}(t) \setminus \{v\}} m_{s \rightarrow t}(x_t),
+    \end{split}
+\end{equation}
+such that the input for a subtree is, again, a subtree.
+
+This gives rise to a 2-pass algorithm in case the graph is a tree.
+In the first phase, "Converge", we start by choosing an arbitrary root, wher all messages converge.
+Then, we start computing messages on the leaves \wrt to the root as they do not depend on additonal messages.
+Every root of a subtree waits for all messages to arrive and the sends its message towards the parent until the messages have propagated to the root.
+In the second pass, the "Broadcast", the root sends messages to each neighbor, distributing the messages that have arrived from different subtrees.
+
+In the general case, when G is not a tree, we can employ a similar algorithm usually referred to as Loopy Belief Propagation(\alg~\ref{alg:lbp}).
+Instead of using two passes to reach convergence we compute new messages on each node by sending  old messages back and forth between nodes.
+This is done by computing messages in both directions for each edge i.e., 
+\begin{equation}
+    \begin{split}
+        \label{eq:mespas}
+        m_{t \rightarrow v}(x_v) &= \sum_{x'_{V_t}} \psi_{vt}(x_v, x_t') \prod_{s\in \mathcal{N}(t) \setminus \{v\}} m_{s \rightarrow t}(x_t) \\
+        m_{v \rightarrow t}(x_t) &= \sum_{x'_{V_v}} \psi_{tv}(x_t, x_v') \prod_{u\in \mathcal{N}(v) \setminus \{t\}} m_{u \rightarrow v}(x_v). \\
+    \end{split}
 \end{equation}
 
-This formulation leads the way to Belief Propagation, also called Sum-Product-Message-Passing.
-The general idea is that we only have to pass messages of potentials between neighboring nodes.
-This way we can compute the log partition function by the divide and conquer principle, i.e., passing messages to each node in parallel.
+We may then express the partition function in terms of messages\cite{piatkowski2018exponential} at any node as 
+\begin{equation}
+    Z = \sum_{\vect{x} \in \mathcal{X}_v} \prod_{u \in \mathcal{N}(v)} m_{u \rightarrow v}(\vect{x}_v).
+\end{equation} 
+
+
+\begin{algo}{Loopy Belief Propagation}
+    \begin{algorithm}[H]
+        \caption{Loopy Belief Propagation}
+        \begin{algorithmic}
+            \label{alg:lbp}
+            \REQUIRE Graph G=(V,E), Model Parameters $\vect{\theta} \in \mathbb{R}^d$, Threshold~$\epsilon > 0$, Number of Iterations $n$\\
+            \ENSURE  Node and Edge Marginals $\hat{\mu} \in [0,1]^{d + \abs{V}}$ \\
+            \STATE{$\vect{m}^{new} \leftarrow 0, \vect{m}^{old} \leftarrow \infty$}
+            \FOR{i=1 ...n}
+            \STATE{$\vect{m}^{new} \leftarrow \vect{m}^{old}$} 
+                \FORALL{$u,v \in E$}
+                \STATE{Update messages $m_{u \rightarrow v}(\vect{x}_v)$ and $m_{v \rightarrow u}(\vect{x}_u)$ (\eq~\ref{eq:mespas})}\\
+                \ENDFOR
+                \IF{$\epsilon \geq  \abs{\vect{m}^{new} - \vect{m}^{old}}$}
+                \STATE{$\vect{m}^{new} \leftarrow \vect{m}^{old}$}\\
+                \STATE{BREAK}\\
+                \ENDIF
+            \ENDFOR
+            \RETURN {Normalized messages $\hat{\mu}$~(\eq~\ref{eq:normbp})}
+        \end{algorithmic}
+    \end{algorithm}
+\end{algo}
+\subsection{Structure Learning}
+
+So far we have talked about estimating the parameters of exponential family models and performing inference, which is a necessary step for training as well. 
+Given some data $\mathcal{D} \subset \mathbb{R}^m$  we consider each dimension of $\mathcal{D}$ to be generated by univariate random variables $\vect{X} = (\vect{X}_1, \ldots \vect{X}_m)$.
+Unless we already have some information about the underlying independency structure of $\vect{X}$, it is necessary to somehow create this independency structure based on the observed samples $\vect{X} \sim \mathbb{P}_{\vect{\theta}}$.
+In terms of the graph $G=(V,E)$, we have knowledge about the shape of the vertices $V$, but usually none about the edges $E$.
+
+In case the independency structure is given it may still be beneficial to employ a technique to determine a different independency structure, e.g., to reduce complexity of the original structure via a junction tree algorith \todo{cite}.
+Additionally the provided structure may be too complex, which would result in increase run-times and non-exact solutions.
+Here, we may estimate a tree based on the provided structure or simply to verify the structure, o.e., if the structure is plausible.
+
+Finding conditional independencies between radom variables can be achieved by various approaches such as the Chow-Liu algorithm or \todo{more dependency}. 
+We can obtain more refined structures by using dedicated tools such as Chordalysis \todo{cite}.
+
+For this work we will focus on the Chow-Liu algrithm, which uses a combination of Cross-Correlation and Minimum Spanning Tree in order to find the edges, with the hightes correlation.
+The 
+
+\paragraph*{Chow-Liu Algorithm}
+Chow and Liu introduced an algorithm\cite{chow1968approximating} to obtain a first order dependency structures using second order terms.
+The tree is constructed by finding the edges that minimize the Kullback Lebiler divergence between the actual distribution and the distribution induced by the set of edges we obtain by computing the maximum spanning tree of the mutual information between all random variables.
+
+Formally:
+\begin{definition}{Weighted Undirected Graph}
+    Let $G=(V,E)$ be a graph, where $E = V \times V$ and let further $c: V \times V \rightarrow \mathbb{R}$ be a cost function associated with edges of G with $c(u,v) = c(v,u) \forall u,v \in V$.
+\end{definition}
+
+    The cost function $c(u,v)$ is given by the mutual information between two random variables, i.e. 
+    \begin{equation}
+        c(\vect{X}_v, \vect{X}_u) = I(X_v, X_u) = \sum_{\vect{x}_v \in \mathcal{X}_v} \sum_{\vect{x}_u \in \mathcal{X}_u} \mathbb{P}(\vect{x}_v,\vect{x}_u) \log \frac{\mathbb{P}(\vect{x}_v,\vect{x}_u) }{\mathbb{P}(\vect{x}_v)  \mathbb{P}(\vect{x}_u)},
+    \end{equation}
+    where the probabilities are usually the relative frequencies of the observed events from $\mathcal{D}$.
+    Then, we obtain the minimum Kullback-Leibler divergence by computing the maximum spanning tree on the  connected graph.
+    \begin{equation}
+        \min_{E} KL(\mathbb{P}^*, \mathbb{P}_{E}) = \max_{E} \sum_{(u,v) \in E} c(\vect{X}_v, \vect{X}_u), \; s.t. \; \abs{E} = \abs{V}-1 .
+    \end{equation}
+    Here connected implies, that there exists a path between each pair of vertices in G. Such a tree can be found with well known algorithms such as Prim's Algorithm or Kruskal's Algorithm.
+
 \section{Distributed Learning}
 There are mainly two different architectural approaches to distributed learning. 
 The first approach is a decentralized approach without coordinator.
@@ -381,7 +582,18 @@ These are generally the parameters of the distribution we provide.
 With markov random fields using a probability distribution from the exponential family we do not even have to store the data in memory has we only have to preserve the sufficient statistics for training and inference.
 
 The two major issues we have to deal with are therefore the sample complexity and the model aggregation.
-As the main focus of this work is the model aggregation, which will be featured in chapter \ref{chapter:ch3}, we will now briefly discuss sample complexity.
+As the main focus of this work is the model aggregation, which will be featured in chapter \ref{chapter:ch3}, we will now briefly discuss convergence and sample complexity.
+
+\subsection{Convergence}
+In a distributed environment it is necessary to define some notion of convergence in order for local models to stop computation and possibly to stop gathering data altogether.
+This becomes even more critical when memory, processing capabilities and energy consumption are limited.
+We differentiate between two types of convergence criteria, static and dynamic.
+While static convergence may be determined at the start of each session, dynamic convergence criteria may change over time depending on local model properties.
+Dynamic criteria usually require some sort of node communication either between each other or between the coordinator. 
+Then, depending on some properties of each model, we may call for convergence on each device.
+Static criteria on the other hand are determined beforehand and may involve number of samples observed, number of iterations or something else enteriely, that does not require direct communication.
+
+We can express on such criterion in terms of sample complexity, i.e., the number of samples seen on each device.
 
 \subsection{Sample Complexity}
 One of the key questions of distributed learning is the number of samples required to obtain local models that are sufficiently good, i.e., when to stop learning and either start communication with the coordinator
@@ -441,7 +653,6 @@ Once we reach our predetermined goal on a device, i.e. $\abs{\mathcal{D}}^^i$ is
 We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$ the distance $\epsilon$ decreases and so does the variance. 
 
 \todo{Maybe Plot eps and delta in 3D}
-\subsection{Convergence}
 \section{Sampling}
 Statistical models such as probabilistic graphical models belong to the class of generavtive models.
 These types of models allow not only for solving discriminative tasks such as classification, but also have the ability to freely sample new data.
@@ -454,8 +665,9 @@ How do we sample from such a distribution? There are several different ways to s
 
 \subsection{Perturb and MAP}
 \label{ssec:pmap}
-Recall that the maximum a-posteriori state is the sample, that maximizes the probability for a distribution. 
-We continuously sampling from the MAP-state we would always receive the same sample $\hat{\vect{x}}$.
+Recall from \eq\ref{eq:map} that sample that maximizes the posterior probability of probability distribution is the sample that maximizes the probability.
+Perturb and MAP (\alg\ref{alg:pmap}) presents a technique to obtain samples using the maximum a-posteriori probability of a distribition.
+The core idea is to add noise $\epsilon$ to the model parameters $\vect{\theta}$ effectively changing the mode of the distribution by small amount and thus obtaining a different maximizer for the a-posteriori probability. 
 \begin{equation}
     \hat{\vect{x}}  = \arg\max_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(\vect{x})
 \end{equation}
@@ -471,8 +683,39 @@ Now consider the asymptotic normality of exponential families as well as the bou
 We can use both in such way that $\epsilon$ is a sample from a normal distribution with variance based on the upper bound of the variance for the Hoefding-Bound.
 This way we can sample from different MAP-States, while still remaining inside the Hoefding-Bound.
 
+\begin{algo}{Perturb and MAP~\cite{papandreou2011perturb}}
+    \begin{algorithm}[H]
+        \caption{Perturb and MAP}
+        \begin{algorithmic}
+            \label{alg:pmap}
+            \REQUIRE Probability Distribution $\mathbb{Q}_{\vect{\lambda}}(\vect{x})$
+            \ENSURE  MAP-State $\hat{\vect{x}}$ from $P_{\vect{\theta} + \epsilon}(\vect{x})$ \\
+            \STATE{Sample $\epsilon \sim \mathbb{Q}_{\vect{\lambda}} $}\\
+            \STATE{$\hat{\vect{x}} \leftarrow \arg\max_{\vect{x} \in \vect{\mathcal{X}}} P_{\vect{\theta} + \epsilon}(\vect{x})$}\\
+            \RETURN {$\hat{\vect{x}}$}
+        \end{algorithmic}
+    \end{algorithm}
+\end{algo}
+
 \subsection{Gibbs Sampling}
-Gibbs Sampling is another method of obtaining samples $\vect{x} \in \vect{\mathcal{X}}$ from a random variable $\vect{X}$. 
+The Gibbs Sampling algorithm as presented in \alg\ref{alg:gibbs} is another method of obtaining samples $\vect{x} \in \vect{\mathcal{X}}$ from a random variable $\vect{X}$. 
 Roughly, we first sample from a uniform distribution on $[0,1]$ and then proceed to compute the marginal prbabiltieis for a single entry, finding the most probable entry.
 This is repeated for randomly chosen elements and it can be shown that the initially uniform sample approaches the distribution asymptotically.
 However, as this may be computationally inhibitive due to the iterative nature of this method we may stop after a certain number of iterations, obtaining a sample which is roughly from $\vect{X}$.
+
+\begin{algo}{Gibbs Sampling~\cite{yildirim2012bayesian}}
+    \begin{algorithm}[H]
+        \caption{Gibbs Sampling}
+        \begin{algorithmic}
+            \label{alg:gibbs}
+            \REQUIRE $\vect{x} \sim f(\tau) \in \mathbb{R}^m$, Graph G=(V,E)
+            \ENSURE  $\vect{x} \sim P_{\vect{\theta}}\in \mathbb{R}^m$ \\
+            \FOR{i=1 ...n}
+                \FORALL{$j \in V$}
+                \STATE{$x_j \leftarrow x_j \sim P_{\vect{\theta}}(\vect{X}_j  \lvert \mathcal{N}(\vect{X}_j) )$}
+                \ENDFOR
+            \ENDFOR
+            \RETURN {$\vect{x}$}
+        \end{algorithmic}
+    \end{algorithm}
+\end{algo}
