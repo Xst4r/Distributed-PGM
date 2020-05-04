@@ -505,9 +505,10 @@ def get_data_class(type):
 
 if __name__ == '__main__':
 
+
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
-    datasets = ['susy', 'covertype', 'dota2']
-    sample_parameters = ["fish",'none','random','unif']
+    datasets = ['dota2']
+    sample_parameters = ["fish",'none','random', 'unif']
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
