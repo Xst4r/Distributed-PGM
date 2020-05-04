@@ -248,7 +248,6 @@ class Model:
                              opt_progress_hook=self.opt_progress_hook,
                              mode=CONFIG.MODELTYPE,
                              in_model=model,
-                             initial_stepsize=1e-3,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              k=4)
 

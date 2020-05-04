@@ -339,5 +339,5 @@ def get_parser():
     parser.add_argument('--feedback',
                         type=bool,
                         help="The aggregator returns the best aggregate wrt the global likelihood back to the local devices",
-                        default=True)
+                        default=False)
     return parser
