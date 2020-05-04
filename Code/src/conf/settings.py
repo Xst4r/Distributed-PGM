@@ -75,7 +75,7 @@ class Config(object):
         self.SAMPLER = SamplerType.gibbs
         self.DEBUG = True
         self.ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-        self.LOG_LEVEL = logging.ERROR
+        self.LOG_LEVEL = logging.INFO
         self.URLS = {"DOTA2":"https://archive.ics.uci.edu/ml/machine-learning-databases/00367/dota2Dataset.zip",
                      "SUSY":"https://archive.ics.uci.edu/ml/machine-learning-databases/00279/SUSY.csv.gz",
                      "COVERTYPE": "https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.data.gz"}
@@ -89,6 +89,7 @@ class Config(object):
         self.CV = None
         self.EPOCHS = None
         self.COVTYPE = None
+        self.FEEDBACK = None
 
     def set_sampler(self, type):
         choices = {'gibbs': SamplerType.gibbs,
@@ -129,6 +130,9 @@ class Config(object):
 
     def set_tol(self, type):
         self.TOL = type
+
+    def set_feedback(self, type):
+        self.FEEDBACK = type
 
     def set_graphtype(self, type):
         choices = {'chain': GraphType.chain,
@@ -211,6 +215,7 @@ class Config(object):
         self.set_graphtype(cmd_args.graphtype)
         self.set_cv(cmd_args.cv)
         self.set_covtype(cmd_args.covtype)
+        self.set_feedback(cmd_args.feedback)
 
     def write_readme(self, path):
         with open(os.path.join(path, 'readme.md'), "w+") as readme:
@@ -331,4 +336,8 @@ def get_parser():
                         help="Covariance Matrix Type for Model Parameter Sampling",
                         choices=["unif", "random", "fish", "none"],
                         default="fish")
+    parser.add_argument('--feedback',
+                        type=bool,
+                        help="The aggregator returns the best aggregate wrt the global likelihood back to the local devices",
+                        default=True)
     return parser

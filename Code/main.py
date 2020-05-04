@@ -149,12 +149,12 @@ class Coordinator(object):
                 accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / y_true.shape[0]
                 f1 = sk_f1_score(y_true, y_pred)
                 logger.debug("===AGGREGATION HELPER=== RECORD AGGREGATE LL===")
-                self.record_obj(self.curr_split, weights, aggregator.__class__.__name__)
+                curr_ll = self.record_obj(self.curr_split, weights, aggregator.__class__.__name__)
                 logger.info(aggregator.__class__.__name__  + aggregator.hint + ": " + str(accuracy))
                 logger.info(aggregator.__class__.__name__ + aggregator.hint + ": " + str(f1))
                 logger.info(aggregator.__class__.__name__ + aggregator.hint + ": " + str(np.bincount(y_pred)))
                 logger.debug("===AGGREGATION HELPER=== RETURN DICT===")
-                return {'px_model': weights, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy, 'f1': f1}
+                return {'px_model': weights, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy, 'f1': f1}, curr_ll
             return {}
         except ValueError or TypeError as e:
             print(e)
@@ -196,12 +196,40 @@ class Coordinator(object):
         if isinstance(self.curr_model, np.ndarray):
             weights = self.curr_model
         logger.debug("===AGGREGATE=== CALL AGGREGATE===")
+        best_ll = np.infty
+        best_agg = None
         for name, aggregator in zip(methods, aggr):
-            aggregates[name].append(
-                self.aggregation_helper(aggregator=aggregator,
-                                        weights=weights))
+            aggregate, ll = self.aggregation_helper(aggregator=aggregator, weights=weights)
+            aggregates[name].append(aggregate)
+            if ll < best_ll:
+                best_ll = ll
+                best_agg = aggregate['px_model']
+                logger.info("NEW BEST AGGREGATE: " + name + " with Likelihood " + str(best_ll))
 
-        return aggregates
+        return aggregates, best_agg
+
+    def test_local_acc(self, i):
+        local_predictions = None
+        logger.debug("===RUN=== PREDICT LOCAL ACC===")
+        local_predictions = self.curr_model.predict(n_test=self.n_test)
+        local_acc = []
+        local_f1 = []
+        local_y_pred = []
+        logger.debug("===RUN=== PRINT AND RECORD LOCAL ACC===")
+        if not local_predictions is None:
+            for local_indexer, local_pred in enumerate(local_predictions):
+                y_pred = local_pred[:, self.curr_model.data_set.label_column]
+                y_true = self.data.test_labels[:self.n_test]
+                acc = np.where(np.equal(y_pred, y_true))[
+                          0].shape[0] / self.data.test_labels[:self.n_test].shape[
+                          0]
+                local_f1.append(sk_f1_score(y_true, y_pred))
+                local_acc.append(acc)
+                local_y_pred.append(y_pred)
+                logger.info(str(acc))
+                self.record_obj(i, np.copy(self.curr_model.px_model[local_indexer].weights),
+                                "local_" + str(local_indexer))
+        return local_acc, local_f1, local_y_pred
 
     def run(self, loaded_model):
         models = []
@@ -253,29 +281,11 @@ class Coordinator(object):
                     kl_samples = [np.ascontiguousarray(
                         self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
                         dtype=np.uint16) for idx in sampler.split_idx]
-                    local_predictions = None
-                    logger.debug("===RUN=== PREDICT LOCAL ACC===")
-                    local_predictions = self.curr_model.predict(n_test=self.n_test)
-                    local_acc = []
-                    local_f1 = []
-                    local_y_pred = []
-                    logger.debug("===RUN=== PRINT AND RECORD LOCAL ACC===")
-                    if not local_predictions is None:
-                        for local_indexer, local_pred in enumerate(local_predictions):
-                            y_pred = local_pred[:, self.curr_model.data_set.label_column]
-                            y_true = self.data.test_labels[:self.n_test]
-                            acc = np.where(np.equal(y_pred, y_true))[
-                                      0].shape[0] / self.data.test_labels[:self.n_test].shape[
-                                      0]
-                            local_f1.append(sk_f1_score(y_true, y_pred))
-                            local_acc.append(acc)
-                            local_y_pred.append(y_pred)
-                            logger.info(str(acc))
-                            self.record_obj(i, np.copy(self.curr_model.px_model[local_indexer].weights),
-                                            "local_" + str(local_indexer))
 
+                    local_acc, local_f1, local_y_pred = self.test_local_acc(i)
                     logger.debug("===RUN=== AGGREGATE LOCAL MODELS===")
-                    aggregation = self.aggregate(theta_arr, kl_samples, test_arr)
+                    aggregation, best_agg = self.aggregate(theta_arr, kl_samples, test_arr)
+                    self.curr_model.best_aggregate = best_agg
                     logger.debug("===RUN=== RECORD SCORES===")
                     self.record_progress(aggregation, i, local_acc,
                                          self.csv_writer, 'acc')
@@ -418,7 +428,7 @@ class Coordinator(object):
             header += ", ".join([name + "_" + metric for name, _ in model_dict.items()])
             print(header, file=dest)
 
-        write_str += ", ".join([str(inf) for inf in local_info]) + ", "
+        write_str += ", ".join([str(inf) for inf in local_info])
         for method, results in model_dict.items():
             for stats in results:
                 if stats:
@@ -445,6 +455,7 @@ class Coordinator(object):
         logger.debug("===RECORD OBJ=== WRITE LL===")
         obj_str = str(n) + ", " + str(name) + ", " + str(ll)
         print(obj_str, file=self.obj_writer)
+        return ll
 
     def write_progress(self, path, fname, fname2, fname3):
         with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
@@ -456,8 +467,12 @@ class Coordinator(object):
         with open(os.path.join(path, fname2), "w+", encoding='utf-8') as f:
             self.obj_writer.seek(0)
             copyfileobj(self.obj_writer, f)
+            baselines = self.obj_writer.getvalue().split('\n')
             del self.obj_writer
             self.obj_writer = io.StringIO()
+            print("n_data, name, obj", file=self.obj_writer)
+            for i in range(self.k_fold):
+                print(baselines[i+1], file=self.obj_writer)
 
         with open(os.path.join(path, fname3), "w+", encoding='utf-8') as f:
             self.f1_writer.seek(0)

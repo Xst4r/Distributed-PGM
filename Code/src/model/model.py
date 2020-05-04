@@ -129,6 +129,7 @@ class Model:
         self.best_params = None
         self.best_objs = {}
         self.best_weights = {}
+        self.best_aggregate = None
 
         self.csv_writer = io.StringIO("Model, Objective, n_Data")
         print("Model, Objective, n_Data", file=self.csv_writer)
@@ -232,17 +233,22 @@ class Model:
             update, _ = log_progress(start, update, iter_time, total_models, i)
             tmp = np.ascontiguousarray(
                 np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
-            data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
+            data = np.ascontiguousarray(np.copy(train[idx[:1].flatten()]))
             data = np.vstack((data, tmp))
+
             model = px.train(data=data, graph=self.graph, mode=CONFIG.MODELTYPE, opt_regularization_hook=CONFIG.REGULARIZATION, iters=0, k=4)
 
             model = self.scale_phi_emp(model)
-
+            if self.epoch > 1 and CONFIG.FEEDBACK:
+                np.copyto(model.weights, np.ascontiguousarray(self.best_aggregate))
+                _, A = model.infer()
+                logger.info("LOCAL LL WITH AGGREGATE WEIGHTS :" + str(A - np.inner(model.weights, model.statistics)))
             model = px.train(iters=iters,
                              shared_states=False,
                              opt_progress_hook=self.opt_progress_hook,
                              mode=CONFIG.MODELTYPE,
                              in_model=model,
+                             initial_stepsize=1e-3,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              k=4)
 
