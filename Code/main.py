@@ -216,10 +216,11 @@ class Coordinator(object):
         local_f1 = []
         local_y_pred = []
         logger.debug("===RUN=== PRINT AND RECORD LOCAL ACC===")
+        test_size = np.min([self.n_test, self.data.test.shape[0] - 1])
         if not local_predictions is None:
             for local_indexer, local_pred in enumerate(local_predictions):
                 y_pred = local_pred[:, self.curr_model.data_set.label_column]
-                y_true = self.data.test_labels[:self.n_test]
+                y_true = self.data.test_labels[:test_size]
                 acc = np.where(np.equal(y_pred, y_true))[
                           0].shape[0] / self.data.test_labels[:self.n_test].shape[
                           0]
