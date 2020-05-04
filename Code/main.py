@@ -546,7 +546,10 @@ if __name__ == '__main__':
             logger.debug("=== MAIN === DONE===")
         except Exception as e:
             with open("exceptions.txt", "a+") as file:
+                import traceback
                 logger.error("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
                 file.write("Experiment Failed in " + str(cmd_args.data)  + " "+ str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
                 file.write(str(e) + "\n")
+                traceback.print_exc()
+
 
