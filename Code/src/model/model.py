@@ -233,7 +233,7 @@ class Model:
             update, _ = log_progress(start, update, iter_time, total_models, i)
             tmp = np.ascontiguousarray(
                 np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
-            data = np.ascontiguousarray(np.copy(train[idx[:1].flatten()]))
+            data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
             data = np.vstack((data, tmp))
 
             model = px.train(data=data, graph=self.graph, mode=CONFIG.MODELTYPE, opt_regularization_hook=CONFIG.REGULARIZATION, iters=0, k=4)
@@ -537,7 +537,7 @@ class Model:
     def get_bounded_distance(self, delta=0.8):
         d = self.get_num_of_states()
         c = - (np.log(1 - np.sqrt(delta)) - np.log(2)) / (np.log(d))
-        return 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * self.n_local_data * self.epoch))
+        return 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * self.n_local_data))
 
 
 class Dota2(Model):
