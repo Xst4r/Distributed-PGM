@@ -337,7 +337,7 @@ class KL(Aggregation):
             if isinstance(samples, np.ndarray):
                 cols = samples.shape[1]
                 if cols == self.states.shape[0]:
-                    self.X = samples[np.random.choice(np.arange(samples.shape[0]), n, replace=False)]
+                    self.X = samples[np.random.choice(np.arange(samples.shape[0]), np.min([n, samples.shape[0]]), replace=False)]
             else:
                 self.X = [np.copy(sample) for sample in samples]
                 self.X = np.concatenate(self.X)
