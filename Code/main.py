@@ -9,6 +9,7 @@ from time import time
 import io, shlex, os
 from shutil import copyfileobj
 
+import sys
 import numpy as np
 import pandas as pd
 import gc
@@ -21,10 +22,9 @@ logger = CONFIG.get_logger()
 
 class Coordinator(object):
 
-    def __init__(self, data_set_name, Data, exp_loader, n, k, iters, h, epochs, n_models, n_test):
+    def __init__(self, data_set_name, Data, n, k, iters, h, epochs, n_models, n_test):
         self.name = data_set_name
         self.data_obj = Data
-        self.exp_loader = exp_loader
         self.num_local_samples = n
         self.k_fold = k
         self.iters = iters
@@ -35,21 +35,17 @@ class Coordinator(object):
         self.save_path = os.path.join("experiments", self.name)
         self.n_test = n_test
         self.curr_split = 0
-        self.model_loader = None
         self.mask = None
         self.curr_model = None
         self.curr_model = None
-        if self.exp_loader is not None:
-            self.experiment_path = os.path.join(self.save_path, "_".join(
-                [str(self.num_local_samples), str(self.iters), str(self.rounds)]) + "_" + str(self.exp_loader))
-            self.seed = self.load_seed(self.experiment_path)
-            self.model_loader, self.mask = self.load_experiment(self.experiment_path)
-        else:
-            covtype = "COV_" + CONFIG.ARGS.covtype
-            reg = "REG_" + CONFIG.ARGS.reg
-            curr_time = str(int(time()))
-            self.experiment_path, self.seed = self.save_seed(
-                os.path.join(self.save_path, "_".join([curr_time, covtype, reg])))
+        self.sampler = None
+        self.aggregates = {}
+
+        covtype = "COV_" + CONFIG.ARGS.covtype
+        reg = "REG_" + CONFIG.ARGS.reg
+        curr_time = str(int(time()))
+        self.experiment_path, self.seed = self.save_seed(
+            os.path.join(self.save_path, "_".join([curr_time, covtype, reg])))
 
         if not os.path.isdir(self.experiment_path):
             os.makedirs(self.experiment_path)
@@ -239,111 +235,114 @@ class Coordinator(object):
                 self.record_test_ll(test_ll[local_indexer], "local_" + str(local_indexer))
         return local_acc, local_f1, local_y_pred
 
-    def run(self, loaded_model):
+    def generate_models(self):
+        theta_samples = None
+        theta_arr = None
+        if CONFIG.COVTYPE != CovType.none:
+            theta_samples, _ = self.sample_parameters(self.curr_model)
+            theta_arr = np.concatenate(theta_samples, axis=1)
+            del theta_samples
+        test_arr = None
+        if theta_arr is not None:
+            for theta in theta_arr.T:
+                px_map = px.Model(weights=np.ascontiguousarray(theta),
+                                  states=np.copy(self.curr_model.state_space + 1),
+                                  graph=px.create_graph(self.curr_model.edgelist))
+                test_arr = px_map.MAP() if test_arr is None else np.vstack((test_arr, px_map.MAP()))
+                px_map.delete()
+                del px_map
+        return theta_arr, test_arr
+
+    def aggr_wrapper(self):
+        logger.debug("Aggregating Model No. " + str(self.curr_model))
+        radons = []
+        vars = []
+        local_acc, local_f1, local_y_pred = self.test_local_acc(self.curr_model)
+        theta_arr, test_arr = self.generate_models()
+        kl_samples = [np.ascontiguousarray(
+            self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
+            dtype=np.uint16) for idx in self.sampler.split_idx]
+
+        logger.debug("===RUN=== AGGREGATE LOCAL MODELS===")
+        aggregation, best_agg = self.aggregate(theta_arr, kl_samples, test_arr)
+        self.curr_model.best_aggregate = best_agg
+        logger.debug("===RUN=== RECORD SCORES===")
+        self.record_progress(aggregation, self.curr_split, local_acc,
+                             self.csv_writer, 'acc')
+        self.record_progress(aggregation, self.curr_split, local_f1,
+                             self.f1_writer, 'f1')
+        self.aggregates[self.curr_model.n_local_data] = aggregation
+        radons.append(self.aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
+        self.check_convergence(radons)
+
+    def check_convergence(self, radons):
+        if len(radons) > 1:
+            d = self.curr_model.get_num_of_states()
+            c = - (np.log(1 - np.sqrt(0.5)) - np.log(2)) / (np.log(d))
+            tmp_eps_small = 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * 2000)) ** 2 / 4
+            np.var(radons, axis=0)
+            vars.append(np.var(radons, axis=0))
+            if np.all(np.var(radons, axis=0) < tmp_eps_small):
+                print("STOP")
+
+    def train(self):
+        self.data.load_cv_split(self.curr_split)
+        self.curr_model = SusyModel(self.data,
+                                    path=self.data.__class__.__name__, epochs=self.rounds)
+        self.local_models.append(self.curr_model)
+        while self.curr_model.n_local_data < self.curr_model.suff_data:
+            # Training
+            self.sampler = Random(self.data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
+            self.sampler.create_split(self.data.train.shape, self.data.train)
+            self.curr_model.train(split=self.sampler.split_idx,
+                                  epochs=1,
+                                  n_models=self.n_models,
+                                  iters=self.iters)
+
+            d, r, h, n = self.data.radon_number(r=self.curr_model.get_num_of_states() + 2,
+                                                h=1,
+                                                d=self.data.train.shape[0])
+            self.r = r
+            # Aggregation
+            self.aggr_wrapper()
+            gc.collect()
+            if self.curr_model.n_local_data > self.sampler.split_idx[0].shape[0]:
+                break
+
+    def run(self):
         models = []
         k_aggregates = []
-        sampler = None
+        self.sampler = None
 
-        if loaded_model is not None:
-            models = loaded_model
-            dummy_model = SusyModel(self.data, path="SUSY")
-            r = loaded_model[0].shape[0]
-            d, r, h, n = self.data.radon_number(r=r + 2, h=self.h, d=self.data.train.shape[0])
-        else:
-            # Outer Cross-Validation Loop.
-            for i in range(self.k_fold):
-                radons = []
-                vars = []
-                self.curr_split = i
-                aggregates = {}
-                self.data.load_cv_split(i)
-                self.curr_model = SusyModel(self.data,
-                                            path=self.data.__class__.__name__, epochs=self.rounds)
-                self.local_models.append(self.curr_model)
-                theta_samples = None
-                while self.curr_model.n_local_data < self.curr_model.suff_data:
-                    # Training
-                    sampler = Random(self.data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
-                    sampler.create_split(self.data.train.shape, self.data.train)
-                    self.curr_model.train(split=sampler.split_idx,
-                                          epochs=1,
-                                          n_models=self.n_models,
-                                          iters=self.iters)
-
-                    d, r, h, n = self.data.radon_number(r=self.curr_model.get_num_of_states() + 2,
-                                                        h=1,
-                                                        d=self.data.train.shape[0])
-                    self.r = r
-
-                    theta_arr = None
-                    if CONFIG.COVTYPE != CovType.none:
-                        theta_samples, _ = self.sample_parameters(self.curr_model)
-                        theta_arr = np.concatenate(theta_samples, axis=1)
-                        del theta_samples
-                    test_arr = None
-                    if theta_arr is not None:
-                        for theta in theta_arr.T:
-                            px_map = px.Model(weights=np.ascontiguousarray(theta), states=np.copy(self.curr_model.state_space + 1),
-                                              graph = px.create_graph(self.curr_model.edgelist))
-                            test_arr = px_map.MAP() if test_arr is None else np.vstack((test_arr,px_map.MAP()))
-                            px_map.delete()
-                            del px_map
-                    # Aggregation
-                    logger.debug("Aggregating Model No. " + str(i))
-                    kl_samples = [np.ascontiguousarray(
-                        self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
-                        dtype=np.uint16) for idx in sampler.split_idx]
-
-                    local_acc, local_f1, local_y_pred = self.test_local_acc(i)
-                    logger.debug("===RUN=== AGGREGATE LOCAL MODELS===")
-                    aggregation, best_agg = self.aggregate(theta_arr, kl_samples, test_arr)
-                    self.curr_model.best_aggregate = best_agg
-                    logger.debug("===RUN=== RECORD SCORES===")
-                    self.record_progress(aggregation, i, local_acc,
-                                         self.csv_writer, 'acc')
-                    self.record_progress(aggregation, i, local_f1,
-                                         self.f1_writer, 'f1')
-                    aggregates[self.curr_model.n_local_data] = aggregation
-                    radons.append(aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
-                    if len(radons) > 1:
-                        d = self.curr_model.get_num_of_states()
-                        c = - (np.log(1 - np.sqrt(0.5)) - np.log(2)) / (np.log(d))
-                        tmp_eps_small = 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * 2000)) ** 2 / 4
-                        np.var(radons, axis=0)
-                        vars.append(np.var(radons, axis=0))
-                        if np.all(np.var(radons, axis=0) < tmp_eps_small):
-                            print("STOP")
-                    del theta_arr
-                    gc.collect()
-                    if self.curr_model.n_local_data > sampler.split_idx[0].shape[0]:
-                        break
-                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv", "f1.csv", "test_likelihood.csv")
-                models.append(self.curr_model)
-                self.curr_model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
-                                                    fname="obj_progress" + ".csv")
-                k_aggregates.append(aggregates)
-                self.res = k_aggregates
-                try:
-                    self.finalize(i, aggregates, sampler.split_idx, local_y_pred)
-                    for mod in self.curr_model.px_model:
+        # Outer Cross-Validation Loop.
+        for i in range(self.k_fold):
+            self.curr_split = i
+            aggregates = self.train()
+            self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv", "f1.csv", "test_likelihood.csv")
+            models.append(self.curr_model)
+            self.curr_model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
+                                                fname="obj_progress" + ".csv")
+            k_aggregates.append(aggregates)
+            self.res = k_aggregates
+            try:
+                self.finalize(i, aggregates, self.sampler.split_idx)
+                for mod in self.curr_model.px_model:
+                    mod.delete()
+                for _, item in self.curr_model.px_batch.items():
+                    for mod in item:
                         mod.delete()
-                    for _, item in self.curr_model.px_batch.items():
-                        for mod in item:
-                            mod.delete()
-                    del self.curr_model
-                    self.curr_model = None
-                    gc.collect()
-                except Exception as e:
-                    print(e)
-        return models, k_aggregates, sampler
+                del self.curr_model
+                self.curr_model = None
+                gc.collect()
+            except Exception as e:
+                print(e)
+        return models, k_aggregates, self.sampler
 
-    def finalize(self, i, aggregates, splits, local_y_pred):
+    def finalize(self, i, aggregates, splits):
         mask = self.data.mask
         cv_path = os.path.join(self.experiment_path, str(i))
         for cnt, split in enumerate(splits):
             np.save(os.path.join(cv_path, "local_split_" + str(cnt)), split)
-        for cnt, y_pred in enumerate(local_y_pred):
-            np.save(os.path.join(cv_path, "local_pred_" + str(cnt)), y_pred)
         for j, (n_data, model) in enumerate(aggregates.items()):
             sub_model_path = os.path.join(cv_path, "batch_n" + str(j))
             if not os.path.isdir(sub_model_path):
@@ -430,7 +429,7 @@ class Coordinator(object):
         logger.debug("=== PREPARE === BASELINE===")
         self.baseline()
         logger.debug("=== PREPARE === LOCAL AGG===")
-        models, aggregate, sampler = self.run(self.model_loader)
+        models, aggregate, sampler = self.run()
         logger.debug("=== PREPARE === DONE===")
         return models, aggregate
 
@@ -493,7 +492,6 @@ class Coordinator(object):
         logger.debug("===RECORD OBJ=== WRITE LL===")
         obj_str = str(n) + ", " + str(name) + ", " + str(ll)
         print(obj_str, file=self.ll_writer)
-
 
     def write_progress(self, path, fname, fname2, fname3, fname4):
         with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
@@ -559,7 +557,6 @@ def start(cmd_args):
         number_of_samples_per_model = 100
         coordinator = Coordinator(data_set_name=cmd_args.data,
                                   Data=data_class,
-                                  exp_loader=cmd_args.load,
                                   n=number_of_samples_per_model,
                                   k=cmd_args.cv,
                                   iters=cmd_args.maxiter,
