@@ -258,7 +258,7 @@ class Coordinator(object):
         logger.debug("Aggregating Model No. " + str(self.curr_model))
         radons = []
         vars = []
-        local_acc, local_f1, local_y_pred = self.test_local_acc(self.curr_model)
+        local_acc, local_f1, local_y_pred = self.test_local_acc()
         theta_arr, test_arr = self.generate_models()
         kl_samples = [np.ascontiguousarray(
             self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
