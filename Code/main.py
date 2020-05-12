@@ -4,12 +4,14 @@ from src.preprocessing.sampling import Random
 from src.data.metrics import sk_f1_score
 from src.conf.settings import CONFIG, get_parser, CovType
 from src.data.dataset import CoverType, Susy, Dota2
+from multiprocessing import Process, Queue
 from time import time
 import io, shlex, os
 from shutil import copyfileobj
 
 import numpy as np
 import pandas as pd
+import gc
 from scipy.stats import random_correlation
 import pxpy as px
 import itertools
@@ -54,8 +56,10 @@ class Coordinator(object):
         self.random_state = np.random.RandomState(seed=self.seed)
         self.csv_writer = io.StringIO()
         self.obj_writer = io.StringIO()
+        self.ll_writer = io.StringIO()
         self.f1_writer = io.StringIO()
         print("n_data, name, obj", file=self.obj_writer)
+        print("n_data, name, test_ll", file=self.ll_writer)
         self.baseline_models = []
         self.baseline_px_models = []
         self.local_models = []
@@ -75,7 +79,7 @@ class Coordinator(object):
             self.curr_model = model
             model.train(split=None, epochs=self.rounds, iters=self.iters)
 
-            predictions = model.predict(n_test=test_size)
+            predictions, test_ll = model.predict(n_test=test_size)
             y_pred = predictions[0][:, self.data.label_column]
             y_true = self.data.test_labels[:test_size]
             accuracy = np.where(np.equal(y_pred, y_true))[0].shape[0] / test_size
@@ -91,6 +95,7 @@ class Coordinator(object):
             else:
                 self.baseline_px_models.append(model.px_model[0])
             self.record_obj(i, None, 'baseline_' + str(i))
+            [self.record_test_ll(ll, 'baseline_' + str(i)) for ll in test_ll]
             baseline_path = os.path.join(self.experiment_path, 'baseline')
             np.save(os.path.join(baseline_path, 'y_true_' + str(i)), y_true)
             np.save(os.path.join(baseline_path, 'y_pred_' + str(i)), y_pred)
@@ -142,7 +147,7 @@ class Coordinator(object):
                 logger.debug("===AGGREGATION HELPER=== NEW PX MODEL===")
                 weights = np.ascontiguousarray(np.copy(aggregate[0]))
                 logger.debug("===AGGREGATION HELPER=== PREDICT AGGREGATE===")
-                predictions = self.curr_model.predict(weights=weights, n_test=test_size)
+                predictions, test_ll = self.curr_model.predict(weights=weights, n_test=test_size)
                 logger.debug("===AGGREGATION HELPER=== GET ACC AND F1===")
                 y_pred = np.copy(predictions[:, self.curr_model.data_set.label_column])
                 y_true = np.copy(self.data.test_labels[:test_size])
@@ -150,15 +155,16 @@ class Coordinator(object):
                 f1 = sk_f1_score(y_true, y_pred)
                 logger.debug("===AGGREGATION HELPER=== RECORD AGGREGATE LL===")
                 curr_ll = self.record_obj(self.curr_split, weights, aggregator.__class__.__name__)
+                [self.record_test_ll(ll, aggregator.__class__.__name__) for ll in test_ll]
                 logger.info(aggregator.__class__.__name__  + aggregator.hint + ": " + str(accuracy))
                 logger.info(aggregator.__class__.__name__ + aggregator.hint + ": " + str(f1))
                 logger.info(aggregator.__class__.__name__ + aggregator.hint + ": " + str(np.bincount(y_pred)))
                 logger.debug("===AGGREGATION HELPER=== RETURN DICT===")
                 return {'px_model': weights, 'y_pred': y_pred, 'y_true': y_true, 'acc': accuracy, 'f1': f1}, curr_ll
-            return {}
+            return {}, np.infty
         except ValueError or TypeError as e:
             print(e)
-            return {}
+            return {}, np.infty
 
     def aggregate(self, weights=None, idx=None, bootsmap=None):
 
@@ -211,7 +217,7 @@ class Coordinator(object):
     def test_local_acc(self, i):
         local_predictions = None
         logger.debug("===RUN=== PREDICT LOCAL ACC===")
-        local_predictions = self.curr_model.predict(n_test=self.n_test)
+        local_predictions, test_ll = self.curr_model.predict(n_test=self.n_test)
         local_acc = []
         local_f1 = []
         local_y_pred = []
@@ -230,6 +236,7 @@ class Coordinator(object):
                 logger.info(str(acc))
                 self.record_obj(i, np.copy(self.curr_model.px_model[local_indexer].weights),
                                 "local_" + str(local_indexer))
+                self.record_test_ll(test_ll[local_indexer], "local_" + str(local_indexer))
         return local_acc, local_f1, local_y_pred
 
     def run(self, loaded_model):
@@ -245,6 +252,8 @@ class Coordinator(object):
         else:
             # Outer Cross-Validation Loop.
             for i in range(self.k_fold):
+                radons = []
+                vars = []
                 self.curr_split = i
                 aggregates = {}
                 self.data.load_cv_split(i)
@@ -268,8 +277,9 @@ class Coordinator(object):
 
                     theta_arr = None
                     if CONFIG.COVTYPE != CovType.none:
-                        theta_samples, theta_old = self.sample_parameters(self.curr_model)
+                        theta_samples, _ = self.sample_parameters(self.curr_model)
                         theta_arr = np.concatenate(theta_samples, axis=1)
+                        del theta_samples
                     test_arr = None
                     if theta_arr is not None:
                         for theta in theta_arr.T:
@@ -277,6 +287,7 @@ class Coordinator(object):
                                               graph = px.create_graph(self.curr_model.edgelist))
                             test_arr = px_map.MAP() if test_arr is None else np.vstack((test_arr,px_map.MAP()))
                             px_map.delete()
+                            del px_map
                     # Aggregation
                     logger.debug("Aggregating Model No. " + str(i))
                     kl_samples = [np.ascontiguousarray(
@@ -293,9 +304,20 @@ class Coordinator(object):
                     self.record_progress(aggregation, i, local_f1,
                                          self.f1_writer, 'f1')
                     aggregates[self.curr_model.n_local_data] = aggregation
+                    radons.append(aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
+                    if len(radons) > 1:
+                        d = self.curr_model.get_num_of_states()
+                        c = - (np.log(1 - np.sqrt(0.5)) - np.log(2)) / (np.log(d))
+                        tmp_eps_small = 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * 2000)) ** 2 / 4
+                        np.var(radons, axis=0)
+                        vars.append(np.var(radons, axis=0))
+                        if np.all(np.var(radons, axis=0) < tmp_eps_small):
+                            print("STOP")
+                    del theta_arr
+                    gc.collect()
                     if self.curr_model.n_local_data > sampler.split_idx[0].shape[0]:
                         break
-                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv", "f1.csv")
+                self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv", "f1.csv", "test_likelihood.csv")
                 models.append(self.curr_model)
                 self.curr_model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
                                                     fname="obj_progress" + ".csv")
@@ -303,6 +325,14 @@ class Coordinator(object):
                 self.res = k_aggregates
                 try:
                     self.finalize(i, aggregates, sampler.split_idx, local_y_pred)
+                    for mod in self.curr_model.px_model:
+                        mod.delete()
+                    for _, item in self.curr_model.px_batch.items():
+                        for mod in item:
+                            mod.delete()
+                    del self.curr_model
+                    self.curr_model = None
+                    gc.collect()
                 except Exception as e:
                     print(e)
         return models, k_aggregates, sampler
@@ -458,7 +488,14 @@ class Coordinator(object):
         print(obj_str, file=self.obj_writer)
         return ll
 
-    def write_progress(self, path, fname, fname2, fname3):
+    def record_test_ll(self, ll, name):
+        n = self.curr_model.n_local_data
+        logger.debug("===RECORD OBJ=== WRITE LL===")
+        obj_str = str(n) + ", " + str(name) + ", " + str(ll)
+        print(obj_str, file=self.ll_writer)
+
+
+    def write_progress(self, path, fname, fname2, fname3, fname4):
         with open(os.path.join(path, fname), "w+", encoding='utf-8') as f:
             self.csv_writer.seek(0)
             copyfileobj(self.csv_writer, f)
@@ -480,6 +517,16 @@ class Coordinator(object):
             copyfileobj(self.f1_writer, f)
             del self.f1_writer
             self.f1_writer = io.StringIO()
+
+        with open(os.path.join(path, fname4), "w+", encoding='utf-8') as f:
+            self.ll_writer.seek(0)
+            copyfileobj(self.ll_writer, f)
+            baselines = self.ll_writer.getvalue().split('\n')
+            del self.ll_writer
+            self.ll_writer = io.StringIO()
+            print("n_data, name, obj", file=self.ll_writer)
+            for i in range(self.k_fold):
+                print(baselines[i+1], file=self.ll_writer)
 
 
 def main():
@@ -504,12 +551,43 @@ def get_data_class(type):
     return choices[type]
 
 
+def start(cmd_args):
+    try:
+        data_class = get_data_class(cmd_args.data)
+
+        CONFIG.setup(cmd_args)
+        number_of_samples_per_model = 100
+        coordinator = Coordinator(data_set_name=cmd_args.data,
+                                  Data=data_class,
+                                  exp_loader=cmd_args.load,
+                                  n=number_of_samples_per_model,
+                                  k=cmd_args.cv,
+                                  iters=cmd_args.maxiter,
+                                  h=cmd_args.h,
+                                  epochs=cmd_args.epoch,
+                                  n_models=cmd_args.n_models,
+                                  n_test=cmd_args.n_test)
+        result, agg = coordinator.prepare_and_run()
+        del coordinator
+        return
+    except Exception as e:
+        with open("exceptions.txt", "a+") as file:
+            import traceback
+            logger.error(
+                "Experiment Failed in " + str(cmd_args.data) + " " + str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
+            file.write(
+                "Experiment Failed in " + str(cmd_args.data) + " " + str(cmd_args.reg) + " " + str(cmd_args.covtype) + "\n")
+            file.write(str(e) + "\n")
+            traceback.print_exc()
+        return
+
+
 if __name__ == '__main__':
 
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
     datasets = ['dota2']
-    sample_parameters = ["fish",'none','random', 'unif']
+    sample_parameters = ["fish", "unif", "random", "none"]
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
@@ -529,22 +607,11 @@ if __name__ == '__main__':
 
     for cmd_args in cmd_arg_list:
         try:
-            data_class = get_data_class(cmd_args.data)
-
-            CONFIG.setup(cmd_args)
-            number_of_samples_per_model = 100
-            coordinator = Coordinator(data_set_name=cmd_args.data,
-                                      Data=data_class,
-                                      exp_loader=cmd_args.load,
-                                      n=number_of_samples_per_model,
-                                      k=cmd_args.cv,
-                                      iters=cmd_args.maxiter,
-                                      h=cmd_args.h,
-                                      epochs=cmd_args.epoch,
-                                      n_models=cmd_args.n_models,
-                                      n_test=cmd_args.n_test)
-            result, agg = coordinator.prepare_and_run()
             logger.debug("=== MAIN === DONE===")
+            p = Process(target=start, args=(cmd_args,))
+            p.start()
+            p.join()
+            gc.collect()
         except Exception as e:
             with open("exceptions.txt", "a+") as file:
                 import traceback
