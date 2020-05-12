@@ -75,7 +75,7 @@ class Config(object):
         self.SAMPLER = SamplerType.gibbs
         self.DEBUG = True
         self.ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-        self.LOG_LEVEL = logging.DEBUG
+        self.LOG_LEVEL = logging.INFO
         self.URLS = {"DOTA2":"https://archive.ics.uci.edu/ml/machine-learning-databases/00367/dota2Dataset.zip",
                      "SUSY":"https://archive.ics.uci.edu/ml/machine-learning-databases/00279/SUSY.csv.gz",
                      "COVERTYPE": "https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.data.gz"}

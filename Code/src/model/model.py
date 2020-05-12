@@ -79,6 +79,7 @@ class Model:
             raise TypeError("Data has to be an instance of Pandas Dataframe")
 
         self.data_set = data
+        self.feedback = True
 
         self.weights = None
         self.vertices = None
@@ -252,6 +253,8 @@ class Model:
                              k=4)
 
             self.reset_train()
+            if model.weights.shape < np.sum([(self.state_space[i]+1) * (self.state_space[j]+1) for i,j in self.edgelist]):
+                print("Error")
             if len(split) > 1:
                 self.px_batch_local[self.epoch][i] = model
                 #model = self.merge_weights(model)
@@ -483,7 +486,8 @@ class Model:
         statespace = np.arange(data.shape[1], dtype=np.uint64)
         for i, column in enumerate(data.columns):
             self.state_mapping[column] = i
-            statespace[i] = np.min([np.max(data[column].to_numpy().astype(np.uint64)) + 1, self.data_set.disc_quantiles]) - 1
+            statespace[i] = np.max([np.min([np.max(data[column].to_numpy().astype(np.uint64)) + 1, self.data_set.disc_quantiles]) - 1,
+                                    np.max(self.data_set.test.loc[:,column])])
 
         return statespace
 
@@ -599,6 +603,41 @@ class Susy(Model):
     def predict(self, weights=None, n_test=None):
         logger.debug("===PREDICT PREPARE DATA===")
         test = np.ascontiguousarray(self.data_set.test.to_numpy().astype(np.uint16))
+
+        tmp = np.ascontiguousarray(
+            np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
+        tmp_test = np.vstack((test, tmp))
+
+        test_model = px.train(data=tmp_test, graph=self._px_create_graph(), mode=px.ModelType.mrf,
+                         opt_regularization_hook=CONFIG.REGULARIZATION, iters=0, k=4)
+
+        test_model = self.scale_phi_emp(test_model)
+        statistics = np.copy(test_model.statistics)
+
+        if weights is not None:
+            if test_model.weights.shape[0] != weights.shape[0]:
+                print("error")
+            np.copyto(test_model.weights, weights)
+            _, a = test_model.infer()
+            test_ll = [a - np.inner(weights, statistics)]
+            test_model.delete()
+        else:
+            partitions = []
+            if CONFIG.MODELTYPE == px.ModelType.integer:
+                for mod in self.px_model_scaled:
+                    if test_model.weights.shape[0] != mod.weights.shape[0]:
+                        print("error")
+                    np.copyto(test_model.weights, mod.weights)
+                    _, a = test_model.infer()
+                    partitions.append(a)
+            else:
+                for mod in self.px_model:
+                    if test_model.weights.shape[0] != mod.weights.shape[0]:
+                        print("error")
+                    np.copyto(test_model.weights, mod.weights)
+                    _, a = test_model.infer()
+                    partitions.append(a)
+        test_model.delete()
         if isinstance(self.data_set.label_column, str):
             label_column_idx = self.data_set.test.columns.get_loc(self.data_set.label_column)
             test[:, label_column_idx] = -1
@@ -614,12 +653,16 @@ class Susy(Model):
             logger.debug("===PREDICT ALL LOCAL MODELS===")
             if self.trained:
                 if CONFIG.MODELTYPE == px.ModelType.integer:
-                    return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
+                    predictions = [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
                             self.px_model_scaled]
+                    test_ll = [partitions[i] - np.inner(self.px_model_scaled[i].weights, statistics) for i in range (len(self.px_model_scaled))]
+                    return predictions, test_ll
                 else:
+                    test_ll = [partitions[i] - np.inner(self.px_model[i].weights, statistics) for i in
+                               range(len(self.px_model))]
                     return [px_model.predict(np.ascontiguousarray(np.copy(test[:n_test]))) for px_model in
-                            self.px_model]
+                            self.px_model], test_ll
         else:
             logger.debug("===PREDICT INPUT MODEL===")
             px_model = px.Model(weights=weights, graph=px.create_graph(self.edgelist), states=self.state_space+1)
-            return px_model.predict(test[:n_test])
+            return px_model.predict(test[:n_test]), test_ll
