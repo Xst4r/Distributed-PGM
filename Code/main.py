@@ -211,7 +211,7 @@ class Coordinator(object):
 
         return aggregates, best_agg
 
-    def test_local_acc(self, i):
+    def test_local_acc(self):
         local_predictions = None
         logger.debug("===RUN=== PREDICT LOCAL ACC===")
         local_predictions, test_ll = self.curr_model.predict(n_test=self.n_test)
@@ -231,7 +231,7 @@ class Coordinator(object):
                 local_acc.append(acc)
                 local_y_pred.append(y_pred)
                 logger.info(str(acc))
-                self.record_obj(i, np.copy(self.curr_model.px_model[local_indexer].weights),
+                self.record_obj(self.curr_split, np.copy(self.curr_model.px_model[local_indexer].weights),
                                 "local_" + str(local_indexer))
                 self.record_test_ll(test_ll[local_indexer], "local_" + str(local_indexer))
         return local_acc, local_f1, local_y_pred
