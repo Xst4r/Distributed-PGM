@@ -8,6 +8,7 @@ from multiprocessing import Process, Queue
 from time import time
 from guppy import hpy
 import io, shlex, os
+import psutil
 from shutil import copyfileobj
 
 import sys
@@ -273,8 +274,8 @@ class Coordinator(object):
         self.record_progress(aggregation, self.curr_split, local_f1,
                              self.f1_writer, 'f1')
         self.aggregates[self.curr_model.n_local_data] = aggregation
-        radons.append(self.aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
-        self.check_convergence(radons)
+        #radons.append(self.aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
+        #self.check_convergence(radons)
 
     def check_convergence(self, radons):
         if len(radons) > 1:
@@ -291,10 +292,16 @@ class Coordinator(object):
         self.curr_model = SusyModel(self.data,
                                     path=self.data.__class__.__name__, epochs=self.rounds)
         self.local_models.append(self.curr_model)
+        prev = 0
         while self.curr_model.n_local_data < self.curr_model.suff_data:
             # Training
             h = hpy()
+            p = psutil.Process(os.getpid())
+            logger.info("========= Used " + str(round(p.memory_info().rss/1e6)) + "MiB of RAM ==========")
+
+            logger.info("========= This is  " + str(round(p.memory_info().rss/1e6) - prev) + " more MiB than last round ==========")
             logger.info(h.heap())
+            prev = round(p.memory_info().rss / 1e6)
             self.sampler = Random(self.data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
             self.sampler.create_split(self.data.train.shape, self.data.train)
             self.curr_model.train(split=self.sampler.split_idx,
@@ -583,7 +590,7 @@ if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
     datasets = ['dota2']
-    sample_parameters = ["fish", "unif", "random", "none"]
+    sample_parameters = ["none", "unif", "random", "fish"]
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
@@ -603,11 +610,9 @@ if __name__ == '__main__':
 
     for cmd_args in cmd_arg_list:
         try:
-            logger.debug("=== MAIN === DONE===")
-            p = Process(target=start, args=(cmd_args,))
-            p.start()
-            p.join()
+            start(cmd_args)
             gc.collect()
+            logger.debug("=== MAIN === DONE===")
         except Exception as e:
             with open("exceptions.txt", "a+") as file:
                 import traceback
