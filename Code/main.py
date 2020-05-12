@@ -6,6 +6,7 @@ from src.conf.settings import CONFIG, get_parser, CovType
 from src.data.dataset import CoverType, Susy, Dota2
 from multiprocessing import Process, Queue
 from time import time
+from guppy import hpy
 import io, shlex, os
 from shutil import copyfileobj
 
@@ -292,6 +293,8 @@ class Coordinator(object):
         self.local_models.append(self.curr_model)
         while self.curr_model.n_local_data < self.curr_model.suff_data:
             # Training
+            h = hpy()
+            logger.info(h.heap())
             self.sampler = Random(self.data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
             self.sampler.create_split(self.data.train.shape, self.data.train)
             self.curr_model.train(split=self.sampler.split_idx,
