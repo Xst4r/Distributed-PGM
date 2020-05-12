@@ -313,40 +313,27 @@ class Coordinator(object):
                 break
 
     def run(self):
-        models = []
-        k_aggregates = []
         self.sampler = None
 
         # Outer Cross-Validation Loop.
         for i in range(self.k_fold):
             self.curr_split = i
-            aggregates = self.train()
+            self.train()
             self.write_progress(os.path.join(self.experiment_path, str(i)), "accuracy.csv", "obj.csv", "f1.csv", "test_likelihood.csv")
-            models.append(self.curr_model)
             self.curr_model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
                                                 fname="obj_progress" + ".csv")
-            k_aggregates.append(aggregates)
-            self.res = k_aggregates
+
             try:
-                self.finalize(i, aggregates, self.sampler.split_idx)
-                for mod in self.curr_model.px_model:
-                    mod.delete()
-                for _, item in self.curr_model.px_batch.items():
-                    for mod in item:
-                        mod.delete()
-                del self.curr_model
-                self.curr_model = None
-                gc.collect()
+                self.finalize()
             except Exception as e:
                 print(e)
-        return models, k_aggregates, self.sampler
 
-    def finalize(self, i, aggregates, splits):
+    def finalize(self):
         mask = self.data.mask
-        cv_path = os.path.join(self.experiment_path, str(i))
-        for cnt, split in enumerate(splits):
+        cv_path = os.path.join(self.experiment_path, str(self.curr_split))
+        for cnt, split in enumerate(self.sampler.split_idx):
             np.save(os.path.join(cv_path, "local_split_" + str(cnt)), split)
-        for j, (n_data, model) in enumerate(aggregates.items()):
+        for j, (n_data, model) in enumerate(self.aggregates.items()):
             sub_model_path = os.path.join(cv_path, "batch_n" + str(j))
             if not os.path.isdir(sub_model_path):
                 os.makedirs(sub_model_path)
@@ -364,6 +351,16 @@ class Coordinator(object):
                     np.save(os.path.join(sub_model_path, "weights_" + name), aggregation[0]['px_model'])
             for k, px_model in enumerate(self.curr_model.px_batch_local[j + 1]):
                 px_model.save(os.path.join(sub_model_path, "dist_pxmodel " + str(k) + ".px"))
+
+        for mod in self.curr_model.px_model:
+            mod.delete()
+        for _, item in self.curr_model.px_batch.items():
+            for mod in item:
+                mod.delete()
+        del self.curr_model
+        self.curr_model = None
+        self.aggregates = {}
+        gc.collect()
 
     def sample_parameters(self, model, perturb=False):
         n_samples = np.max([self.r ** self.h, self.curr_model.n_local_data * self.n_models])
@@ -432,9 +429,8 @@ class Coordinator(object):
         logger.debug("=== PREPARE === BASELINE===")
         self.baseline()
         logger.debug("=== PREPARE === LOCAL AGG===")
-        models, aggregate, sampler = self.run()
+        self.run()
         logger.debug("=== PREPARE === DONE===")
-        return models, aggregate
 
     def record_progress(self, model_dict, k, local_info, dest, metric):
         """
@@ -567,7 +563,7 @@ def start(cmd_args):
                                   epochs=cmd_args.epoch,
                                   n_models=cmd_args.n_models,
                                   n_test=cmd_args.n_test)
-        result, agg = coordinator.prepare_and_run()
+        coordinator.prepare_and_run()
         del coordinator
         return
     except Exception as e:
