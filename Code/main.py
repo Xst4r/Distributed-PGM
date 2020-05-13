@@ -182,9 +182,7 @@ class Coordinator(object):
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
                        states=self.curr_model.state_space, samples=None, n=int(sample_size)),
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
-                             states=self.curr_model.state_space, samples=idx, label=-1),
-                    KL(self.curr_model.px_model, graph=self.curr_model.graph,
-                       states=self.curr_model.state_space, samples=bootsmap, n=bootsmap_size)]
+                             states=self.curr_model.state_space, samples=idx, label=-1)]
         else:
             aggr = [Mean(self.curr_model),
                     RadonMachine(self.curr_model, self.r, self.h),
@@ -192,10 +190,10 @@ class Coordinator(object):
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
                        states=self.curr_model.state_space, samples=None, n=int(sample_size)),
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
-                             states=self.curr_model.state_space, samples=idx, label=-1),
-                    KL(self.curr_model.px_model, graph=self.curr_model.graph,
-                       states=self.curr_model.state_space, samples=bootsmap, n=int(sample_size))
+                             states=self.curr_model.state_space, samples=idx, label=-1)
                     ]
+            # KL(self.curr_model.px_model, graph=self.curr_model.graph,
+            #           states=self.curr_model.state_space, samples=bootsmap, n=int(sample_size))
         weights = None
         if isinstance(self.curr_model, np.ndarray):
             weights = self.curr_model
@@ -240,19 +238,25 @@ class Coordinator(object):
     def generate_models(self):
         theta_samples = None
         theta_arr = None
+        p = psutil.Process(os.getpid())
         if CONFIG.COVTYPE != CovType.none:
             theta_samples, _ = self.sample_parameters(self.curr_model)
             theta_arr = np.concatenate(theta_samples, axis=1)
-            del theta_samples
         test_arr = None
-        if theta_arr is not None:
-            for theta in theta_arr.T:
-                px_map = px.Model(weights=np.ascontiguousarray(theta),
-                                  states=np.copy(self.curr_model.state_space + 1),
-                                  graph=px.create_graph(self.curr_model.edgelist))
-                test_arr = px_map.MAP() if test_arr is None else np.vstack((test_arr, px_map.MAP()))
-                px_map.delete()
-                del px_map
+
+        # Memory Leak !
+        #if theta_arr is not None:
+            #while True:
+                #prev = p.memory_info().rss / 1e6
+                #for theta in theta_arr.T:
+                    #px_map = px.Model(weights=np.ascontiguousarray(np.copy(theta)),
+                    #                  states=np.copy(self.curr_model.state_space + 1),
+                    #                  graph=px.create_graph(np.copy(self.curr_model.edgelist)))
+                    #px_map.MAP()
+                    #px_map.graph.delete()
+                    #px_map.delete()
+                #logger.info("========= Used " + str(round(p.memory_info().rss / 1e6)) + "MiB of RAM ==========")
+                #logger.info("========= This is  " + str(round(p.memory_info().rss / 1e6) - prev) + " more MiB than last round ==========")
         return theta_arr, test_arr
 
     def aggr_wrapper(self):
@@ -260,6 +264,8 @@ class Coordinator(object):
         radons = []
         vars = []
         local_acc, local_f1, local_y_pred = self.test_local_acc()
+        prev = 0
+
         theta_arr, test_arr = self.generate_models()
         kl_samples = [np.ascontiguousarray(
             self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
@@ -267,6 +273,7 @@ class Coordinator(object):
 
         logger.debug("===RUN=== AGGREGATE LOCAL MODELS===")
         aggregation, best_agg = self.aggregate(theta_arr, kl_samples, test_arr)
+
         self.curr_model.best_aggregate = best_agg
         logger.debug("===RUN=== RECORD SCORES===")
         self.record_progress(aggregation, self.curr_split, local_acc,
@@ -274,6 +281,7 @@ class Coordinator(object):
         self.record_progress(aggregation, self.curr_split, local_f1,
                              self.f1_writer, 'f1')
         self.aggregates[self.curr_model.n_local_data] = aggregation
+
         #radons.append(self.aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
         #self.check_convergence(radons)
 
@@ -298,7 +306,6 @@ class Coordinator(object):
             h = hpy()
             p = psutil.Process(os.getpid())
             logger.info("========= Used " + str(round(p.memory_info().rss/1e6)) + "MiB of RAM ==========")
-
             logger.info("========= This is  " + str(round(p.memory_info().rss/1e6) - prev) + " more MiB than last round ==========")
             logger.info(h.heap())
             prev = round(p.memory_info().rss / 1e6)
@@ -369,13 +376,13 @@ class Coordinator(object):
         self.aggregates = {}
         gc.collect()
 
-    def sample_parameters(self, model, perturb=False):
+    def sample_parameters(self, model):
         n_samples = np.max([self.r ** self.h, self.curr_model.n_local_data * self.n_models])
-
         samples_per_model = int(np.ceil(n_samples / len(model.px_model)))
         theta_old = []
         theta_samples = []
         eps = (model.get_bounded_distance(model.delta) / 2) ** 2
+
         for i, px_model in enumerate(model.px_model):
             if CONFIG.COVTYPE == CovType.unif:
                 cov = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
@@ -387,15 +394,9 @@ class Coordinator(object):
                 cov = self.gen_unif_cov(px_model.weights.shape[0], eps=eps)
 
             theta_old.append(px_model.weights)
-            if np.mod(i, 3) == 0 and perturb:
-                theta_samples.append(
-                    self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T *
-                    self.random_state.multivariate_normal(
-                        np.zeros(px_model.weights.shape[0]), cov, 1).ravel()[:, None]
-                )
-            else:
-                theta_samples.append(
-                    self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T)
+
+            theta_samples.append(
+                self.random_state.multivariate_normal(px_model.weights, cov, samples_per_model).T)
 
         return theta_samples, theta_old
 
@@ -410,9 +411,6 @@ class Coordinator(object):
         except Exception as e:
             cov = self.random_state.randn(n_dim, n_dim)
             return np.dot(cov, cov.T) / n_dim
-
-    def gen_fisher_cov(self, phi, mu):
-        return np.outer(mu - phi, (mu - phi).T)
 
     def gen_semi_random_cov(self, model, eps=0):
         a = np.insert(np.cumsum([model.states[u] * model.states[v] for u, v in model.graph.edgelist]), 0, 0)
@@ -590,7 +588,7 @@ if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
     datasets = ['dota2']
-    sample_parameters = ["none", "unif", "random", "fish"]
+    sample_parameters = ["unif", "random", "fish"]
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
