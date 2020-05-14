@@ -182,7 +182,9 @@ class Coordinator(object):
                     KL(self.curr_model.px_model, graph=self.curr_model.graph,
                        states=self.curr_model.state_space, samples=None, n=int(sample_size)),
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
-                             states=self.curr_model.state_space, samples=idx, label=-1)]
+                             states=self.curr_model.state_space, samples=idx, label=-1)
+                    ]
+            #
         else:
             aggr = [Mean(self.curr_model),
                     RadonMachine(self.curr_model, self.r, self.h),
@@ -192,6 +194,8 @@ class Coordinator(object):
                     Variance(self.curr_model.px_model, graph=self.curr_model.graph,
                              states=self.curr_model.state_space, samples=idx, label=-1)
                     ]
+            #Variance(self.curr_model.px_model, graph=self.curr_model.graph,
+            #         states=self.curr_model.state_space, samples=idx, label=-1)
             # KL(self.curr_model.px_model, graph=self.curr_model.graph,
             #           states=self.curr_model.state_space, samples=bootsmap, n=int(sample_size))
         weights = None
@@ -261,8 +265,7 @@ class Coordinator(object):
 
     def aggr_wrapper(self):
         logger.debug("Aggregating Model No. " + str(self.curr_model))
-        radons = []
-        vars = []
+
         local_acc, local_f1, local_y_pred = self.test_local_acc()
         prev = 0
 
@@ -291,7 +294,21 @@ class Coordinator(object):
             c = - (np.log(1 - np.sqrt(0.5)) - np.log(2)) / (np.log(d))
             tmp_eps_small = 2 * np.sqrt(((1 + c) * np.log(d)) / (2 * 2000)) ** 2 / 4
             np.var(radons, axis=0)
-            vars.append(np.var(radons, axis=0))
+            states = [(self.curr_model.state_space[i] + 1) * (self.curr_model.state_space[j] + 1) for i, j in
+                      self.curr_model.edgelist]
+            offsets = np.delete(np.insert(np.cumsum(states), 0, 0), -1)
+            shifted_cps = []
+            whatever = []
+            for _, batch in self.curr_model.px_batch_local.items():
+                tmp = []
+                for i,j in itertools.product(*[list(range(10)),list(range(10))]):
+                    tmp.append(np.linalg.norm(batch[i].weights - batch[j].weights, ord=np.inf))
+                whatever.append(np.array(tmp).reshape(10,10))
+            for cp in radons:
+                tmp_cp = np.zeros(cp.shape[0])
+                for i in range(offsets.shape[0]-1):
+                    tmp_cp[int(offsets[i]):int(offsets[i+1])] = cp[int(offsets[i]):int(offsets[i+1])] - np.mean(cp[int(offsets[i]):int(offsets[i+1])])
+                shifted_cps.append(tmp_cp)
             if np.all(np.var(radons, axis=0) < tmp_eps_small):
                 print("STOP")
 
@@ -301,8 +318,10 @@ class Coordinator(object):
                                     path=self.data.__class__.__name__, epochs=self.rounds)
         self.local_models.append(self.curr_model)
         prev = 0
+        center_points = []
         while self.curr_model.n_local_data < self.curr_model.suff_data:
             # Training
+
             h = hpy()
             p = psutil.Process(os.getpid())
             logger.info("========= Used " + str(round(p.memory_info().rss/1e6)) + "MiB of RAM ==========")
@@ -322,6 +341,9 @@ class Coordinator(object):
             self.r = r
             # Aggregation
             self.aggr_wrapper()
+            center_points.append(self.aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
+            if len(center_points) > 8:
+                self.check_convergence(center_points)
             gc.collect()
             if self.curr_model.n_local_data > self.sampler.split_idx[0].shape[0]:
                 break
@@ -587,7 +609,7 @@ if __name__ == '__main__':
 
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
-    datasets = ['dota2']
+    datasets = ['dota2', 'covertype', 'susy']
     sample_parameters = ["unif", "random", "fish"]
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
