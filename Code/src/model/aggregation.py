@@ -342,7 +342,7 @@ class KL(Aggregation):
                 self.X = np.concatenate(self.X)
         else:
             self.hint = "_Bootstrap "
-            self.X = [model.sample(num_samples=n, sampler=CONFIG.SAMPLER) for model in self.model]
+            self.X = [model.sample(num_samples=n, sampler=CONFIG.SAMPLER, iterations=20) for model in self.model]
             self.X = np.concatenate(self.X)
         self.K = len(self.model)
         self.obj = np.infty
