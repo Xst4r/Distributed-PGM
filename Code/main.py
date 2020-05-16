@@ -168,7 +168,7 @@ class Coordinator(object):
 
         test_size = np.min([self.n_test, self.data.test.shape[0] - 1])
         num_models = int(self.r ** self.h)
-        methods = ['mean', 'radon', 'wa', 'kl', 'var', 'bootsmap']
+        methods = ['mean', 'radon', 'wa', 'kl', 'var']
         aggregates = {k: [] for k in methods}
         sample_size = np.ceil(
             (self.curr_model.sample_func(self.curr_model.epoch) * self.curr_model.data_delta) / 2)
