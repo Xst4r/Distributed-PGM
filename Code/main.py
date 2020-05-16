@@ -269,16 +269,18 @@ class Coordinator(object):
         local_acc, local_f1, local_y_pred = self.test_local_acc()
         prev = 0
 
+        logger.info("===AGGR_WRAPPER=== SAMPLE ADDITIONAL MODELS======")
         theta_arr, test_arr = self.generate_models()
+        logger.info("===AGGR_WRAPPER=== GET LOCAL DATA======")
         kl_samples = [np.ascontiguousarray(
             self.data.train.iloc[idx][:self.curr_model.data_delta * self.curr_model.epoch].values,
             dtype=np.uint16) for idx in self.sampler.split_idx]
 
-        logger.debug("===RUN=== AGGREGATE LOCAL MODELS===")
+        logger.info("===AGGR_WRAPPER=== AGGREGATE LOCAL MODELS===")
         aggregation, best_agg = self.aggregate(theta_arr, kl_samples, test_arr)
 
         self.curr_model.best_aggregate = best_agg
-        logger.debug("===RUN=== RECORD SCORES===")
+        logger.info("===RUN=== RECORD SCORES===")
         self.record_progress(aggregation, self.curr_split, local_acc,
                              self.csv_writer, 'acc')
         self.record_progress(aggregation, self.curr_split, local_f1,
