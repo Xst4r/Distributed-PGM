@@ -347,7 +347,7 @@ class Coordinator(object):
             #if len(center_points) > 8:
             #    self.check_convergence(center_points)
             gc.collect()
-            if self.curr_model.n_local_data > self.sampler.split_idx[0].shape[0]:
+            if self.curr_model.n_local_data >= self.sampler.split_idx[0].shape[0]:
                 break
 
     def run(self):
