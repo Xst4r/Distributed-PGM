@@ -284,7 +284,6 @@ class RadonMachine(Aggregation):
         else:
             pos = sol >= 0
 
-        np.save("coefs", A)
         residue = np.sum(sol[pos]) + np.sum(sol[~pos])
         logger.info("Residue is :" + str(residue))
         normalization_constant = np.sum(sol[pos])  # Lambda

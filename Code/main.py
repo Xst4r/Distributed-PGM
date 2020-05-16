@@ -359,10 +359,7 @@ class Coordinator(object):
             self.curr_model.write_progress_hook(path=os.path.join(self.experiment_path, str(i)),
                                                 fname="obj_progress" + ".csv")
 
-            try:
-                self.finalize()
-            except Exception as e:
-                print(e)
+            self.finalize()
 
     def finalize(self):
         mask = self.data.mask
