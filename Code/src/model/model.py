@@ -232,6 +232,7 @@ class Model:
                 if i >= n_models:
                     break
             update, _ = log_progress(start, update, iter_time, total_models, i)
+            logger.info("===TRAINING=== CREATE DATA===")
             tmp = np.ascontiguousarray(
                 np.full(shape=(1, self.state_space.shape[0]), fill_value=self.state_space, dtype=np.uint16))
             data = np.ascontiguousarray(np.copy(train[idx[:self.n_local_data].flatten()]))
@@ -244,6 +245,7 @@ class Model:
                 np.copyto(model.weights, np.ascontiguousarray(self.best_aggregate))
                 _, A = model.infer()
                 logger.info("LOCAL LL WITH AGGREGATE WEIGHTS :" + str(A - np.inner(model.weights, model.statistics)))
+            logger.info("===TRAINING=== START TRAINING===")
             model = px.train(iters=iters,
                              shared_states=False,
                              opt_progress_hook=self.opt_progress_hook,
@@ -251,10 +253,9 @@ class Model:
                              in_model=model,
                              opt_regularization_hook=CONFIG.REGULARIZATION,
                              k=4)
-
+            logger.info("===TRAINING=== FINISHED TRAINING===")
             self.reset_train()
-            if model.weights.shape < np.sum([(self.state_space[i]+1) * (self.state_space[j]+1) for i,j in self.edgelist]):
-                print("Error")
+
             if len(split) > 1:
                 self.px_batch_local[self.epoch][i] = model
                 #model = self.merge_weights(model)
@@ -264,8 +265,8 @@ class Model:
                     scaled_models.append(self.scale_model(model, data))
             else:
                 self.px_model[i] = model
-                scaled_model = self.scale_model(model, data)
                 if CONFIG.MODELTYPE == px.ModelType.integer:
+                    scaled_model = self.scale_model(model, data)
                     self.px_model_scaled[i] = scaled_model
             iter_time = time.time()
 
@@ -615,8 +616,6 @@ class Susy(Model):
         statistics = np.copy(test_model.statistics)
 
         if weights is not None:
-            if test_model.weights.shape[0] != weights.shape[0]:
-                print("error")
             np.copyto(test_model.weights, weights)
             _, a = test_model.infer()
             test_ll = [a - np.inner(weights, statistics)]

@@ -139,9 +139,6 @@ class Coordinator(object):
             aggregator.aggregate(None)
             aggregate = aggregator.aggregate_models
             if aggregator.success:
-                if np.sum([(states[row[0]] + 1) * (states[row[1]] + 1) for row in graph.edgelist]) != \
-                        aggregate[0].shape[0]:
-                    print("that's not right")
                 logger.debug("===AGGREGATION HELPER=== NEW PX MODEL===")
                 weights = np.ascontiguousarray(np.copy(aggregate[0]))
                 logger.debug("===AGGREGATION HELPER=== PREDICT AGGREGATE===")
@@ -323,13 +320,7 @@ class Coordinator(object):
         center_points = []
         while self.curr_model.n_local_data < self.curr_model.suff_data:
             # Training
-
-            h = hpy()
-            p = psutil.Process(os.getpid())
-            logger.info("========= Used " + str(round(p.memory_info().rss/1e6)) + "MiB of RAM ==========")
-            logger.info("========= This is  " + str(round(p.memory_info().rss/1e6) - prev) + " more MiB than last round ==========")
-            logger.info(h.heap())
-            prev = round(p.memory_info().rss / 1e6)
+            logger.info("========= Starting Round" + str(self.curr_model.epoch) + "========= ")
             self.sampler = Random(self.data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
             self.sampler.create_split(self.data.train.shape, self.data.train)
             self.curr_model.train(split=self.sampler.split_idx,
@@ -348,6 +339,8 @@ class Coordinator(object):
             #    self.check_convergence(center_points)
             gc.collect()
             if self.curr_model.n_local_data >= np.min([idx.shape[0] for idx in self.sampler.split_idx]):
+                break
+            if self.curr_model.epoch > self.rounds:
                 break
 
     def run(self):
@@ -609,7 +602,7 @@ if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
     datasets = ['dota2', 'covertype', 'susy']
-    sample_parameters = ["unif", "random", "fish"]
+    sample_parameters = ["fish"]
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
