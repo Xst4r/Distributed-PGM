@@ -15,15 +15,91 @@ While increasing or decreasing the number of local models is always possible, ag
 
 \section{Experimental Setup}
 
+We use three benchmark datasets from the UCI machine learning repository: SUSY\cite{baldi2014searching}, Covertype\cite{blackard2000comparison} and Dota2\cite{tridgell2016dota2} for training, testing and evaluation.
+Since the structure of data sets can vary greatly, we provide a framework for data processing in form of an interface, that can be extended and adjusted if necessary.
+Furthermore, we disccretize each feature that contains more that $k$ unique entries into its $k$ quantiles e.g. $k=10$.
+Ideally, we would have prior information about range of each feature $\vect{X}_i$, which could then be used to determine the discretization based on the training data only. 
+However, if this is not the case, i.e., the test data $\hat{\vect{X}}_i$ observed may contain values outside the range of the training data, i.e. $\sup(\hat{\vect{X}}_i) > \sup(\vect{X}_i) $ or  $\inf(\hat{\vect{X}}_i) < \inf(\vect{X}_i) $.
+In this case everything above or below the original range of $\vect{X}_i$ may be mapped to buckets $0$ or $k+1$ respectively.
+Furthermore, it may be necessary to adjust the discretization based on incoming data if the new observations greatly exceed the original range.
+
+\paragraph*{Dota2}
+The Dota2 data set contains match results of roughly $n=100.000$ matches from the team-based video game Dota2, where five players on each side each pick one character from an available pool of 120 characters.
+Each character can only be chosen by a single player.
+The data set contains indicators about the character selection, the game type and which of the two teams won the match. 
+The data can be used to predict, which of the two teams won or for example to chose a character based on the currently chosen characters.
+\paragraph*{Covertype}
+The Covertype data set contains cartographic features for  $n=581012$ forest cells of size $30m^2$.
+Here, the task is to determine one out of 7 possible forest cover types given a set of cartographic features such as elevation, slope or shade. 
+Some of these features are binary and thus need not to be discretized, while others such as elevation are discretized into 10 quantiles.
+This is a standard multi-label classification task with unbalanced classes.
+
+\paragraph*{SUSY}
+contains eight kinematic properties measured by particle detectors in a particle accelerator. 
+The features were obtained using monte carlo simulations, while the additional ten features are high level features derived from the original measurments.
+The task is to distinguish between two signal processes one of which does produce supersymmetric particles, while the other does not. 
+Therefore, it is a binary classification task contaning $n=5000000$ labeled samples.
+
 \section{Experiments}
 
 \section{Evaluation}
-We want to investigate:
-\begin{itemize}
-    \item Performance of local and aggregated models compared to the global model
-    \item Sample complexity up to the number of samples determined by the hoefding bound 
-    \item Communication cost, computational complexity and memory efficiency for the aggregation methods
-\end{itemize}
+We evaluate the different aggregation and sampling methods by comparing likelihood, accuracy and f1-score in terms of the training and test data. 
+First we assess the general quality of the aggregate by computing the likelihood on the full training data $\mathcal{D}$.
+\begin{equation}
+    \begin{split}
+        \ell(\vect{\theta} ; \mathcal{D}) &= -\frac{1}{\abs{\mathcal{D}}} \sum_{\vect{x} \in \mathcal{D}} \inner{\phi(\vect{x})}{\vect{\theta}} - A(\vect{\theta}) \\    
+        &= A(\vect{\theta}) - \inner{\vect{\mu}}{\vect{\theta}}
+    \end{split}
+\end{equation}
+Additionally, we compare the aggregate likelihood with the local 
+\paragraph*{Relative Log-Likelihood}
+We measure the likelihood in terms of a quality function, which is the difference between the global model $\vect{\theta}^*$, which has had access to the full data set and any other local or aggregate model on the full data. 
+Since the likelihood is convex the global model is a lower bound for the likelihood, i.e., $\ell(\vect{\theta}^* ; \mathcal{D}) \leq   \ell(\vect{\theta} ; \mathcal{D})$ without additional sampling.
+The likelihood is convex, thus for 
+\begin{equation}
+    \frac{\partial}{\partial \vect{\theta^*}} \ell(\vect{\theta}^* ; \mathcal{D})  = 0,
+\end{equation}
+the parameters $\vect{\theta}^*$ are optmial \wrt $\mathcal{D}$ and for any other $\vect{\theta} \neq \vect{\theta}^*$ we have 
+
+\begin{equation}
+    \frac{\partial}{\partial \vect{\theta}} \ell(\vect{\theta} ; \mathcal{D})  > 0,
+\end{equation}
+and thus obtaining a distance function (\eq~\ref{eq:regret})
+\begin{equation}
+d_{\ell}(\vect{\theta}, \vect{\theta}^*; \mathcal{D}) = \ell(\vect{\theta} ; \mathcal{D}) -    \ell(\vect{\theta}^* ; \mathcal{D})
+\end{equation}
+
+\paragraph*{Accuracy}
+Classification tasks require the prediction of a label from a given set of possible outcomes given some input data. The data is usually divided into features and labels $\mathcal{D} = \{\vect{\mathcal{X}, \vect{\mathcal{Y}}}\} \subset \mathbb{R}^m \times \mathbb{N}$ , with features $\vect{\mathcal{X}}$ and labels or classes $\vect{\mathcal{Y}}$.
+
+Predictions with probabilistic graphical models are realized by conditional probabilities, i.e.
+\begin{equation}
+    \hat{y} = \arg\max_{y \in \mathcal{Y}} \mathbb{P}_{\vect{\theta}}(\vect{Y} = y \lvert \vect{X} = \vect{x}) ,
+\end{equation}
+where the class $y$ with the highest probability condition on the observed $\vect{x}$ is chosen.
+
+The accuracy is then just the quotient of correct predictions and the cardinality of the true labes $\vect{y}^* \in \mathbb{R}^n$
+
+\begin{equation}
+    d_{acc}(\vect{\hat{y}}, \vect{y}^*) = \frac{\abs{\{\hat{y}_i \lvert \hat{y}_i = y^*_i, 0 \leq i \leq n\}}}{n}, 
+\end{equation}
+which provides the ratio of successfully predicted labels. 
+
+\paragraph*{F1-Score}
+Classification tasks, especially for multi-label classification, might contain a heavily unbalanced class distribution. 
+Such problems often arise in biology\cite{sonnenburg2007accurate} and even though classifiers tend to achieve high accuracy the actual performance is considered subpar.
+
+Scores, such as the F1-Score can take class inbalance into account by computing the weighted average based on class frequencyin order to provide a better measure of performance compared to accuracy alone.
+The F1-Score \wrt to some label $i$ is obtained via 
+\begin{equation}
+    f1(\hat{\vect{y}},\vect{y}^*)_i = \frac{\text{precision}(\hat{\vect{y}},\vect{y}^*)_i \cdot \text{recall}(\hat{\vect{y}},\vect{y}^*)_i}{\text{precision}(\hat{\vect{y}},\vect{y}^*)_i + \text{recall}(\hat{\vect{y}},\vect{y}^*)_i},
+\end{equation}
+where precision and recall are measures based on true and false positive rate as well as true and false negative rate.\cite{friedman2001elements} \cite{hossin2015review}
+The F1-Score is the weighted average between precision and recall and in a multi-class scenario it can be computed as the arithmetic mean for each label
+\begin{equation}
+    d_{f1}(\hat{\vect{y}},\vect{y}^*) = \frac{1}{N} \sum_{i=1}^N f1_i(\hat{\vect{y}},\vect{y}^*)
+\end{equation}
+
 
 to achieve this we evaluate:
 

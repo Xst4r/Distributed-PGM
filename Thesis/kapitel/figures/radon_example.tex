@@ -1,15 +1,39 @@
 \begin{figure}[H]
     \center
-    \begin{tikzpicture}
-        \clip (-1,-1) rectangle (5,5);
-        \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=1, size=0.5, shape=diamond]{a}
-        \Vertex[x=3,y=0,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{b}
-        \Vertex[x=1.5,y=3,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{c}
-        \Vertex[x=1.5,y=1,color=tuorange, opacity=0.5,label=-3, size=0.5, shape=circle]{d}
-        \Edge(a)(b)
-        \Edge(b)(c)
-        \Edge(c)(a)
-        \end{tikzpicture}
-    \caption[Radon Point]{Example for Radon Point in 2D}
+    \begin{subfigure}[t]{.45\textwidth}
+        \center 
+        \begin{tikzpicture}
+            \clip (-1,-1) rectangle (5,5);
+            \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=1, size=0.5, shape=diamond]{a}
+            \Vertex[x=3,y=0,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{b}
+            \Vertex[x=1.5,y=3,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{c}
+            \Vertex[x=1.5,y=1,color=tuorange, opacity=0.5,label=-3, size=0.5, shape=circle]{d}
+            \Edge(a)(b)
+            \Edge(b)(c)
+            \Edge(c)(a)
+            \end{tikzpicture}
+            \subcaption[]{Four points with a single, unique, solution to \eq~\ref{eq:radonopt}}
+            \label{fig:uniqueradon}
+    \end{subfigure}
+    \hspace{1cm}
+    \begin{subfigure}[t]{.45\textwidth}
+        \center
+        \begin{tikzpicture}
+            \clip (-1,-1) rectangle (5,5);
+            \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=1, size=0.5, shape=diamond]{a}
+            \Vertex[x=3,y=0,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{b}
+            \Vertex[x=1.5,y=3,color=tugreen, opacity=0.5,label=1, size=0.5, shape=diamond]{c}
+            \Vertex[x=1.5,y=1,color=tuorange, opacity=0.5,label=-3, size=0.5, shape=circle]{d}
+            \Vertex[x=0,y=2,color=tuorange, opacity=0.5,label=0, size=0.5, shape=circle]{e}
+            \Edge(a)(b)
+            \Edge(b)(c)
+            \Edge(c)(a)
+            \Edge(d)(e)
+            \end{tikzpicture}
+            \subcaption[]{Five points in $\mathbb{R}^2$ with no unique solution to \eq~\ref{eq:radonopt}}
+            \label{fig:overdetradon}
+    \end{subfigure}
+
+    \caption[Radon Point]{Geomtric interpretation of radon points in $\mathbb{R}^2$. Both cases yield a solution to the radon point computation with \fig~\ref{fig:overdetradon} having more than one possible solution to the problem (all points in the line between the red circles, that are inside the triangle)}
     \label{fig:radon}
 \end{figure}

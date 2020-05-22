@@ -2,48 +2,157 @@
 
 \chapter{Implementation}
 \label{chapter:ch4}
-As our programming language of choice, python was chosen to implement the various aggregation mechanics. 
-This allows for fast and efficient execution and evaluation, while still allowing to interface with C and C++  libraries if necessary.
+In this chapter we are going to  discuss various aspects of the implementation, design choices as well as providing a general idea about data processing, model initialization and code layout.
+Python was chosen as the main programming language as it is highly accessible and provides all the necessary tools for linear algebra operations and data processing.
+This enables fast and efficient execution and evaluation, while still allowing to interface to C and C++  libraries if necessary for computational speedup.
 
-The module is written in pure python and is mainly using well known python modules such as NumPy, SciPy, Pandas and Scikit-Learn.
+We mainly use well known python modules such as NumPy, SciPy, Pandas and Scikit-Learn to perform tasks such as matrix-vector operations and indexing.
+Additionally, we use PXPY, a C++ module for probabilistic graphical models and probabilistic inference.
 
-Additionally, we use the PX Module for probabilistic graphical modes.
-PX is a module, which allows data-based structure learning as well as all operations necessary for training and evaluating probabilistic graphical models. 
-These include likelihood optimization via first order proximal gradient descent \cite{piatkowski2018exponential}, belief propagation and loopy belief propagation algorithms and direct inference tasks such as MAP-State, Marginal probabilities.
-Furthermore the package features an interface for applying functions to the gradient and weights directly during optimization.
-These so called hooks allow for direct manipulation of the gradient for e.g. custom regularization functions or simply to implmenets ones own convergence criterium for the gradient descent.
+Distributed learning is implemented in a simulated fashion, as our main focus is the model aggregation.
+The simulatation scheme consists of two objects interchanging data, the coordinator and the model. 
+The coordinator object has access to a model object, which holds the results for all distributed learners.
+Depending on the aggregation method the coordinator may have access to additional data, such as the total number of distributed learners, parameter vectors or likelihood. 
+However, we strictly enforce that the local data or the average sufficient statistics are never used by the coordinator.
 
-Distributed learning is implemented as a simulation between two classes. The Coordinator and the Models, while in a real-world setting we have actual distributed devices, there is no difference between receiving a number of parameter vectors from distributed devices or in a simulated fashion from a list of simulated devices.
-While one could argue that communication between devices may not be as stable, we can simply omit the parameters we do not receive, since they are not known anyhow.
-Depending on the aggregation method the Coordinator has access to different statistics, such as number of models, parameter vectors and objective function value. 
-However, the local data or the average sufficient statistics are never shared with the coordinator node.
+Moreover, in a real-world setting the devices may terminate optimization at different times and may send the parameters in an asynchronous manner. 
+Instead, we enforce the training to be synchronized such that we only send the data to the coordinator once all models have finished training.
 
-Moreover, in a real-world setting the devices may terminate optimization at different times and may send the parameters asynchronous. 
-We assume the process to be synchronous and wait for all local devices to terminate.
-Usually, we can rely on a running aggregate if we receive parameters asynchronously or we wait until a certain number of parameters have been sent to the coordinator to proceed.
+The implementation can be roughly split into three different sections, the initialization, run and aggregation phase.
+While the initialization phase is invoked once during startup, run and aggregation phase alternate in each round.
+Let us now have a closer look at the code structure, data processing and initialization process, which is executed prior to starting the distributed learners. 
+
+\section{Initialization Phase}
+\input{kapitel/figures/flowchart.tex}
+
+\fig \ref{fig:flowchart} shows the initial setup for the architecture. 
+First, for a data set $\mathcal{D}$ we create a data set object, which discretizes the data and creates the request number of cross validation splits. 
+Thereafter, we create a coordinator object, which has access to the data set and a sampler object, which generates data splits sent to each device.
+Finally, the structure, i.e., the graph is created with the Chow-Liu algorithm on a holdout set and the number of states for each vertex is determined from the training data.
+Both, individual splits and the structure information are used to create distributed models, that can then start iterating training and aggregation (cf. \fig~\ref{fig:dist}).
+
+The independency structure $G=(V,E)$ for the probabilistic models is computed with the Chow-Liu algorithm from a holdout set, which is then discarded and not used again.
+After the discretization each random variable $X_i$ with state space $\mathcal{X}_i$ has at most $\{0, \ldots, \max(\mathcal{D}_{\cdot i})\}$ observable states.
+Since we discretize the data before determining the independency structure we obtain the number of states for each feature by simply taking the maximum over all observations from that feature. 
+
+Having prior information about structure and state space is important as the aggregation methods used for this work rely on identical structure and known state space over all distributed learners.
+
+\subsection{Data Processing}
 
 
+\paragraph*{Cross Valdiation}
 
-\section{Structure}
+\paragraph*{Discretization}
+\section{Run Phase}
 
-\input{kapitel/figures/distributed_schema.tex}
-\fig~\todo{REF} illustrates the structure of the module. 
-The central coordinator node receives parameters from distributed devices(models) $\mathcal{M}$, which are then aggregated by any instance of the aggregation module. 
-This makes it further possible to propagate additional messages such as terminations or updates via the coordinator.
-In practice, that is, for testing the coordinator distributes the data in a preprocessing step.
+\fig~\ref{fig:dist} illustrates the structure of the module. 
+The coordinator receives parameters from distributed learners $\mathcal{M}$, which are then aggregated an aggregation object. 
+Additinally we may send the aggregate back towards the distributed learners.
 
-We simulate the data generation by shuffling and equally distributing the data set onto each device, such that the chunks are a partition of the original data.
+We simulate the data generation by shuffling and equally distributing partitions of the data set onto each device.
 Each round we add more data to the local data set, i.e., while the local data set consists of $\abs{D}_i = n$ samples we only add a certain subsample $m \leq n$ to the training. This increases with each round to simulate the data collection on each device. 
 Results are reported for each round.
 
+\input{kapitel/figures/distributed_schema.tex}
+Since preprocessing is done in a way that standardizes a dataset in such way that it can be directly used for training, a single model class is sufficient for distributing and training most data sets.
+In case that there are specific options or additional variables that need to be set the \textit{Model} class can also be treated as an interface and extended if necessary.
+However, in our case a single model class for all data sets is sufficient.
+Each model, when created, uses an instantiation of a data set class and features optional parameters to control the simulated distributed environment. 
+This includes for example setting maximum number of iterations for each training pass and the number of distributed devices.
 
-\section{Model Training}
+\paragraph*{Architecture}
+
+
+Each model has a local set of indices that map to samples from $\mathcal{D}$ in addition to probabilistic model, which manages training and inference.
+Moreover, each model determines the iteration after which it stops based on the rate of change in the objective function valu, i.e., the likelihood.
+Finally, each model stores optinal data such as parameters from previous iterations.
+
+The coordinator receives updates in form of parmeter vectors from each distributed device, which it then aggreagtes and evaluates.
+Each round is a synchronized iterated optimization, that is, all devices start training simultaneously.
+
+\paragraph*{Training}
+
 Training is straightforward with PX. 
 Each device keeps its own instance of a PX Model, cotaining the number of samples, the sufficient statistics, objectives and weights.
 We only have to keep in mind that the PX python module is a wrapper around the actual c++ module.
 Hence, we have to treat all arrrays and data as C-Contiguous, i.e., in C Memory order.
 The data is discretized in a previously set number of quantiles, e.g., 10 quantiles and then treates as an unsigned 16-bit integer to further reduce memory requirements.
-\section{Model Aggregation}
-Model Aggregation is done in python with numpy,scipy to improve runtimes of matrix-vector operations.
-\section{Evaluation}
-For evaluation we use accuracy and f1 score either computed in pure python or supported bei the sklearn machine learning library.
+
+\paragraph*{PXPY}
+is a toolkit for probabilistic inference using graphical models and exponential families.
+Available features are mostly based on the work by Piatkowski \cite{piatkowski2018exponential}.
+Originally implemented as a C++ module, PX was additionally brought to python for easier access to core functionalities.
+PX features a variety of model- and inference types such as markov random fields or its integer variation , while also providing different inference algorithms such as Belief-, Loopy Belief Propagation or the Junction Tree Algorithm.
+
+Core features include the model- training, evaluation and inference, while providing means to influence the optimization with user-defined callbacks or functions hooks, that allow to manually add regularization terms or to check progress and convergence of the training.
+
+Options are usually passed via registry entries using a virtual machine, which are then accessed by the C++ core to execute the chosen algorithms.
+
+Independency structure can either be manually passed to PX as an edgelist or be inferred via available algorithms such as the Chow-Liu algorithm. 
+Additionally, one may also choose a fixed structure such as chain graphs or grids, which can be controlled with the corresponding option.
+
+Other methods include the creation of chain- or grid graphs 
+Optimization is done via negative average likelihood minimization using first order gradient methods such as the proximal gradient descent.
+Gradient manipulation for e.g. adding a regularization term, can be comfortably done via hook functions that directly allow access to the C++ objects responsible for storing the gradient terms.
+Likewise, we may also check if the objective value is close to converging between two gradient descent iterations and stop the optimization altogether, if desired.
+
+
+
+\section{Aggregation Phase}
+As data is accumulated on each device, the parameters converge, that is, they equalize to some extent, which increases the probability of obtaining linear dependencies between parameter vectors. 
+This becomes an issue when solving systems of linear equations as linear dependencies lead to an overdetermined system with no unique solution.
+With the probability of having such dependencies increasing with the amount of data the solution to such a system is not unique anymore.
+Unfortunately most off-the-shelf solvers can not deal with such ill-posed problems, which requires us to find any one such solution for an underdetermined system of linear equations.
+
+This can be done with a least squares minimization.
+
+
+\paragraph*{Coordinator}
+The concepts of coordinator and distributed models are the core concepts of this implementation.
+While the coordinator manages the synchroziation and aggregation the model itself is more of a blackbox that transmits parameters and optionally receives updates to its local models.
+
+\subsection{Covariance Generation}
+Computing the Fisher information may to be tractable in some settings hence we have to come up with a different approach.
+Recall, that we want to sample from $\vect{\theta} \sim \mathcal{N}(\vect{\theta}^*, \cdot)$ for some correlation matrix $\vect{\Sigma}$ under the assumption that $\vect{\theta}^*$ are the true parameters.
+In this case we can use either the full corrleation matrix $\vect{\Sigma}$, the diagonal $diag(\Sigma)$ or a single value $\sigma^2$.
+Ideally, we want to compute the fisher information \wrt $\vect{\theta}^*$.
+
+We may choose to omit the cross-corrleation terms in favor of the diagonal matrix to reduce memory consumption.
+Additionally we can add the upper bound on the variance to account for the deviation between local models.
+
+Covariance Matrices are always positive semidefinite, symmetric and non-singular. 
+Hence we cannot randomly sample covariance matrices without enforcing this set of rules.
+There are two way to obtaining a covariance matrix.
+First we can sample a matrix $A\in \mathbb{R}^{d \times d}$ over an arbitrary distribution and multiply with its transpose
+\begin{equation}
+    \Sigma = AA^T, \quad A_{ij}\sim\mathcal{U}(a,b), \; \forall \;0 < i,j \leq n,
+\end{equation}
+where $\mathcal{U}$ is a uniform distribution with minimum $a$ and maximum $b$.
+
+Here we generally obtain a positive semidefinite matrix, although the matrix might still be singular, which is troublesome when inverting.
+
+Second, Davies\&Higham \cite{davies2000numerically} introduced an algorithm using positive eigenvalues $\vect{\lambda}\in \mathbb{R}^n$ where $\sum_{i=1}^n \lambda_i = n$ to obtain a covariance matrix, with these eigenvalues.
+
+Operations such as adding positive values to the diagonal preserve positive semidefiniteness and as such we can add the bound on the variance from TODO to the diagonal to account for the deviation in parameters.
+
+Diagonal Matrices i.e. just $diag(\epsilon)$ are always positive semidefinite and usually invertible unless $det(\Sigma) = \prod_{i=1}^n \Sigma_{ii} \approx 0$ gets numerically too small to represent. This is only a computational limitation though. Here we can apply some kind of regularization for a tradeoff in precision $\Sigma + I$, where $I$ is the identity.
+
+\subsection{Center Point Computation}
+While the concept of Radon Points allows us to compute the center point for a given set of points in linear time solving a system of linear equations we can not obtain a unique solution if the coefficient matrix is not full rank, i.e., is singular.
+In the non-singular case the system of linear equations with $A \in \mathbb{R}^{d+2 \times d+2}$ and $\vect{x}, \vect{b} \in \mathbb{R}^{d+2}$
+
+\begin{equation}
+    \label{eq:syseq}
+    \begin{split}
+        A\vect{x} &= \vect{b} \\
+        \vect{x} &= (A^TA)^{-1}A^T \vect{b}
+    \end{split}
+\end{equation}
+has a unique solution.
+Instead of directly solving \eq~\ref{eq:syseq} we may choose to minimize the least squares error instead i.e.
+
+\begin{equation}
+    \hat{\vect{x}} = \arg\min_{x} \norm{A\vect{x} - \vect{b}}^2_2.
+\end{equation}
+
+While this mimimization coincides on $\vect{x}$ for non-singular matrices, as the solution is unique, we are still able to obtain a solution for the singular case, which is also a center point for the given set of points.

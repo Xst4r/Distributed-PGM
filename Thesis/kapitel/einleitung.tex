@@ -1,29 +1,31 @@
 % einleitung.tex
 \chapter{Introduction}
-With an increasing number of devices available and data collected on these devices, the task of machine learning becomes increasingly challenging.
-Not only do we have to consider machine learning tasks in a distributed environment, we now also have to consider communication and network structure.
-While the best case, in terms of a machine learning, remains having all observed data available at some central coordinator, this may not be guaranteed for all applications.
-Hence, creating a single model, which has access to all data may not be feasible anymore, which requires us to bring machine learning to the edge, that is , onto individual devices in a distributed fashion.
+With an increasing number of devices available and being deployed for a variety of tasks more and more data collected is available in a distributed fashion.
+Such devices include mobile phones, sensor networks or embedded systems with and without user interaction.
+Not only do we have to consider the machine learning task a hand we now have to take a distributed environment into account, which involves communication from and between devices and the underlying  network architecture.
+Ideally, in terms of machine learning, we are able to transmit all observed data to some  central server in order to utilize the full capabilities of the chosen approach.
+However, this may not be possible for all applications.
+Creating a single model, which has access to all data may not be feasible anymore, which leads to alternative ways we are able fully benefit from the collected and readily available data.
+One possibility is creating an array of distributed learners, each computing a model with locally available data, then transmitting the resulting models to a central server, where they may be aggregated into a better performing model.
 
-Leading factors, that make this a necessity are the communication cost incurred by sending the data to a central node.
-While new technologies in the communication sector with an ever increasing bandwith , such as 5G with up to 10GBit/s \cite{nordrum2017ieee}, are still being developed and deployed around the globe, it is still not possible to make use of this technology in all applications. 
-Furthermore, attempting to communicate all data for each task may still be too much as projects like IceCube\todo{Cite} produce a total of x TB data each day.
+One of the main reasons forcing us to include this intermediate step are bandwidth or storage limitations incurred by continuously transmitting all observed data to a central server.
+While research on increasing the bandwidth of such applications progresses steadily, e.g. the new telecommunication standard 5G with a transmission rate of up to 10GBit/s \cite{nordrum2017ieee}, in some areas restrictions to bandwidth and communication still apply which render new technologies as impractical. 
+Especially when considering energy efficiency, constant transmission of data may not be feasible and thus the data may need to be processed locally.
 Additionally, user privacy is a major concern in a setting where we learn from data on user devices, as the data we use for learning tasks may contain sensitive information.
 While some users may allow us to retrieve their data, this is not generally the case and as such it is advantegeous to treat the data as fixed on each device.   
 
-However, even anonymized data can be profiled and tracked back to certain users, which requires us to be even more careful about the data that is indeed communicated between devices.
-De-anonymization schemes have been well studied in terms of user data by Narayanan et al. \cite{narayanan2008robust} or in terms of geolocation(GPS) data by Gambs et al. \cite{gambs2014anonymization}.
-The need for privacy leads to another, directly related challenge, which is the limited amount of memory and cpu power available on each device.
-Moreover, we do not aim to strain the hardware of users too much as this would impair the devices' functionality as well as strain battery life in case of mobile devices such as smartphones.
+However, even anonymized data can be profiled and tracked back to the users that the data originated from, which requires us to be even more attentive about what kind of information is communicated and transmitted.
+De-anonymization schemes with regards to anonymized user data have been well studied  by Narayanan et al. \cite{narayanan2008robust} or in terms of geolocation(GPS) data by Gambs et al. \cite{gambs2014anonymization}.
+Even when having permission to perform machine learning on user devices we still want to be as energy efficient as possible, not straining resources up to a noticeable amount \wrt cpu and memory usage as well as battery life.
+Similarly, on sensor networks with remote servers our goal is to be as efficient as possible, respecting the local constraints of processing power and energy consumption, if applicable.
 
-This work deals with statistical models, more specifically exponential families, on distributed devices as these have a few advantages, that can be exploited in order to reduce the resource footprint.
+This work in particular deals with statistical models, more specifically exponential families, on distributed devices as these have a few advantages, that can be exploited in order to reduce the resource footprint.
 Briefly, we are looking for a probability distribution $\mathbb{P}_{\vect{\theta}}$ conditioned on some parameters $\vect{\theta}$ that best describes the observed data $\mathcal{D}$ on each device.
-The data is assumed to be collected on each device and that it cannot be exchanged in any way due to reasons such as privacy preservation.
+The data is assumed to be collected on each device and in addition that it cannot be exchanged in any way due to reasons such as privacy preservation.
 Usually we estimate the parameters by optimizing a function such as the likelihood.
 After finding a suitable distribution and the desired model parameters we can then perform generative tasks on unknown data, which includes sampling new data, completing missing data on partially observed samples or classification, which is a special case of the former, since only one observation is missing.
 
-All in all there are several limitations in a distributed setting, which requires us to choose our methods and machine learning algorithms carefully in order to keep our footprint as small as possible, while trying to obtain the best possible results.
-
+All in all there are several limitations in a distributed setting, which requires us to choose our methods and machine learning algorithms carefully in order to be able to trainb models on the devices, while trying to obtain the best possible results.
 
 \section{Motivation and Related Work}
 
