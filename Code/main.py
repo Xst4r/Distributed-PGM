@@ -324,7 +324,6 @@ class Coordinator(object):
             self.sampler = Random(self.data, n_splits=self.n_models, k=self.k_fold, seed=self.seed)
             self.sampler.create_split(self.data.train.shape, self.data.train)
             self.curr_model.train(split=self.sampler.split_idx,
-                                  epochs=1,
                                   n_models=self.n_models,
                                   iters=self.iters)
 
@@ -429,15 +428,21 @@ class Coordinator(object):
     def gen_semi_random_cov(self, model, eps=0):
         a = np.insert(np.cumsum([model.states[u] * model.states[v] for u, v in model.graph.edgelist]), 0, 0)
         marginals, A = model.infer()
+        marginals = marginals[:a.max()]
         cov = np.zeros((model.weights.shape[0], model.weights.shape[0]))
         rhs = np.outer(marginals, marginals)
         diag = np.diag(marginals[:model.weights.shape[0]] - marginals[:model.weights.shape[0]] ** 2)
         for x in range(a.shape[0] - 1):
             cov[a[x]:a[x + 1], a[x]:a[x + 1]] = - rhs[a[x]:a[x + 1], a[x]:a[x + 1]]
         cov -= np.diag(np.diag(cov))
+        cov += np.diag(marginals - np.diag(rhs))
         cov += diag + np.diag(np.full(model.weights.shape[0], eps))
 
-        return cov
+        try:
+            inv = np.linalg.inv(cov)
+            return inv
+        except np.linalg.LinAlgError:
+            return np.linalg.inv(np.diag(np.diag(cov)))
 
     def prepare_and_run(self):
 
@@ -602,7 +607,7 @@ if __name__ == '__main__':
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
     datasets = ['dota2', 'covertype', 'susy']
-    sample_parameters = ["fish"]
+    sample_parameters = ["none", 'unif', 'random']
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
