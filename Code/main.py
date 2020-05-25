@@ -434,13 +434,15 @@ class Coordinator(object):
             cov[a[x]:a[x + 1], a[x]:a[x + 1]] = - rhs[a[x]:a[x + 1], a[x]:a[x + 1]]
         cov -= np.diag(np.diag(cov))
         cov += np.diag(marginals - np.diag(rhs))
-        cov += diag + np.diag(np.full(model.weights.shape[0], eps))
+        cov += diag
+        cov *= self.curr_model.n_local_data
+        cov += np.diag(np.full(model.weights.shape[0], eps))
 
         try:
-            inv = np.linalg.inv(cov*self.curr_model.n_local_data)
+            inv = np.linalg.inv(cov)
             return inv
         except np.linalg.LinAlgError:
-            return np.linalg.inv(np.diag(np.diag(cov*self.curr_model.n_local_data)))
+            return np.linalg.inv(np.diag(np.diag(cov)))
 
     def prepare_and_run(self):
 
