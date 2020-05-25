@@ -317,7 +317,6 @@ class Coordinator(object):
                                     path=self.data.__class__.__name__, epochs=self.rounds)
         self.local_models.append(self.curr_model)
         prev = 0
-        center_points = []
         while self.curr_model.n_local_data < self.curr_model.suff_data:
             # Training
             logger.info("========= Starting Round" + str(self.curr_model.epoch) + "========= ")
@@ -333,7 +332,6 @@ class Coordinator(object):
             self.r = r
             # Aggregation
             self.aggr_wrapper()
-            center_points.append(self.aggregates[self.curr_model.n_local_data]['radon'][0]['px_model'])
             #if len(center_points) > 8:
             #    self.check_convergence(center_points)
             gc.collect()
