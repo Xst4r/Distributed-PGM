@@ -437,10 +437,10 @@ class Coordinator(object):
         cov += diag + np.diag(np.full(model.weights.shape[0], eps))
 
         try:
-            inv = np.linalg.inv(cov)
+            inv = np.linalg.inv(cov*self.curr_model.n_local_data)
             return inv
         except np.linalg.LinAlgError:
-            return np.linalg.inv(np.diag(np.diag(cov)))
+            return np.linalg.inv(np.diag(np.diag(cov*self.curr_model.n_local_data)))
 
     def prepare_and_run(self):
 
