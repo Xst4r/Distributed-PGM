@@ -388,7 +388,7 @@ class Coordinator(object):
         gc.collect()
 
     def sample_parameters(self, model):
-        n_samples = np.max([self.r ** self.h, self.curr_model.n_local_data * self.n_models])
+        n_samples = int(self.r ** self.h)
         samples_per_model = int(np.ceil(n_samples / len(model.px_model)))
         theta_old = []
         theta_samples = []
@@ -418,7 +418,9 @@ class Coordinator(object):
         try:
             eigs = self.random_state.rand(n_dim)
             eigs = eigs / np.sum(eigs) * eigs.shape[0]
-            return random_correlation.rvs(eigs, random_state=self.random_state)
+            cov = random_correlation.rvs(eigs, random_state=self.random_state)
+            cov = np.multiply(cov, np.sqrt(np.outer(eigs, eigs)))
+            return cov
         except Exception as e:
             cov = self.random_state.randn(n_dim, n_dim)
             return np.dot(cov, cov.T) / n_dim
