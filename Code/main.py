@@ -607,8 +607,8 @@ if __name__ == '__main__':
 
 
     keywords = ['--data', '--covtype', '--reg', '--hoefd_eps']
-    datasets = ['dota2', 'covertype', 'susy']
-    sample_parameters = ["none", 'unif', 'random']
+    datasets = [ 'covertype', 'dota2','susy']
+    sample_parameters = ["fish", 'random']
     reg = ['None', 'l2']
     eps = [1e-1, 5e-2]
     configurations = [element for element in itertools.product(*[datasets, sample_parameters, reg, eps])]
