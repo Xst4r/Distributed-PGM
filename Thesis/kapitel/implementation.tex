@@ -2,7 +2,10 @@
 
 \chapter{Implementation}
 \label{chapter:ch4}
+The goal of this work is to develop and implement a framework for distributed model aggregation using probabilistic graphical models.
+The implementation features a simulated environment for distributed learners and a coordinator, which exchange messages to create an aggregate model using the different mechanism presented in \chap \ref{chapter:ch3}.
 In this chapter we are going to  discuss various aspects of the implementation, design choices as well as providing a general idea about data processing, model initialization and code layout.
+
 Python was chosen as the main programming language as it is highly accessible and provides all the necessary tools for linear algebra operations and data processing.
 This enables fast and efficient execution and evaluation, while still allowing to interface to C and C++  libraries if necessary for computational speedup.
 
@@ -18,65 +21,64 @@ However, we strictly enforce that the local data or the average sufficient stati
 Moreover, in a real-world setting the devices may terminate optimization at different times and may send the parameters in an asynchronous manner. 
 Instead, we enforce the training to be synchronized such that we only send the data to the coordinator once all models have finished training.
 
-The implementation can be roughly split into three different sections, the initialization, run and aggregation phase.
+The implementation can be roughly divided into three different phases, the initialization, run and aggregation phase.
 While the initialization phase is invoked once during startup, run and aggregation phase alternate in each round.
 Let us now have a closer look at the code structure, data processing and initialization process, which is executed prior to starting the distributed learners. 
 
 \section{Initialization Phase}
 \input{kapitel/figures/flowchart.tex}
-
-\fig \ref{fig:flowchart} shows the initial setup for the architecture. 
+The initialization phase is executed at the start of each process, loading the data, parameters and necessary objects such as coordinator, models and aggregator.
+\fig \ref{fig:flowchart} shows the initial setup process for the implementation.
 First, for a data set $\mathcal{D}$ we create a data set object, which discretizes the data and creates the request number of cross validation splits. 
-Thereafter, we create a coordinator object, which has access to the data set and a sampler object, which generates data splits sent to each device.
-Finally, the structure, i.e., the graph is created with the Chow-Liu algorithm on a holdout set and the number of states for each vertex is determined from the training data.
-Both, individual splits and the structure information are used to create distributed models, that can then start iterating training and aggregation (cf. \fig~\ref{fig:dist}).
+For easier accessability the implementation features a basic framework for directly downloading and extracting datasets for a given hyperlink to the data location.
+Thereafter, we create a coordinator object, which has access to the data set a sampler object and the aggregator.
+The sampler is responsible for creating random index-based splits, which are then sent to the models, i.e., each model has a set of indices from which it can access the data.
+Finally, the graph $G=(V,E)$ is created on a holdout set, where the number of vertices is the number of features in $\mathcal{D}$ and the independency structure (the edges) is derived from the Chow-Liu algorithm.
+Both, individual splits and the structure information are used to create distributed models, which then start training the models and sending the results to the coordinator (cf. \fig~\ref{fig:dist}).
 
-The independency structure $G=(V,E)$ for the probabilistic models is computed with the Chow-Liu algorithm from a holdout set, which is then discarded and not used again.
 After the discretization each random variable $X_i$ with state space $\mathcal{X}_i$ has at most $\{0, \ldots, \max(\mathcal{D}_{\cdot i})\}$ observable states.
-Since we discretize the data before determining the independency structure we obtain the number of states for each feature by simply taking the maximum over all observations from that feature. 
+Since we discretize the data before determining the independency structure we obtain the number of states for each feature by simply taking the maximum over all observations from the corresponding feature. 
 
-Having prior information about structure and state space is important as the aggregation methods used for this work rely on identical structure and known state space over all distributed learners.
-
-\subsection{Data Processing}
-
+Having prior information about structure and state space is vital as the aggregation methods used for this work rely on having an identical structure and known state space for all distributed learners.
 
 \paragraph*{Cross Valdiation}
+The cross validation sets are created along the data set object by a seeded randomization.
+An index is created over the data, which is then shuffled and split into the desired number of cross validation runs.
+For each run one of the sets is considered the test data, while the other remaining sets are used for training.
+The training data is again shuffled and distributed as a secondary indexing set to all distributed learners.
 
 \paragraph*{Discretization}
+Most datasets contain real valued information, which would drastically increase the model complexity, while also limiting generalization capabilites.
+By discretizing the data we can group observations into a fixed number of bins, which in turn also reduces the number of parameters.
+Each sample that falls into the range of a bin is then mapped to the index of that bin, e.g. for two bins $[0,10),[10,20)$, a sample $x=5$ would be assigned to the first bin and thus be mapped to $1$.
+Every observation outside the original intervals is assigned to the 0-th and q-th if bin respectively.
+We discretize the data using the $q$ quantiles on each feature, which are computed based on the training data. 
+The number of quantiles $q$ can be chosen either for all features at once or individually for each feature.
+Furthermore, if the number of quantiles is larger than the state space for any random variable $X_i$ we do not compute the discretized feature as the number of possible observations is less than $q$.
+Afterwards, we use the same intervals to discretize the training data.
+This is essentially a mapping function, which maps observations of a single feature to interval borders, i.e., given a set of intervals we assign each observation to either the left or right border of the interval it is contained in.
+Choosing the correct number of quantiles is difficult and requires prior knowledge about the data as too many quantiles may result in a too complex model while choosing a low number of quantiles may lead to loss of information.
+
 \section{Run Phase}
+After all objects have been created the run and aggregation phase start alternating, while increasing the data available at each round.
+\fig~\ref{fig:dist} illustrates the sequence of operations.
+First each of the distributed learners trains a probabilistic graphical model with the locally available data.  
+Then, the coordinator receives parameters from the distributed learners $\mathcal{M}$, which are then aggregated. 
+Additionally we may send the aggregate back towards the distributed learners.
 
-\fig~\ref{fig:dist} illustrates the structure of the module. 
-The coordinator receives parameters from distributed learners $\mathcal{M}$, which are then aggregated an aggregation object. 
-Additinally we may send the aggregate back towards the distributed learners.
-
-We simulate the data generation by shuffling and equally distributing partitions of the data set onto each device.
-Each round we add more data to the local data set, i.e., while the local data set consists of $\abs{D}_i = n$ samples we only add a certain subsample $m \leq n$ to the training. This increases with each round to simulate the data collection on each device. 
-Results are reported for each round.
+In practice we would only have a set amount of data available for each learner.
+We simulate this by restricting access to the full local data.
+After each round we extend the local data set, i.e., given the full local data $\abs{\mathcal{D}_i} = n$  we create an index $I\subset \{1, \ldots n\}, \abs{I} \leq n$ and extend the index by additional elements each round. 
+Note, that at this point we do not allow duplicates, i.e. each index added is unique and only indices that are not yet in $I$ can be added each round.
 
 \input{kapitel/figures/distributed_schema.tex}
-Since preprocessing is done in a way that standardizes a dataset in such way that it can be directly used for training, a single model class is sufficient for distributing and training most data sets.
-In case that there are specific options or additional variables that need to be set the \textit{Model} class can also be treated as an interface and extended if necessary.
+
+Since preprocessing standardizes the data in such way that it can be used as an input to the Model, a single model class is sufficient for distributing and training most data sets.
+In case that there we need perform additiona modifications to the training, the \textit{Model} class can be freely extended to suit the specific needs.
 However, in our case a single model class for all data sets is sufficient.
 Each model, when created, uses an instantiation of a data set class and features optional parameters to control the simulated distributed environment. 
-This includes for example setting maximum number of iterations for each training pass and the number of distributed devices.
-
-\paragraph*{Architecture}
-
-
-Each model has a local set of indices that map to samples from $\mathcal{D}$ in addition to probabilistic model, which manages training and inference.
-Moreover, each model determines the iteration after which it stops based on the rate of change in the objective function valu, i.e., the likelihood.
-Finally, each model stores optinal data such as parameters from previous iterations.
-
-The coordinator receives updates in form of parmeter vectors from each distributed device, which it then aggreagtes and evaluates.
-Each round is a synchronized iterated optimization, that is, all devices start training simultaneously.
-
-\paragraph*{Training}
-
-Training is straightforward with PX. 
-Each device keeps its own instance of a PX Model, cotaining the number of samples, the sufficient statistics, objectives and weights.
-We only have to keep in mind that the PX python module is a wrapper around the actual c++ module.
-Hence, we have to treat all arrrays and data as C-Contiguous, i.e., in C Memory order.
-The data is discretized in a previously set number of quantiles, e.g., 10 quantiles and then treates as an unsigned 16-bit integer to further reduce memory requirements.
+This includes for example setting maximum number of iterations for each training pass and the number of distributed learner.
+Each distributed learner has at its core an instance of a PXPY Model.
 
 \paragraph*{PXPY}
 is a toolkit for probabilistic inference using graphical models and exponential families.
@@ -89,57 +91,132 @@ Core features include the model- training, evaluation and inference, while provi
 Options are usually passed via registry entries using a virtual machine, which are then accessed by the C++ core to execute the chosen algorithms.
 
 Independency structure can either be manually passed to PX as an edgelist or be inferred via available algorithms such as the Chow-Liu algorithm. 
-Additionally, one may also choose a fixed structure such as chain graphs or grids, which can be controlled with the corresponding option.
+Additionally, we may choose between several standard graph structure such as chain, grid or star graphs.
 
-Other methods include the creation of chain- or grid graphs 
-Optimization is done via negative average likelihood minimization using first order gradient methods such as the proximal gradient descent.
-Gradient manipulation for e.g. adding a regularization term, can be comfortably done via hook functions that directly allow access to the C++ objects responsible for storing the gradient terms.
+Optimization is done via negative average likelihood minimization using first order gradient methods (cf. Piatkowski \cite{piatkowski2018exponential}).
+Functionality for gradient manipulation can be done by providing function hooks to PX, which are then called at the corrseponding optimization step.
+This may be used for example to add a regularization term to the gradient before updating the objective function. 
+Here, PX calls the function that has been passed for regularization with a content object, containing the current gradient, weights, which can then be directly manipulated.7
 Likewise, we may also check if the objective value is close to converging between two gradient descent iterations and stop the optimization altogether, if desired.
 
 
+\paragraph*{Training}
+At the start of each training iteration we first extend the number of samples available on each distributed learner. 
+We may then either update the previous model by extending the sufficient statistics with the new data or train a new model. 
+In either case we would only have to keep the graph $G$, states space $\vect{\mathcal{X}}$, average sufficient statistics $\tilde{\mathbb{E}}_{\mathcal{D}^i}[\phi(x)]$ and the previous parameters $\vect{\theta}^i$ in memory to update the i-th learner.
+
+When creating a new PX model the state space is usually inferred directly from the data, while the graph has to be passed either as an edgelist or as a PX graph object. 
+Here we run into the issue of the state spaces for distributed learners not being the same especially when the number of samples is low. 
+When having only a small number of samples some states might not have been observed yet, which leads to an incomplete state space and thus to a varying number of parameters. 
+This issue is solved by providing px with an additional sample $\mathcal{D}^i \cup (max(\mathcal{D}_{\cdot 1}), \ldots, max(\mathcal{D}_{\cdot m}))$, which contains the maximum observerd (or discretized) value for each feature.
+Since the state space is created from the maximum value for each feature, this leads to all distributed learners having the same number of parameters.
+Afterwards, we simply remove this entry from the sufficient statistics and decrease the number of samples by one. 
+This way we ensure all models having the same structure and number of parameters even when some configurations have not been observed yet.
+
+The actual parameter estimation is started by providing PX with the graph and data along with a maximum number of iterations and the progress hooks that are called from within PX.
+On each gradient descent iteration we check the difference between current and previous objective function value and once it is sufficiently small we provide a grace period of for example $t=100$ iterations after which the training is terminated.
+
+When using a regulariser on the likelihood we provide PX with an additional regularization hook, that  adds the derivative of the regulariser to the gradient by copying the sum of gradient and regulariser into the memory reserved for the gradient. 
+For the $\ell_2$ regularization we for example have 
+\begin{equation}
+    \begin{split}
+    \nabla \ell_R( \vect{\theta}; \mathcal{D}) &= \nabla_{\vect{\theta}} \ell( \vect{\theta}; \mathcal{D}) +  \nabla_{\vect{\theta}}\lambda R(\vect{\theta}) \\
+    &=\nabla_{\vect{\theta}} \ell( \vect{\theta}; \mathcal{D}) +  2\lambda \vect{\theta},
+    \end{split}
+\end{equation} 
+where $\lambda$ controls the impact of the regularization term, with $\lambda=0$ being equal to an unregularised task.
+
+Once the training terminates by either exceeding the maximum of iterations or by triggering the stop criterion, we store the local model parameters in a list which is accesible by the coordinator. 
+The coordinator then accesses the parameters for the aggregation phase.
+
 
 \section{Aggregation Phase}
-As data is accumulated on each device, the parameters converge, that is, they equalize to some extent, which increases the probability of obtaining linear dependencies between parameter vectors. 
-This becomes an issue when solving systems of linear equations as linear dependencies lead to an overdetermined system with no unique solution.
-With the probability of having such dependencies increasing with the amount of data the solution to such a system is not unique anymore.
-Unfortunately most off-the-shelf solvers can not deal with such ill-posed problems, which requires us to find any one such solution for an underdetermined system of linear equations.
-
-This can be done with a least squares minimization.
+Upon completion of the run phase the coordinator receives the updated local model parameters, which are used to create an aggregator instance.
+The parameters for an arbitrary aggregator object are usually passed as $\mathbb{R}^{d \times k}$ matrix, where, again $d$ is the number of parameters for each model and $k$ is the number of models.
 
 
-\paragraph*{Coordinator}
-The concepts of coordinator and distributed models are the core concepts of this implementation.
-While the coordinator manages the synchroziation and aggregation the model itself is more of a blackbox that transmits parameters and optionally receives updates to its local models.
+Prior to the aggregation we may optionally choose to sample additional models, i.e., parameter vectors from existing ones taking advantage of the asymptotic normality of the MLE (cf. \ref{ssec:asymp}).
+This is especially useful for radon machines when we have close to $ r^h << k < r^{h+1}$ models, but strictly less than required for aggregating $r^{h+1}$ models for an arbitrary $h$.
+
+Parameters of exponential families are asymptotically normal distributed as shown in \sect~\ref{ssec:asymp}.
+Hence, we can center the sample distribution around $\vect{\theta}^i$ if we assume this to be the asymptotic result.
+We then have $\hat{\vect{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$, where the covariance matrix is still needs to be determined in case we can not compute or store the full fisher information matrix.
+The different choices for correlation matrices are derived from the results in \sect~\ref{ssec:asymp} and \sect~\ref{ssec:bounds}.
+%We could use Wasserstein-2 Distance to measure distance between local distribution and true distribution
 
 \subsection{Covariance Generation}
-Computing the Fisher information may to be tractable in some settings hence we have to come up with a different approach.
+\label{ssec:covgen}
+
 Recall, that we want to sample from $\vect{\theta} \sim \mathcal{N}(\vect{\theta}^*, \cdot)$ for some correlation matrix $\vect{\Sigma}$ under the assumption that $\vect{\theta}^*$ are the true parameters.
-In this case we can use either the full corrleation matrix $\vect{\Sigma}$, the diagonal $diag(\Sigma)$ or a single value $\sigma^2$.
-Ideally, we want to compute the fisher information \wrt $\vect{\theta}^*$.
+In this case we can use either the full corrleation matrix $\vect{\Sigma}$, the diagonal $diag(\Sigma)$ or a single value $\sigma^2 I$.
+Ideally, we want to compute the fisher information \wrt $\vect{\theta}^*$, but this is not always possible.
 
-We may choose to omit the cross-corrleation terms in favor of the diagonal matrix to reduce memory consumption.
-Additionally we can add the upper bound on the variance to account for the deviation between local models.
+Instead, we determine the covariance matrix for each distribution in three different ways, while also having the option to skip sampling altogether.
+While the uniform variance and the diagonal are only required to contain positive entries only, the full covariance matrix needs to satisfy some additional properties.
 
-Covariance Matrices are always positive semidefinite, symmetric and non-singular. 
-Hence we cannot randomly sample covariance matrices without enforcing this set of rules.
-There are two way to obtaining a covariance matrix.
-First we can sample a matrix $A\in \mathbb{R}^{d \times d}$ over an arbitrary distribution and multiply with its transpose
+Covariance matrices are always positive semidefinite, symmetric and non-singular. 
+Hence sampling all entries at random may almost definetly result in a matrix violating at least one of these constraints.
+However, there are some algorithms and techniques that can be used to generate full covariance matrices.
+First, we can sample a matrix $A\in \mathbb{R}^{d \times d}$ over an arbitrary distribution and perform a matrix multiplication with its transpose
 \begin{equation}
     \Sigma = AA^T, \quad A_{ij}\sim\mathcal{U}(a,b), \; \forall \;0 < i,j \leq n,
 \end{equation}
 where $\mathcal{U}$ is a uniform distribution with minimum $a$ and maximum $b$.
 
-Here we generally obtain a positive semidefinite matrix, although the matrix might still be singular, which is troublesome when inverting.
+The result is a positive semidefinite and symmetricmatrix, while the matrix may still contain linear dependencies for some rows or columns.
 
-Second, Davies\&Higham \cite{davies2000numerically} introduced an algorithm using positive eigenvalues $\vect{\lambda}\in \mathbb{R}^n$ where $\sum_{i=1}^n \lambda_i = n$ to obtain a covariance matrix, with these eigenvalues.
+Another approach originally introduced by Davies and Higham \cite{davies2000numerically} uses a set of positive eigenvalues to sample a correlation matrix from.
+Given a set of positive eigenvalues $\vect{\lambda}\in \mathbb{R}^d$ where $\sum_{i=1}^n \lambda_i = d$ we can sample a random correlation $\rho$ with these eigenvalues
+This can be used to randomly generate a set of positive eigenvalues, then normalizing them such that the sum is equal to the number of dimensions $d$ and use the resulting normalized eigenvalues to sample a fitting correlation matrix. 
+We then obtain the covariance matrix by rescaling the components of the correlation matrix with the product of standard deviations from two components 
+\begin{equation}
+    \begin{split}
+            \rho_{ij} &= \frac{\Sigma_{ij}}{\sqrt{\Sigma_{ii}\Sigma_{jj}}} \\
+            \Sigma_{ij} &=  \rho_{ij}\sqrt{\Sigma_{ii}\Sigma_{jj}}.
+    \end{split}
+\end{equation}
 
-Operations such as adding positive values to the diagonal preserve positive semidefiniteness and as such we can add the bound on the variance from TODO to the diagonal to account for the deviation in parameters.
+While both variants mentioned above result in proper covariance matrices, they to not have an inherent relationship with the actual covariance matrix for the asymtptotic distribution.
+Recall that the true covariance matrix is the inverse fisher information matrix of the likelihood, i.e., the second order gradient $\nabla^2 A(\vect{\theta})$ of the likelihood \wrt $\vect{\theta}$.
+While computation of the full fisher information matrix may not be feasible on the devices or even the coordinator, we can partially compute the components. 
+For example the diagonal of the fisher information for some parameters $\vect{\theta}^j$ on a distributed learner is 
+\begin{equation}
+    diag(i(\vect{\theta}^j)) = \mathbb{E}[\phi(X)] - \mathbb{E}[\phi(X)]^2,
+\end{equation}
+which for binary random variables is just the difference between the marginal probability of observing a state and its squared value.
+For distributions over local models we add an error to the diagonal of the variance, i.e.,
+\begin{equation}
+    \tilde{\Sigma}=  \frac{1}{\abs{\mathcal{D}} \cdot diag(i(\vect{\theta}^j))} + \epsilon,
+\end{equation}
+where $\epsilon$ is based on the bounds derived in \sect~\ref{ssec:bounds}.
 
-Diagonal Matrices i.e. just $diag(\epsilon)$ are always positive semidefinite and usually invertible unless $det(\Sigma) = \prod_{i=1}^n \Sigma_{ii} \approx 0$ gets numerically too small to represent. This is only a computational limitation though. Here we can apply some kind of regularization for a tradeoff in precision $\Sigma + I$, where $I$ is the identity.
+Moreover, we may compute entries on the diagonal blocks, that is, entries between sufficient statistics from the same clique:
+\begin{equation}
+    i(\vect{\theta})_{C_{ij}} = 0- \sum_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(X= \vect{x}) \phi_C(\vect{x})_i \sum_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(X= \vect{x}) \phi_C(\vect{x})_j= - p_i p_j,
+\end{equation}
+where $ \mathbb{E}[\phi(\vect{X})_i \phi(\vect{X})_j]$ (cf. \eq~\ref{eq:sparsefish}) is always zero as the probability of observing two events simutaneously in a single clique is zero.
+
+Since we are introducing an additional variance between parameter of distributed learners we can quantify this error and add it to the variance terms.
+As addition of positive values to the diagonal preserves the properties of a covariance matrix, we may add an additional error term to the diagonal while preserving positive semidefiniteness, symmetry and non-singularity..
+
+Diagonal matrices such as $diag(\Sigma)$ for some $\Sigma_{ii} > 0, \; \forall 1 \leq i \leq d$ are always positive semidefinite and invertible unless $det(\Sigma) = \prod_{i=1}^n \Sigma_{ii} \approx 0$ becomes numerically too small to represent on the available hardware architure. 
+If this is the case we can apply a matrix regularization $diag(\Sigma) + \lambda I$ for a tradeoff in precision with for example , where $I$ is the identity matrix and $\lambda > 0$.
+
+In summary, we present three different ways of generating full covariance matrices $\Sigma$ or simplications thereof using only the diagonal $diag(\Sigma)$ or a single variance term $\sigma^2$ for all distribution components.
 
 \subsection{Center Point Computation}
-While the concept of Radon Points allows us to compute the center point for a given set of points in linear time solving a system of linear equations we can not obtain a unique solution if the coefficient matrix is not full rank, i.e., is singular.
-In the non-singular case the system of linear equations with $A \in \mathbb{R}^{d+2 \times d+2}$ and $\vect{x}, \vect{b} \in \mathbb{R}^{d+2}$
+While the concept of Radon Points allows us to compute the center point for a given set of points solving a system of linear equations we can not obtain a unique solution if the coefficient matrix is not full rank, i.e., is singular.
+This is mainly caused by two or more linear depenedent columns or rows in the matrix.
+
+As the number of samples seen by each device increases the parameters approach each other to some extent, which in turn increases the likelihood of introducing linear dependencies between parameter vectors.
+Since we assume the data to be identically and indepedently distributed (i.i.d.) all samples are from the same random variable and with a large enough sample size the local parameters vectors are going to eqaulize.
+This becomes an issue when solving systems of linear equations as linear dependencies cause the system to be overdetermined, which then has no unique solution anymore.
+With the probability of introducing such dependencies increasing with the amount of data the solution to such a system is not unique anymore.
+Instead of solving a system of linear equations we can transform the problem into a least squares minimization, which can be used to find any non-unique solution, or the unique if it exists.
+
+In that case we check if the coefficient matrix from \eq~\ref{eq:radonopt} is singular and if it is we switch to a least squares optimization approach to obtain a valid solution. 
+
+In the non-singular case the system of linear equations with coefficients $A \in \mathbb{R}^{d+2 \times d+2}$, variables and constants $\vect{x}, \vect{b} \in \mathbb{R}^{d+2}$
 
 \begin{equation}
     \label{eq:syseq}
@@ -149,10 +226,12 @@ In the non-singular case the system of linear equations with $A \in \mathbb{R}^{
     \end{split}
 \end{equation}
 has a unique solution.
-Instead of directly solving \eq~\ref{eq:syseq} we may choose to minimize the least squares error instead i.e.
+Instead of directly solving \eq~\ref{eq:syseq} we may obtain a solution by solving
 
 \begin{equation}
-    \hat{\vect{x}} = \arg\min_{x} \norm{A\vect{x} - \vect{b}}^2_2.
+    \hat{\vect{x}} = \arg\min_{x} \norm{A\vect{x} - \vect{b}}^2_2,
 \end{equation}
+instead, which is a least squares minimization \wrt to the local model parameters, which are the columns of $A$ and constants $b$ from constraints introduced in \eq~\ref{eq:radonopt}.
 
-While this mimimization coincides on $\vect{x}$ for non-singular matrices, as the solution is unique, we are still able to obtain a solution for the singular case, which is also a center point for the given set of points.
+We then reach a unique solution for $\vect{x}$ on non-singular matrices using either approach or, if the matrix is singular, one solution to the problem using the least squares minimization.
+We will now move on to the experiments, setup and empirical results evaluating the different aggregation methods.

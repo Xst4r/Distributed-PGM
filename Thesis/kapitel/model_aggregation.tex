@@ -10,7 +10,7 @@
     Our goal is to find an aggregate function $f \in \mathcal{F}$ such that it minimizes some loss function with a limited amount of samples from $\vect{M}$:
     \begin{equation}
         \label{eq:regret}
-        \arg\min_{f \in \mathcal{F}} d(f(\mathcal{\mathcal{M}}), m^*),
+        \arg\min_{f \in \mathcal{F}} \; d(f(\mathcal{\mathcal{M}}), m^*),
     \end{equation}
     where $m^*$ is the optimal aggregate model and $d: \mathcal{H} \times \mathcal{H} \rightarrow \mathbb{R}$ is some quality measure or distance function.
 \end{definition}
@@ -19,16 +19,16 @@ In the context of this work feasible solutions are from a parametrized family of
 $\mathcal{H} = \mathbb{R}^d$, where $d$ is the number of parameters of the model and $\vect{\theta} \in \mathbb{R}^d$.
 The aggregate function is then $f: \mathbb{R}^{d \times k} \rightarrow \mathbb{R}^{d}$ such that the input is a matrix with $d \times k$ entries, where each column corresponds to a single parameter vector.
 
-For exponential families we already know from section \ref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{m}^*, i(\vect{m}^*)/n)$ is normally distributed.
+For exponential families we already know froym section \ref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
 
-Now, let algorithm~\ref{alg:magg} be a generalized version of the model aggregation on distributed systems. 
+Now, algorithm~\ref{alg:magg} presents a generalized approach to model aggregation on distributed systems. 
 Each round, we update the local data set and continue updating the model parameters in parallel. 
 We then send the intermediate results to a coordinator node to check for convergence.
 Note, that depeneding on the stopping criterion, we may need to transmit the number of observed samples as well. 
 The stopping criterion may also involve aggregating the intermediate result or computing some distance function $d: \mathbb{R}^d \times \mathbb{R}^d  \rightarrow \mathbb{R}$ in order to determine whether the training should be stopped.
 \begin{algo}{Distributed Model Aggregation}
     \begin{algorithm}[H]
-    \caption{Distributed Learning}
+    \caption[Distributed Learning with PGMs]{General approach to distributed learning. While to stopping criterion $C$ has not been fulfilled the distributed learners update the observed data in each round and train a new or updated model. Afterwards, the local parameters are sent to the coordinator and aggregated with some aggregation algorithm.}
         \begin{algorithmic}[1]
             \label{alg:magg}
             \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{R}^{\abs{V}}$ and Stopping Criterion C \\
@@ -44,14 +44,11 @@ The stopping criterion may also involve aggregating the intermediate result or c
             \ENDFOR
             }\\
             \COMMENT{On the Coordinator} \\
+            \STATE{$\vect{\tilde{\theta}} \leftarrow \text{aggregate}((\vect{\theta}^{(1)},\ldots,\: \vect{\theta}^{(k)}))$}\\
             \IF{C is fulfilled}
                 \STATE{Broadcast STOP} \\
             \ENDIF
             \ENDWHILE
-            \FORALL{Devices $i = 1, \ldots, k$}
-            \STATE{$\text{send}(\vect{\theta}^{(i)})$\\}
-            \ENDFOR
-            \STATE{$\vect{\tilde{\theta}} \leftarrow \text{aggregate}((\vect{\theta}^{(1)},\ldots,\: \vect{\theta}^{(k)}))$}\\
             %\IF{<condition>} \STATE {<text>} \ELSE \STATE{<text>} \ENDIF
             %\IF{<condition>} \STATE {<text>} \ELSIF{<condition>} \STATE{<text>} \ENDIF
             %\FOR{<condition>} \STATE {<text>} \ENDFOR
@@ -64,17 +61,18 @@ The stopping criterion may also involve aggregating the intermediate result or c
     \end{algorithm}
 \end{algo}
 
-Let us now discuss aggregation function $f \in \mathcal{F}$.
+Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregation models received from distributed learners.
 
 \section{Aggregation Mechanisms}
+
 \subsection{Averaging}
 
-The most intuitive approach to model aggregation is done by simply computing the unbiased average of all model parameters.
+Probably the most intuitive approach to model aggregation is simply computing the unweighted arithmetic mean of all model parameters.
 \begin{equation}
-    \frac{1}{n} \sum_{i=1}^n \theta^i
+    \hat{\theta} = \frac{1}{k} \sum_{i=1}^k \theta^i
 \end{equation}
 Recall that in section \ref{ssec:asymp} we showed that the maximum likelihood estimator for canonical exponential families is asymptotically normal.
-Hence, each $\vect{\theta}^i$ is one sample from the distribution $\vect{\theta}^i \dot{\sim} \mathcal{N}(\vect{\theta}^*, i(\theta)^{-1})$.
+Hence, each $\vect{\theta}^i$ is one sample from the normal distribution $\vect{\theta}^i \dot{\sim} \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ around the true parameters and the inverse fisher information.
 While we have no direct knowledge of $\vect{\theta^*}$, we can use the maximum likelihood estimators for mean and covariance for normal distributions which are
 
 \begin{tcolorbox}
@@ -102,10 +100,10 @@ Thus the arithmetic mean maximizes the likelihood.
         &\Leftrightarrow \vect{\theta}^* = \frac{1}{\abs{\mathcal{D}}} \sum_{\vect{\theta} \in \mathcal{D}}  \vect{\theta}
         \end{split}
     \end{equation}
-    Note, that $i(\vect{\theta}^*)$ is defined \wrt the original probability distribution $\mathbb{P}_{\vect{\theta}}$ and can be treated in the same way $\vect{\Sigma}$ does in the standard proof.
 \end{proof}
 
-
+This already implies, that asymptotically the arithmetic mean is the proper maximum likelihood estimator for the true distribution. 
+However, this only applies in the asymptotic case and as such we want to explore way to speed up the aggregation process in terms of obtaining better intermediate results, when the sample size is small.
 
 \subsection{Weighted Averaging}
 Usually we do not have a sufficient amount of samples to perform simple model averaging with expected behaviour close to the asymptotic case. 
@@ -175,14 +173,10 @@ where $\tau$ is a hyperparameter that controls the importance of the prior mean,
 \paragraph*{Performance-Weighted-Averaging}
 
 Instead of using a federated approach we can also rely on a federated-decentralized hybrid approach, establishing connections or using existing connections between local devices to enable communication.
-We can model connections and devices as a network graph:
-\begin{definition}{Network}
-    Let $\mathcal{N} = (V, E)$ be a network graph with indexed nodes $V_i, \: i \in I$ and edges $E$, where the nodes are local devices hold a local model $m^{(i)}$ each.
-    Edges between two nodes respresent a connection between these two devices, i.e., the devices can communicate with each other.
-\end{definition}
+We can model connections and devices as a network graph.
 
 Then, let $\vect{\theta}^{i}$ be the model parameters of i$^{th}$ model $m^{(i)}$ with locally collected data $\mathcal{D}^{(i)}$.
-Transmitting the model parameters $\vect{\theta}^{i}$  at node $V_i$  to other connected devices  $V_j$ in peer-to-peer fashion allows us to effectively evaluate the generalization capabilites of a model.
+Transmitting the model parameters $\vect{\theta}^{i}$  at node $V_i$  to other connected devices  $V_j$ with $i \neq j$ in peer-to-peer fashion allows us to effectively evaluate the generalization capabilites of a model by treating the data of other nodes as test data.
 We obtain weights for the i$^{th}$ model based on the average performance on all of its neighbors, by computing the running average and variance of some performance measure such as accuracy or likelihood.
 
 Depending on the type of connection it may be required to use an online algorithm to compute average and variance based on scoring individual parameters from connected devices.
@@ -208,7 +202,7 @@ where $\bar{S}_i$ is the average score collected from each neighbour of $i$.
 The normalization is applied to ensure that $\sum_{i=1}^k S_i = 1$, i.e., the aggregate is a convex combination of the local models.
 
 \subsection{Radon Machines}
-
+\label{ssec:radon}
 A more robust method for solving the issue of model aggregation is the computation Radon Points, which is a centerpoint of intersecting convex hulls and related to tukey depth and the geometric median. 
 Centerpoint methods as well as the geomtric median have a increase robustness when compared to arithmetic means.
 Methods, such as the arithmetic mean suffer heavily from outliers, while center point methods do not.
@@ -311,7 +305,6 @@ The least squares solution is obtained by minimizing
 where $b=(1, 0, \ldots, 0) \in \mathbb{R}^{d+2}$ is a zero vector with a single one at the first position and $S$ is the coefficient matrix contaning model parameters (cf. \eq~\ref{eq:radonopt}).
 
 For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all positive entries of $\vect{\lambda}$ and $J$ contains negative or zero entries of $\vect{\lambda}$ the unique solution and model aggregate $\vect{\bar{\theta}}_{RAD}$ is then given by:
-
 \begin{equation}
     \label{eq:radonpoint}
     \begin{split}
@@ -320,7 +313,6 @@ For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all
     \end{split}
 \end{equation}
 The radon point $\vect{\bar{\theta}}_{RAD}$ is a point where the convex combination of both index sets $I, J$ coincide, that is, the partition of $S$ is given by the set of positive and negative entries of $\vect{\lambda}$.
-
 As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries in $\vect{lambda}$ equals the negative entries and therefore $A$ is the normalizer for both partition sets, which ensures that $\vect{\bar{\theta}}_{RAD}$ is a convex combination of both sets.
 
 \begin{algo}{Radon Machine}
@@ -335,7 +327,7 @@ As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries 
             \FOR{$i = h-1, \ldots, 0$}
             \IF{i==0}
                 \IF{Matrix induced by $\mathcal{M}^{old}_1$ is singular}
-                \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\mathcal{M}^{old}_1$)(\eq~\ref{eq:radonopt})}
+                \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\mathcal{M}^{old}_1$)(\eq~\ref{eq:lstsq})}
                 \ELSE
                 \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\mathcal{M}^{old}_1$)(\eq~\ref{eq:radonopt})}
                 \ENDIF
@@ -347,7 +339,7 @@ As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries 
             \STATE{$\mathcal{M}^{\text{new}}\leftarrow \emptyset$ }
             \FOR{$j=1, \ldots, r^i$} 
             \IF{Matrix induced by $\mathcal{M}^{old}_j$ is singular}
-            \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\mathcal{M}^{old}_j$)(\eq~\ref{eq:radonopt})}
+            \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\mathcal{M}^{old}_j$)(\eq~\ref{eq:lstsq})}
             \ELSE
             \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\mathcal{M}^{old}_j$)(\eq~\ref{eq:radonopt})}
             \ENDIF
