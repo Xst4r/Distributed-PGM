@@ -3,12 +3,12 @@
     \center
     \begin{tikzpicture}
         \clip (-1,-1) rectangle (6.5,6.5);
-        \Vertex[x=0,y=0,color=red,opacity=0.5,label=$\mathcal{M}^{i}$, size=1]{i}
-        \Vertex[x=5,y=5,color=tugreen,opacity=0.5,label=$\mathcal{M}^{j}$, size=1]{j}
-        \Vertex[x=3.5,y=1,color=tugreen,opacity=0.5,label=$\mathcal{M}^{k}$, size=1]{k}
-        \Vertex[x=4.5,y=2,color=white,opacity=0.2,label=$\mathcal{M}^{l}$, size=1]{l}
-        \Vertex[x=1,y=3.5,color=tugreen,opacity=0.5,label=$\mathcal{M}^{m}$, size=1]{m}
-        \Vertex[x=1.5,y=5.5,color=white,opacity=0.2,label=$\mathcal{M}^{n}$, size=1]{n}
+        \Vertex[x=0,y=0,color=red,opacity=0.5,label=$m^{i}$, size=1]{i}
+        \Vertex[x=5,y=5,color=tugreen,opacity=0.5,label=$m^{j}$, size=1]{j}
+        \Vertex[x=3.5,y=1,color=tugreen,opacity=0.5,label=$m^{k}$, size=1]{k}
+        \Vertex[x=4.5,y=2,color=white,opacity=0.2,label=$m^{l}$, size=1]{l}
+        \Vertex[x=1,y=3.5,color=tugreen,opacity=0.5,label=$m^{m}$, size=1]{m}
+        \Vertex[x=1.5,y=5.5,color=white,opacity=0.2,label=$m^{n}$, size=1]{n}
         \Edge[Direct ,bend=-8, label=$\vect{\theta}^{i}$](i)(j)
         \Edge[,bend=-8](k)(l)
         \Edge[,bend=-8](j)(l)
@@ -24,12 +24,12 @@
         \center
         \begin{tikzpicture}
             \clip (-1,-1) rectangle (6.5,6.5);
-            \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=$\mathcal{M}^{i}$, size=1]{i}
-            \Vertex[x=5,y=5,color=red,opacity=0.5,label=$\mathcal{M}^{j}$, size=1]{j}
-            \Vertex[x=3.5,y=1,color=red,opacity=0.5,label=$\mathcal{M}^{k}$, size=1]{k}
-            \Vertex[x=4.5,y=2,color=white,opacity=0.2,label=$\mathcal{M}^{l}$, size=1]{l}
-            \Vertex[x=1,y=3.5,color=red,opacity=0.5,label=$\mathcal{M}^{m}$, size=1]{m}
-            \Vertex[x=1.5,y=5.5,color=white,opacity=0.2,label=$\mathcal{M}^{n}$, size=1]{n}
+            \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=$m^{i}$, size=1]{i}
+            \Vertex[x=5,y=5,color=red,opacity=0.5,label=$m^{j}$, size=1]{j}
+            \Vertex[x=3.5,y=1,color=red,opacity=0.5,label=$m^{k}$, size=1]{k}
+            \Vertex[x=4.5,y=2,color=white,opacity=0.2,label=$m^{l}$, size=1]{l}
+            \Vertex[x=1,y=3.5,color=red,opacity=0.5,label=$m^{m}$, size=1]{m}
+            \Vertex[x=1.5,y=5.5,color=white,opacity=0.2,label=$m^{n}$, size=1]{n}
             \Edge[Direct ,bend=-8, label=$S(\vect{\theta}^{i})_k$](j)(i)
             \Edge[,bend=-8](k)(l)
             \Edge[,bend=-8](j)(l)
@@ -41,6 +41,6 @@
             \end{tikzpicture}
             \subcaption[Cap]{Neighbors of $i$ returning a score based on the message of node $i$ and some scoring metric $S$}
         \end{subfigure}
-    \caption{Example Network with 6 Nodes. Messages passed between sender(orange) and receiver(green) in a general network graph with neighbors  $\mathcal{N}(i) = \{j,k,m\}$ of vertex $i$. Every neighbor of $i$ receives a message, the model parameters, and  returns a result based on the specified scoring metric back to the sender.}
+    \caption[Message passing in Networks.]{Example Network with 6 Nodes. Messages passed between sender(orange) and receiver(green) in a general network graph with neighbors  $\mathcal{N}(i) = \{j,k,m\}$ of vertex $i$. Every neighbor of $i$ receives a message, the model parameters, and  returns a result based on the specified scoring metric back to the sender.}
     \label{fig:network}
 \end{figure}

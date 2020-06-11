@@ -1,0 +1,76 @@
+%Tikz Magic
+\tikzstyle{vert}=[rectangle split,
+                  rectangle split parts=3,
+                  rectangle split horizontal,
+                  rounded corners,
+                  draw=black, 
+                  very thick,
+                  text centered]
+
+\tikzstyle{horiz}=[rectangle split,
+                        rectangle split parts=4,
+                        rounded corners,
+                        draw=black, 
+                        very thick,
+                        text centered]
+\begin{figure}[h!]
+    \begin{subfigure}[t]{.5\textwidth}
+    \center
+    \begin{tikzpicture}[node distance=2cm]
+        \node [horiz] (a){
+            \begin{tabular}{ccc}
+                $x_{11}$ &
+                $x_{12}$ &
+                $x_{13}$  \\
+            \end{tabular}
+        \nodepart{second} 
+        \begin{tabular}{ccc}
+            $x_{21}$ &
+            $x_{22}$ &
+            $x_{23}$  \\
+        \end{tabular}
+        \nodepart{third} 
+        \begin{tabular}{ccc}
+            $x_{31}$ &
+            $x_{32}$ &
+            $x_{33}$  \\
+        \end{tabular}
+        \nodepart{fourth}
+        \begin{tabular}{ccc}
+            $x_{41}$ &
+            $x_{42}$ &
+            $x_{43}$  \\
+        \end{tabular}
+        };
+        \end{tikzpicture}
+        \subcaption[Cap]{Fully connected distributed learners each with the usual hardware stack and locally observed data.}
+    \end{subfigure}
+    \begin{subfigure}[t]{.5\textwidth}
+        \center
+        \begin{tikzpicture}[node distance=2cm]
+            \node [vert] (a){\begin{tabular}{c}
+                                $x_{11}$ \\
+                                $x_{21}$ \\
+                                $x_{31}$ \\
+                                $x_{41}$ \\
+                            \end{tabular}  
+                            \nodepart{second} 
+                            \begin{tabular}{c}
+                                $x_{12}$ \\
+                                $x_{22}$ \\
+                                $x_{32}$ \\
+                                $x_{42}$ \\
+                            \end{tabular}   
+                            \nodepart{third} \begin{tabular}{c}
+                                $x_{13}$ \\
+                                $x_{23}$ \\
+                                $x_{33}$ \\
+                                $x_{43}$ \\
+                            \end{tabular}  };
+            \end{tikzpicture}
+            \subcaption[Cap]{Distributed learners in a federated system. Each learner is connected only to the central coordinator, which has no acess to the data.}
+        \end{subfigure}
+    \caption{Federated vs. Distributed Architecture}
+    \label{fig:architecutre}
+\end{figure}
+

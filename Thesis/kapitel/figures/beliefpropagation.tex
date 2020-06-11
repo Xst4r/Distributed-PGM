@@ -1,0 +1,38 @@
+\begin{figure}[!htb]
+    \center
+        \begin{tikzpicture}
+            \Vertex[x=0.5, y=0.5,color=white,opacity=0.5,label=p, size=1, shape=circle]{p}
+            \Vertex[x=-1,y=3,color=white,opacity=0.5,label=q, size=1, shape=circle]{q}
+            \Vertex[x=2,y=2.5,color=tugreen,opacity=0.5,label=r, size=1, shape=circle]{r}
+            \Vertex[x=4,y=4,color=tuorange,opacity=0.5,label=s, size=1, shape=circle]{s}
+            \Vertex[x=2.5,y=6.5,color=white,opacity=0.5,label=t, size=1, shape=circle]{t}
+            \Vertex[x=5.5,y=1.75,color=white,opacity=0.5,label=u, size=1, shape=circle]{u}
+            \Vertex[x=7.5,y=4,color=white,opacity=0.5,label=v, size=1, shape=circle]{v}
+            \Vertex[x=7.5,y=6.5,color=white,opacity=0.5,label=w, size=1, shape=circle]{w}
+            \Edge[Direct, label=$m_{q \rightarrow r}$](q)(r)
+            \Edge[Direct, label=$m_{p \rightarrow r}$](p)(r)
+            \Edge[Direct, label=$m_{r \rightarrow s}$](r)(s)
+            \Edge[Direct, label=$m_{w \rightarrow s}$](w)(s)
+            \Edge[Direct, label=$m_{u \rightarrow s}$](u)(s)
+            \Edge[Direct, label=$m_{t \rightarrow s}$](t)(s)
+            \Edge[Direct, label=$m_{v \rightarrow s}$](v)(s)
+            \draw[line width=0.5 mm] (-2,-1) -- (9.5,-1);
+            \Vertex[x=0.5, y=-8.5,color=tuorange,opacity=0.5,label=p, size=1, shape=circle]{p}
+            \Vertex[x=-1,y=-6,color=tuorange,opacity=0.5,label=q, size=1, shape=circle]{q}
+            \Vertex[x=2,y=-6.5,color=tugreen,opacity=0.5,label=r, size=1, shape=circle]{r}
+            \Vertex[x=4,y=-5,color=white,opacity=0.5,label=s, size=1, shape=circle]{s}
+            \Vertex[x=2.5,y=-2.5,color=tugreen,opacity=0.5,label=t, size=1, shape=circle]{t}
+            \Vertex[x=5.5,y=-7.25,color=tugreen,opacity=0.5,label=u, size=1, shape=circle]{u}
+            \Vertex[x=7.5,y=-5,color=tugreen,opacity=0.5,label=v, size=1, shape=circle]{v}
+            \Vertex[x=7.5,y=-2.5,color=tugreen,opacity=0.5,label=w, size=1, shape=circle]{w}
+            \Edge[Direct, label=$m_{r \rightarrow q}$](r)(q)
+            \Edge[Direct, label=$m_{r \rightarrow p}$](r)(p)
+            \Edge[Direct, label=$m_{s \rightarrow r}$](s)(r)
+            \Edge[Direct, label=$m_{s \rightarrow w}$](s)(w)
+            \Edge[Direct, label=$m_{s \rightarrow u}$](s)(u)
+            \Edge[Direct, label=$m_{s \rightarrow t}$](s)(t)
+            \Edge[Direct, label=$m_{s \rightarrow v}$](s)(v)
+            \end{tikzpicture}
+    \caption[Two-Pass Belief Propagation on a tree.]{Two pass Belief propagation. In the first pass messages are collected from the leaves towards the designated root s. White nodes are computed first then green nodes and finally the orange root, that has to wait for node r. In the second pass the messages are propagated from the root back to the leaves, starting with the white node followed by green nodes and finally orange nodes.}
+    \label{fig:beliefprop}
+\end{figure}

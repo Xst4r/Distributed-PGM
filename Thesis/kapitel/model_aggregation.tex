@@ -2,39 +2,44 @@
 
 \chapter{Model Aggregation}
 \label{chapter:ch3}
-
+Model aggregation is the task of combining a set of models obtained from a group of learners, preserving the original structure and quality, while creating a more well-informed aggregate model.
 \begin{definition}[parbox=false]{Model Aggregation}
-    Let $\mathcal{H}$ be a space of all feasible solutions for some parametrized machine learning task with given structure and $\mathcal{F}$ be the space of all possible functions $f: \mathcal{H}^k \rightarrow \mathcal{H}$ that map a set of feasible solutions to a single solution.
-    Furthermore, let $\vect{M}$ be a random variable and $\mathcal{M} = (m^1, \ldots, m^k) \in \mathcal{H}^k$ be some collection of $k$ models sampled from $\vect{M}$.
+    Let $\mathcal{H}$ be a space of all feasible solutions for some parametrized machine learning task with given structure and $\mathcal{F}$ be the space of all feasible functions $f: \mathcal{H}^k \rightarrow \mathcal{H}$ that map a set of feasible solutions to a single solution.
+    Furthermore, let $\vect{M}$ be a random variable and $\mathcal{M}$ its state space with samples  $\vect{m} = (m^1, \ldots, m^k) \in \mathcal{H}^k$ from the distribution of $\vect{M}$.
+    Where a model $m^i$ is a collection of attributes such as parameters or structure information
 
-    Our goal is to find an aggregate function $f \in \mathcal{F}$ such that it minimizes some loss function with a limited amount of samples from $\vect{M}$:
+    Our goal is to find an aggregate function $f \in \mathcal{F}$ such that it minimizes some loss function with a limited amount of samples from the distribution of $\vect{M}$:
     \begin{equation}
         \label{eq:regret}
-        \arg\min_{f \in \mathcal{F}} \; d(f(\mathcal{\mathcal{M}}), m^*),
+        \arg\min_{f \in \mathcal{F}} \; d(f(\vect{m}), m^*),
     \end{equation}
     where $m^*$ is the optimal aggregate model and $d: \mathcal{H} \times \mathcal{H} \rightarrow \mathbb{R}$ is some quality measure or distance function.
+    Note that we only need to aggregate these elements of $m^i$ that fully characterize the model.
+    Consider statistical models with known structure and distribution. 
+    We only require the parameters in addition to the graph and state-space to perform inference.
 \end{definition}
 
-In the context of this work feasible solutions are from a parametrized family of denisites, i.e., the solution space $\mathcal{H} = \theta$
-$\mathcal{H} = \mathbb{R}^d$, where $d$ is the number of parameters of the model and $\vect{\theta} \in \mathbb{R}^d$.
+In the context of this work feasible solutions are from a parametrized family of densities, i.e., the solution space $\mathcal{H} = \Theta$ and  $m^i = \{\vect{\theta}^i, \tilde{\vect{\mu}}^i, \ldots\}, \: \vect{\theta}^i \in \mathbb{R}^d$, where $d$ is the number of parameters of the model. 
+
 The aggregate function is then $f: \mathbb{R}^{d \times k} \rightarrow \mathbb{R}^{d}$ such that the input is a matrix with $d \times k$ entries, where each column corresponds to a single parameter vector.
 
-For exponential families we already know froym section \ref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
+For exponential families we already know from section \ref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
 
-Now, algorithm~\ref{alg:magg} presents a generalized approach to model aggregation on distributed systems. 
-Each round, we update the local data set and continue updating the model parameters in parallel. 
-We then send the intermediate results to a coordinator node to check for convergence.
-Note, that depeneding on the stopping criterion, we may need to transmit the number of observed samples as well. 
-The stopping criterion may also involve aggregating the intermediate result or computing some distance function $d: \mathbb{R}^d \times \mathbb{R}^d  \rightarrow \mathbb{R}$ in order to determine whether the training should be stopped.
+Basic approaches to federated learning involve training models on each learner first and afterward sending their models to the coordinator.
+Algorithm~\ref{alg:magg} presents this approach in a federated learning setting. 
+Each round, we update the local data set and continue estimating the model parameters in parallel. 
+We then send the local parameters to the coordinator then aggregating the models and checking for convergence.
+Note, that depending on the stopping criterion, we may need to supply additional information to the coordinator such as the number of locally observed samples. 
+The stopping criterion may also involve the aggregate model or computing some distance function $d: \mathcal{H} \times \mathcal{H}  \rightarrow \mathbb{R}$  to determine whether the training should be stopped.
 \begin{algo}{Distributed Model Aggregation}
     \begin{algorithm}[H]
-    \caption[Distributed Learning with PGMs]{General approach to distributed learning. While to stopping criterion $C$ has not been fulfilled the distributed learners update the observed data in each round and train a new or updated model. Afterwards, the local parameters are sent to the coordinator and aggregated with some aggregation algorithm.}
+    \caption[Distributed Learning with PGMs]{General approach to distributed learning. While the stopping criterion $C$ has not been fulfilled the distributed learners update the observed data in each round and train a new or updated model. Afterward, the local parameters are sent to the coordinator and aggregated with some aggregation algorithm.}
         \begin{algorithmic}[1]
             \label{alg:magg}
             \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{R}^{\abs{V}}$ and Stopping Criterion C \\
             \ENSURE Aggregate Model $\vect{\tilde{\theta}}$  \\
             \WHILE{not STOP} \STATE{%
-            \COMMENT{Train models on each device}\\
+            \COMMENT{Train models on each learner in parallel}\\
             \FORALL{Devices $i = 1, \ldots, k$} 
             \STATE{
                 $\mathcal{D}_i \leftarrow \text{update}(\mathcal{D}_i)$ \\
@@ -60,84 +65,79 @@ The stopping criterion may also involve aggregating the intermediate result or c
         \end{algorithmic}
     \end{algorithm}
 \end{algo}
-
+Some additions to this basic approach may include sending the aggregate back to a subset of learners, which violate some threshold e.g. local models that are considered as an outlier when compared to the other models.
 Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregation models received from distributed learners.
 
-\section{Aggregation Mechanisms}
+%\section{Aggregation Mechanisms}
+We will now discuss different aggregation methods, which are represented by line 6 in \alg \ref{alg:magg}.
+The optimal model $m*$ is usually not known and cannot be directly estimated or obtained.
+While  $m*$ is unknown we can still compare different aggregation functions $f$ with each other to determine the most efficient and best-performing aggregator.
 
-\subsection{Averaging}
 
-Probably the most intuitive approach to model aggregation is simply computing the unweighted arithmetic mean of all model parameters.
+\section{Averaging}
+
+Probably the most intuitive approach to aggregate a set of parameters or models is to simply compute the  arithmetic mean of all parameters.
 \begin{equation}
+    \label{eq:arithmean}
     \hat{\theta} = \frac{1}{k} \sum_{i=1}^k \theta^i
 \end{equation}
 Recall that in section \ref{ssec:asymp} we showed that the maximum likelihood estimator for canonical exponential families is asymptotically normal.
-Hence, each $\vect{\theta}^i$ is one sample from the normal distribution $\vect{\theta}^i \dot{\sim} \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ around the true parameters and the inverse fisher information.
-While we have no direct knowledge of $\vect{\theta^*}$, we can use the maximum likelihood estimators for mean and covariance for normal distributions which are
-
-\begin{tcolorbox}
-    Given a data set $\mathcal{D}$ with an underlying multivariate normal distribution and let $\vect{x}^i \in \mathcal{D}$ be a single sample from $\mathcal{D}$.
-    The maximum likelihood estimators for mean and covariance of a multivariate normal distribution are
-    \begin{equation}
-        \begin{split}
-            &\vect{\mu}_{MLE} = \frac{1}{n} \sum_{i=1}^n \vect{x}^i \\
-        &\vect{\Sigma}_{MLE} = \frac{1}{n} \sum_{i=1}^n (\vect{x}^i - \vect{\mu}) \cdot  (\vect{x}^i - \vect{\mu})^T.
-        \end{split}
-    \end{equation}
-\end{tcolorbox}
-For $\vect{\theta}^i$ we then have $\vect{\mu}_{MLE} = \frac{1}{n} \sum_{i=1}^n \vect{\theta}^i$, which is exactly the average of all local model parameters.
-Thus the arithmetic mean maximizes the likelihood.
+Hence, each $\vect{\theta}^i$ is one sample from the normal distribution $\vect{\theta}^i \dot{\sim} \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ around the true parameters and the inverse Fisher information.
+We can then perform a maximum likelihood estimation for the parameters of a normal distribution. 
+Let $\vect{\theta}^*$ be the mean and $i(\vect{\theta}^*)^n$ be the covariance matrix and any set of $\vect{\theta}$ be the observed data.
+We then obtain the following estimator for the mean of the normal distribution.
 \begin{proof}{Maximum Likelihood Estimator Normal Distribution}
     For $\mathcal{N}(\vect{\theta}^*, i(\vect{\theta})^{-1}/n)$ the we want to find the maximizer for $\vect{\theta}^*$ for the maximum likelihood estimator. 
     The partial derivative of $\ell$ \wrt $\vect{\theta}^*$ given $\vect{\theta}$ is:
     \begin{equation}
         \begin{split}
-        \frac{\partial}{\partial \vect{\theta}^*}&\ell_{\mathcal{N}}(\vect{\theta}^*, \vect{i(\vect{\theta}^*)^{-1}/n}; \mathcal{D}) =  \frac{\partial}{\partial \vect{\theta}^*} \sum_{\vect{\theta} \in \mathcal{D}} \log \mathcal{N}(\vect{\theta}; \vect{\theta}^*, \vect{i(\vect{\theta}^*)^{-1}/n})\\
-        &=  \sum_{\vect{\theta} \in \mathcal{D}} \frac{\partial}{\partial \vect{\theta}^*} \log \frac{1}{\sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n}} \cdot \exp\bigg(\frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) \bigg) \\
-        &=  \sum_{\vect{\theta} \in \mathcal{D}} \frac{\partial}{\partial \vect{\theta}^*} \log (\frac{1}{\sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n}}) + \frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) \\
-        &=  \sum_{\vect{\theta} \in \mathcal{D}} \frac{\partial}{\partial \vect{\theta}^*} \frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) - \log \sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n} \\
-        &= - \frac{1}{2} i(\vect{\theta}^*)/n \sum_{\vect{\theta} \in \mathcal{D}} (\vect{\theta} - \vect{\theta}^*) = 0 \\
-        &\Leftrightarrow \vect{\theta}^* = \frac{1}{\abs{\mathcal{D}}} \sum_{\vect{\theta} \in \mathcal{D}}  \vect{\theta}
+        \frac{\partial}{\partial \vect{\theta}^*}&\ell_{\mathcal{N}}(\vect{\theta}^*, \vect{i(\vect{\theta}^*)^{-1}/n}; \vect{m}) =  \frac{\partial}{\partial \vect{\theta}^*} \sum_{\vect{\theta} \in \vect{m}} \log \mathcal{N}(\vect{\theta}; \vect{\theta}^*, \vect{i(\vect{\theta}^*)^{-1}/n})\\
+        &=  \sum_{\vect{\theta} \in \vect{m}} \frac{\partial}{\partial \vect{\theta}^*} \log \frac{1}{\sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n}} \cdot \exp\bigg(\frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) \bigg) \\
+        &=  \sum_{\vect{\theta} \in \vect{m}} \frac{\partial}{\partial \vect{\theta}^*} \log (\frac{1}{\sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n}}) + \frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) \\
+        &=  \sum_{\vect{\theta} \in \vect{m}} \frac{\partial}{\partial \vect{\theta}^*} \frac{1}{2} (\vect{\theta} - \vect{\theta}^*)^Ti(\vect{\theta}^*)/n(\vect{\theta} - \vect{\theta}^*) - \log \sqrt{2 \pi} \abs{i(\vect{\theta}^*)^{-1}/n} \\
+        &= - \frac{1}{2} i(\vect{\theta}^*)/n \sum_{\vect{\theta} \in \vect{m}} (\vect{\theta} - \vect{\theta}^*) = 0 \\
+        &\Leftrightarrow \vect{\theta}^* = \frac{1}{\abs{\vect{m}}} \sum_{\vect{\theta} \in \vect{m}}  \vect{\theta}
         \end{split}
     \end{equation}
 \end{proof}
+Thus the arithmetic mean maximizes the likelihood of a normal distribution.
 
-This already implies, that asymptotically the arithmetic mean is the proper maximum likelihood estimator for the true distribution. 
-However, this only applies in the asymptotic case and as such we want to explore way to speed up the aggregation process in terms of obtaining better intermediate results, when the sample size is small.
+This already implies that the arithmetic mean is asymptotically the proper maximum likelihood estimator for the true distribution. 
+However, this only applies in the asymptotic case and as such we want to explore ways to obtain better aggregates, especially when we only have a small sample size or models with high variance.
 
-\subsection{Weighted Averaging}
-Usually we do not have a sufficient amount of samples to perform simple model averaging with expected behaviour close to the asymptotic case. 
-When the sample size is small we possibly observe models that in reality have a very low probability of being observed. 
-The importance of these models are then overestimated since all local models contribute equally to the model average.
-With the weighted arithmetic mean, we introduce  weights $\vect{\lambda}$ assigning some measure of importance to a local model, with larger weights being more important and smaller ones being less important.
-Additionally we may normalize the weights such that $\sum_{i=1}^k \lambda_i = 1, \lambda_i \geq 0$, i.e., the elements sum to one, which represents as a discrete probability distribution over $\vect{\theta}^i$, where $\mathbb{P}(\vect{X} = \vect{\theta}^i) = \lambda_i$ for a finite set $\mathcal{M} = \{\vect{\theta}^1, \ldots, \vect{\theta}^k\}$ of parameter samples from a random variable $\vect{M}$.
+\section{Weighted Averaging}
+In case we do not have a sufficient amount of samples to perform model averaging, we have to find an alternative to the arithmetic mean aggregation. 
+When the sample size is small we possibly observe models that have a comparably low likelihood of being observed, i.e., the observed models have high variance. 
+The importance of these models is then overestimated since all local models contribute equally to the model average leading to overall worse aggregates.
+With the weighted arithmetic mean, we introduce weights $\vect{\lambda}$ assigning some measure of importance to a local model, with larger weights being more important and smaller ones being less important.
+Additionally we normalize the weights such that $\sum_{i=1}^k \lambda_i = 1, \lambda_i \geq 0$, i.e., the elements sum to one, which represents prior distribution over $\vect{\theta}^i$, where $\mathbb{P}(\vect{M} = \vect{\theta}^i) = \lambda_i$ for a finite set $\vect{m} = \{\vect{\theta}^1, \ldots, \vect{\theta}^k\} \subset \mathcal{M}$ of parameter samples from the probability distribution over $\vect{M}$.
 
-Then, instead of computing the arithmetic mean, which asummes all weights to be equal to $1$, we compute
+Then, instead of computing the arithmetic mean, which assumes all weights to be equal to $1$, we compute
 \begin{equation}
-     \hat{\vect{\theta}} = \sum_{i=1}^k \lambda_i \theta^i = \tilde{\mathbb{E}}_{\mathcal{M}}[\vect{M}],
+     \hat{\vect{\theta}} = \sum_{i=1}^k \lambda_i \theta^i = \tilde{\mathbb{E}}_{\vect{m}}[\vect{M}],
 \end{equation}
 which is the empirical expected value of $\vect{M}$ if and only if $\vect{\lambda}$ is a probability measure.
-Obtaining these weights is a challenging task as this requires some prior knowledge about each local model.
+Obtaining these weights is a challenging task as this requires prior knowledge about each local model or the distribution of local models.
 We may consider evaluating each model using a performance metric or scoring function and use the normalized scores as means to obtain $\vect{\lambda}$
 \begin{equation}
     \lambda_i = \frac{\log f(\vect{\theta}^i)}{\sum_{j=1}^k \log f(\vect{\theta}^j)},
 \end{equation}
 where $f: \mathbb{R}^d \rightarrow \mathbb{R}_+$ is an arbitrary positive real valued function, that maps each local model to some score, probability or likelihood.
 
-Now let $f(\vect{\theta}^i) = \log \mathcal{N}(\vect{\theta}^i \lvert \ldots)$ be the likelihood function of a normal distribution.
+Now let $f(\vect{\theta}^i) = \log \mathcal{N}(\vect{\theta}^i \lvert \vect{\mu}, \vect{\Sigma})$ be the likelihood function of a secondary normal distribution.
 Each weight is then given by
 \begin{equation}
+    \label{eq:normll}
     \lambda_i = \frac{\log \frac{1}{\sqrt{2\pi\lvert \vect{\Sigma} \rvert}} \cdot \exp^{-\frac{1}{2} \cdot (\vect{\theta}^i - \vect{\mu})^T\vect{\Sigma}^{-1}(\vect{\theta}^i - \vect{\mu})}}{\sum_{j=1}^k \log \frac{1}{\sqrt{2\pi\lvert \vect{\Sigma} \rvert}} \cdot \exp^{-\frac{1}{2} \cdot (\vect{\theta^j} - \vect{\mu})^T\vect{\Sigma}^{-1}(\vect{\theta^j} - \vect{\mu})}},
 \end{equation}
-which are just the normalized weights based on all known local models.
-Intuitively, this measures the likelihood of each model based on the predetermined distribution.
-If the actual distribution $\vect{\theta}$ follows is know, this represents the distance between the true parameters $\vect{\theta}^*$ and some local sample.
+which are the normalized weights based on all known local models.
+Intuitively, this measures the likelihood of each model based on some additional information such as expert knowledge.
 
-However, if the actual distribution is known we can simply use the MAP-Estimate instead of the Maximum Likelihood Method as this alllows us to include prior information about the parameter distribtion.
+Given that the actual distribution of $\vect{\theta}$ is known we can simply use the complete MAP-Estimator, as this allows us to include prior information about the parameter distribution.
 
-\paragraph*{MAP Estimator}
+\subsection{MAP Estimator}
 When dealing with likelihood optimization we usually assume the prior probability to be constant, that is, we treat all possible parameters as equally likely.
-The Maximum A-Posteriori(MAP)-Estimator includes the prior information such that we assume the parameters to follow some probability distribution.
+The Maximum a-Posteriori(MAP)-Estimator includes the prior information such that we assume the parameters to follow some probability distribution.
 This is especially useful in settings, where data is scarce.
 However, if the underlying assumption of the prior's distribution does not hold they dominate the estimator resulting in worse models.
 Recall that we obtain the posterior probability for a set of local models $\mathcal{M}$ as the product of likelihood and prior
@@ -147,15 +147,14 @@ Recall that we obtain the posterior probability for a set of local models $\math
     &\propto  \arg\max_{\vect{\theta}}\mathbb{P}(\mathcal{M}\lvert \vect{\theta}) \mathbb{P}(\vect{\theta})  ,
     \end{split}
 \end{equation}
-where the denonimator does not change the optimum \wrt $\vect{\theta}$ and can therefore be omitted.
+where the denominator does not change the optimum \wrt $\vect{\theta}$ and can, therefore, be omitted.
 
-In Section~\ref{ssec:asymp} we have shown that the maximum likelihood estimator is asymptotically normal.
-Hence, if the true distribution of $\vect{\theta}$ is know we can use this as prior information to compute the MAP-estimate as weighted average of the prior information and the MLE-Estimate for the mean:
+Given a normal distributed prior for $\vect{\theta}$, we can  compute the MAP-estimate as the weighted average of the prior and the MLE-Estimate for the mean:
 \begin{equation}
     \label{eq:mapest}
     \begin{split}
     \arg\max_{\vect{\theta}} \ell(\vect{\theta}; \mathcal{M}, \vect{\lambda}) &= \arg\max_{\vect{\theta}} \sum_{i=1}^k \log \mathbb{P}(\mathcal{M}\lvert \vect{\theta}) \mathbb{P}(\vect{\theta}) \\
-    &= \arg\max_{\vect{\theta}} \sum_{i=1}^k \log \mathcal{N}(\vect{\theta}^i ; \vect{\theta}, \Sigma) + \log \mathcal{N}(\vect{\theta}; \vect{\theta}^*, i(\vect{\theta}^{-1}/n)).
+    &= \arg\max_{\vect{\theta}} \sum_{i=1}^k   \log \mathcal{N}(\vect{\theta}; \vect{\theta}^*, i(\vect{\theta}^{-1}/n))+  \log \mathcal{N}(\vect{\theta}^i ; \vect{\theta}, \Sigma).
     \end{split}
 \end{equation}
 Taking the derivative of \eq~\ref{eq:mapest} \wrt $\vect{\theta}$ we get
@@ -164,63 +163,69 @@ Taking the derivative of \eq~\ref{eq:mapest} \wrt $\vect{\theta}$ we get
 \end{equation}
 which is the weighted average of the maximum likelihood estimator for $\vect{\theta}$ and the mode of the distribution $\vect{\theta}$ follows weighted by the variance.
 
-In practice we often encounter the usage of the bayesian average~\cite{de2011bayesian}, which is the weighted average between the prior mean and the sample mean
+In practice, we often encounter the usage of the bayesian average~\cite{de2011bayesian}, which is the weighted average between the prior mean and the sample mean
 \begin{equation}
     \vect{\theta} = \frac{\tau \vect{\theta}^* + \sum_{i=1}^k \vect{\theta}^i}{\tau + k},
 \end{equation}
 where $\tau$ is a hyperparameter that controls the importance of the prior mean, i.e., we add the prior mean $\tau$ times to the average. 
 
-\paragraph*{Performance-Weighted-Averaging}
+\subsection{Performance-Weighted-Averaging}
 
-Instead of using a federated approach we can also rely on a federated-decentralized hybrid approach, establishing connections or using existing connections between local devices to enable communication.
-We can model connections and devices as a network graph.
+Instead of using a federated approach, we can also rely on a federated-decentralized hybrid approach, establishing connections or using existing connections between local devices to enable communication.
+Given a network graph, where edges are existing connections, we can exchange information between distributed learners alongside these connections.
+Exchanging information between neighboring nodes only is usually a compromise when it comes to network complexity.
 
-Then, let $\vect{\theta}^{i}$ be the model parameters of i$^{th}$ model $m^{(i)}$ with locally collected data $\mathcal{D}^{(i)}$.
-Transmitting the model parameters $\vect{\theta}^{i}$  at node $V_i$  to other connected devices  $V_j$ with $i \neq j$ in peer-to-peer fashion allows us to effectively evaluate the generalization capabilites of a model by treating the data of other nodes as test data.
+Then, let $\vect{\theta}^{i}$ be the model parameters of i$^{th}$ model $m^{i}$ with local data $\mathcal{D}^{i}$.
+Transmitting the model parameters $\vect{\theta}^{i}$  at node $V_i$  to other connected devices  $V_j$ with $i \neq j$ in peer-to-peer fashion allows us to evaluate models based on the training data of other learners.
 We obtain weights for the i$^{th}$ model based on the average performance on all of its neighbors, by computing the running average and variance of some performance measure such as accuracy or likelihood.
 
 Depending on the type of connection it may be required to use an online algorithm to compute average and variance based on scoring individual parameters from connected devices.
 On such algorithm is Welford's algorithm, which can be used to compute running average and variance for some scoring function.
 Welford's algorithm has the property to asynchronously update the running average, while only retaining the number of elements that have already been averaged and the average itself.
 
-The communication process is shown in \fig \ref{fig:dist}, where on the left, node $i$ sends its local parameters to neighbouring nodes. The neighbours $k$ and $j$ return the local score, determined by some scoring function $S: \mathcal{H} \times \mathbb{R}^n \rightarrow \mathbb{R}$ with local model $\mathcal{M} \in \mathcal{H}$ and parameters $\vect{\theta} \in \mathbb{R}^d$.
+The communication process is shown in \fig \ref{fig:dist}, where on the left, node $i$ sends its local parameters to neighboring nodes. The neighbors $k$ and $j$ return the local score, determined by some scoring function $S: \mathcal{H} \times \mathbb{R}^n \rightarrow \mathbb{R}$ with local model $m^{i} \in \mathcal{H}$ and parameters $\vect{\theta}^{i} \in \mathbb{R}^d$.
 
 \input{kapitel/figures/network_graph.tex}
 
-In practice the general assumption is that each device is only connected to two other devices, that is the underlying network structure is a chain graph.
-However, similar approaches on general network graphs have been discussed in depth for example by Wolff~\cite{wolff2013local} with thresholding functions.
-The communication is not restricted to neighbouring nodes only and once all nodes agree on a value to a certain extent, i.e., all nodes stop sending messages, the algorithm terminates.
-In the case of model aggregation one would choose a thresholding function that either computes the pairwise distance between parameters or once the average score is sufficiently good.
+In practice we often constrain each device to be only connected to two other devices, such that  the underlying network structure is a chain graph.
+However, more complex approaches on general network graphs have been discussed in depth for example by Wolff~\cite{wolff2013local} for computing thresholding functions.
+The communication is not restricted to neighboring nodes only and once all nodes agree on a value to a certain extent, i.e., all nodes stop sending messages, the algorithm terminates.
+When considering model aggregation, we choose a thresholding function that either computes the pairwise distance between parameters or once the average score is sufficiently good.
 
-Once all local models have received an average score the local parameters along with the score are sent to the coordinator in order to compute the weighted average
+Once all local models have received an average score the local parameters along with the score are sent to the coordinator to compute the weighted average
 
 \begin{equation}
-    \tilde{\vect{\theta}}_{DEC} = \frac{1}{\sum_{i=1}^k \bar{S}_i} \cdot \sum_{i=1}^k \bar{S}_i \vect{\theta}^{(i)},
+    \label{eq:scorenorm}
+    \tilde{\vect{\theta}}_{DEC} = \frac{1}{\sum_{i=1}^k S_i} \cdot \sum_{i=1}^k \bar{S}_i \vect{\theta}^{(i)},
 \end{equation}
 
-where $\bar{S}_i$ is the average score collected from each neighbour of $i$. 
+where $\bar{S}_i$ is the average score collected from all neighbors of $i$. 
 The normalization is applied to ensure that $\sum_{i=1}^k S_i = 1$, i.e., the aggregate is a convex combination of the local models.
+When comparing the arithmetic mean and weighted average the introduction of weights turns the average into an informed aggregation based on additional prior information about the aggregated elements, where the arithmetic mean is a special case of the weighted average with equal weights.
 
-\subsection{Radon Machines}
+However, the arithmetic mean suffers from outliers and the weighted average requires prior information.
+Instead, we can also aggregate a set of points using the center point or geometric median methods.
+
+\section{Radon Machines}
 \label{ssec:radon}
-A more robust method for solving the issue of model aggregation is the computation Radon Points, which is a centerpoint of intersecting convex hulls and related to tukey depth and the geometric median. 
-Centerpoint methods as well as the geomtric median have a increase robustness when compared to arithmetic means.
-Methods, such as the arithmetic mean suffer heavily from outliers, while center point methods do not.
-This is reflected in the fact that we may observe "bad" models of up to fifty percent of the sample size, while still being able to obtain the correct center point.
+A more robust method for solving the issue of model aggregation is the computation of Radon Points, which are center points of intersecting convex hulls and related to Tukey depth and the geometric median. 
+Center-point methods as well as the geometric median benefit from increased robustness when compared to arithmetic means.
+The arithmetic mean can suffer heavily from outliers, while center point methods do not if the number of outliers is limited.
+This is reflected in the fact that we may observe "bad" models of up to fifty percent of the sample size, while still being able to obtain a good aggregate.
 
-\begin{definition}[parbox=false]{Centerpoint}
+\begin{definition}[parbox=false]{Center Point}
     Given a set of points $T \subset \mathbb{R}^{d}$ and a set  $\vect{H} \subset \mathbb{R}^{d-1}$ of separating hyerplanes that partition $T$  into two roughly equal sized sets $T_1, T_2$, a center point $p \in \mathbb{R}^d$ is a point, where all hyperplanes $h \in \vect{H}$ intersect.
 
-    Iff the partition is in general position, i.e., the partition is a unique solution, the radon point is guaranteed to be the center point of $T$, as shown by Peterson.~\cite{peterson1972geometry}
+    If the partition is in general position, i.e., the partition is a unique solution to the problem, the Radon point induced by the partition is guaranteed to be the center point of $T$, as shown by Peterson.~\cite{peterson1972geometry}
 \end{definition}
 
-Both concepts, centerpoint and geometric median, are designed to find the center of mass of a given set of points.
+Both concepts, center point, and geometric median are designed to find the center of mass of a given set of points.
 However, while both concepts are closely related, they are different generalizations to the median in high-dimensional space.
-While the geometric median is well defined, there exists no algorithm to exactly compute the it in $\mathbb{R}^n$ dimensions.
-Instead, Kamp et al. \cite{kamp2017effective} introduced Radon Machines as method for model ensembling to compute a centerpoint for a set of models.
-A radon point can be found in polynomial time \wrt the number of dimensions of the space the points are located in.
-\paragraph*{Radon Points}
-Given a pair of convex hulls defined by two sets of points definined the hull $S_1, S_2$, a radon point is a point that is contained within the intersection of the two convex hulls of $S_1, S_2$. 
+While the geometric median is well defined, there exists no algorithm for exact computation in $\mathbb{R}^n$ dimensional space.
+Instead, Kamp et al. \cite{kamp2017effective} introduced Radon Machines as a method for model ensembling to compute a center point for a set of models.
+A Radon point can be found in polynomial time \wrt the number of dimensions of the space the points are located in.
+\subsection{Radon Points}
+Given a pair of convex hulls defined by two sets of points defined the hull $S_1, S_2$, a Radon point is a point that is contained within the intersection of the two convex hulls of $S_1, S_2$. 
 Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
 
 \begin{threm}[label=thm:radon]{Radon's Theorem}
@@ -235,18 +240,18 @@ Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
     \end{equation}
 
     where $Conv(\cdot)$ is the Convex Hull for a given set.
-    Any point contained  in the intersection between the two convex hulls is a radon point.
+    Any point contained in the intersection between the two convex hulls is a radon point.
 \end{threm}
 
 Example~\ref{ex:radon} illustrates Radon's Theorem in 2-dimensional euclidean space.
-Given a set of $d+2 =4$ points we can express the radon point as intersection of the convex hulls.
-In this case the convex hulls are formed by a triangle around the fourth point.
+Given a set of $d+2 =4$ points we can express the Radon point as intersection of the convex hulls.
+In this case, the convex hulls are formed by a triangle around the fourth point.
 The convex hulls intersect exactly on the point in the center of the triangle and it is the unique solution to this problem.
 
 \begin{example}{Radon Points in $\mathbb{R}^2$}
     \label{ex:radon}
-    Consider this example of Radon's Theorem in $\mathbb{R}^2$ on the left with four points $\{(0,0), (3,0), (1.5, 3), (1.5,1)\}$, where the former three form a equilateral triangle and the latter is the center point of that triangle.
-    The solution to the linear equations in terms Radon's Theorem is $\{1,1,1\},\{-3\}$ in the same as  the points. 
+    Consider this example of Radon's Theorem in $\mathbb{R}^2$ on the left with four points $\{(0,0), (3,0), (1.5, 3), (1.5,1)\}$, where the former three forms an equilateral triangle and the latter is the center point of that triangle.
+    The solution to the linear equations in terms Radon's Theorem is $\{1,1,1\},\{-3\}$ in the same as the points. 
     The example on the right contains an additional point outside of the triangle, which results in an overdetermined system of linear equations, where the solution is no longer unique.
     
     \input{kapitel/figures/radon_example.tex} 
@@ -270,11 +275,11 @@ The convex hulls intersect exactly on the point in the center of the triangle an
 \end{example}
    
 
-\paragraph*{Computation of Radon Points}
+\subsection{Computation of Radon Points}
 
-The problem of finding such as point can be solved by formulating a system of linear equations, where the radon point is the convex combination all elements from either partition $S_1, S_2$.
+The problem of finding such a point can be solved by formulating a system of linear equations, where the Radon point is the convex combination of all elements from either partition $S_1, S_2$.
 Now let $S = \{\vect{\theta}^{(1)}, \ldots \vect{\theta}^{(d+2)}\} \subset \mathbb{R}^d$, be a set consisting of $d+2$ local model parameter vectors.
-We can find the model aggregate in terms of the radon point by using the solution obtained from the following linear program:
+We can find the model aggregate in terms of the Radon point by using the solution obtained from the following linear program:
 
 \begin{equation}
     \label{eq:radonopt}
@@ -287,22 +292,22 @@ We can find the model aggregate in terms of the radon point by using the solutio
 \end{equation}
 
 Having $d+2$ $\mathbb{R}^d$-dimensional points results in an overdetermined system with no unique solution.
-This issue can be solved by adding an additional constraint, e.g. fixing one arbritary variable to a constant. 
-Note, that we still need a total of $d+2$ parameter vectors to compute the radon point.
+This issue can be solved by adding a constraint, e.g. fixing one arbitrary variable to a constant. 
+Note, that we still need $d+2$ parameter vectors to compute the Radon point.
 This allows, in absence of linear dependencies, finding a unique solution to the problem.
 
-However, any solution to the system of linear equations presented in \eq~\ref{eq:radonopt}is a radon point and there may exist multiple solutions.
-One particular issue that we may run into is that the maximum likelihood estimators obtained from sampling the same random variable approch each other in the limit of $n \rightarrow \infty$, possibly leading to the introduction of linear dependencies.
-While this is an issue for the sytem of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any one solution.
-This means however, that we lose some the property of the radon point being the only center point as shown bei Peterson et al.~\cite{peterson1972geometry}
-If the solution to the optimization problem is unique, the partition is unique and thus the radon point is the center point of all model parameter vectors.
-Hence, if there is no unique solution there is not much information about the position of the radon point except that it is some sort of center point and contained in the intersection of the two convex hulls.
-The least squares solution is obtained by minimizing
+However, any solution to the system of linear equations presented in \eq~\ref{eq:radonopt} is a Radon point and there may exist multiple solutions.
+One particular issue that we may run into is that the maximum likelihood estimators obtained from sampling the same random variable approach each other in the limit of $n \rightarrow \infty$, possibly leading to the introduction of linear dependencies.
+While this is an issue for the system of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any one solution.
+This means, however, that we lose the property of the Radon point being the only center point as shown by Peterson et al.~\cite{peterson1972geometry}
+If the solution to the optimization problem is unique, the partition is unique and thus the Radon point is the center point of all model parameter vectors.
+Hence, if there is no unique solution there is not much information about the position of the Radon point except that it is some sort of center point and contained in the intersection of the two convex hulls.
+The least-squares solution is obtained by minimizing
 \begin{equation}
     \label{eq:lstsq}
         \min_{\vect{\lambda}} \norm{S\vect{\lambda} - b}^2_2,
 \end{equation}
-where $b=(1, 0, \ldots, 0) \in \mathbb{R}^{d+2}$ is a zero vector with a single one at the first position and $S$ is the coefficient matrix contaning model parameters (cf. \eq~\ref{eq:radonopt}).
+where $b=(1, 0, \ldots, 0) \in \mathbb{R}^{d+2}$ is a zero vector with a single one at the first position and $S$ is the coefficient matrix containing model parameters (cf. \eq~\ref{eq:radonopt}).
 
 For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all positive entries of $\vect{\lambda}$ and $J$ contains negative or zero entries of $\vect{\lambda}$ the unique solution and model aggregate $\vect{\bar{\theta}}_{RAD}$ is then given by:
 \begin{equation}
@@ -312,73 +317,71 @@ For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all
     \vect{\bar{\theta}}_{RAD} &= \sum_{i\in I} \frac{\lambda_i}{A} \vect{\theta}^{(i)} = - \sum_{j\in J} \frac{\lambda_j}{A} \vect{\theta}^{(j)}.
     \end{split}
 \end{equation}
-The radon point $\vect{\bar{\theta}}_{RAD}$ is a point where the convex combination of both index sets $I, J$ coincide, that is, the partition of $S$ is given by the set of positive and negative entries of $\vect{\lambda}$.
-As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries in $\vect{lambda}$ equals the negative entries and therefore $A$ is the normalizer for both partition sets, which ensures that $\vect{\bar{\theta}}_{RAD}$ is a convex combination of both sets.
+The Radon point $\vect{\bar{\theta}}_{RAD}$ is a point where the convex combination of both index sets $I, J$ coincide, that is, the partition of $S$ is given by the set of positive and negative entries of $\vect{\lambda}$.
+As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries in $\vect{\lambda}$ equals the negative entries and therefore $A$ is the normalizer for both partition sets, which ensures that $\vect{\bar{\theta}}_{RAD}$ is a convex combination of both sets.
 
 \begin{algo}{Radon Machine}
     \begin{algorithm}[H]
-    \caption[Radon Machine for parallelized model aggregation for exponential family models]{Radon Machine for parallelized model aggregation for exponential family models. Each iteration consists of 1) Obtaining the coefficients for the convex combination of parameters and 2) computing the center point as the convex combination. In the last step we only have a single set of $r$ parameter vectors that has to be aggregated to obtain the final result. In case of linear dependencies between parameter vectors we use the least squares optimization instead.}
+    \caption[Radon Machine for parallelized model aggregation for exponential family models]{Radon Machine for parallelized model aggregation for exponential family models. Each iteration consists of 1) Obtaining the coefficients for the convex combination of parameters and 2) computing the center point as the convex combination. In the last step, we only have a single set of $r$ parameter vectors that have to be aggregated to obtain the final result. In the case of linear dependencies between parameter vectors we use the least-squares optimization instead.}
         \begin{algorithmic}[1]
             \label{alg:radon}
-            \REQUIRE Model Parameters $\mathcal{M} = \{\vect{\theta}^1, \ldots,\: \vect{\theta}^{r^{h}}\}$, Radon Number $r$, Aggregation Steps $h$ \\
+            \REQUIRE Model Parameters $\vect{m} = \{\vect{\theta}^1, \ldots,\: \vect{\theta}^{r^{h}}\}$, Radon Number $r$, Aggregation Steps $h$ \\
             \ENSURE Aggregate Model $\vect{\tilde{\theta}}_{RAD}$  \\
             \COMMENT{Partition Parameters into $r^{h-1}$ Subsets of Size $r$}
-            \STATE{$\mathcal{M}^{\text{old}} \leftarrow \{\{\vect{\theta}^1, \ldots \vect{\theta}^r\}_1, \ldots, \{\vect{\theta}^1, \ldots \vect{\theta}^r\}_{r^{h-1}}\}$\\}
+            \STATE{$\vect{m}^{\text{old}} \leftarrow \{\{\vect{\theta}^1, \ldots \vect{\theta}^r\}_1, \ldots, \{\vect{\theta}^1, \ldots \vect{\theta}^r\}_{r^{h-1}}\}$\\}
             \FOR{$i = h-1, \ldots, 0$}
             \IF{i==0}
-                \IF{Matrix induced by $\mathcal{M}^{old}_1$ is singular}
-                \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\mathcal{M}^{old}_1$)(\eq~\ref{eq:lstsq})}
+                \IF{Matrix induced by $\vect{m}^{old}_1$ is singular}
+                \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\vect{m}^{old}_1$)(\eq~\ref{eq:lstsq})}
                 \ELSE
-                \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\mathcal{M}^{old}_1$)(\eq~\ref{eq:radonopt})}
+                \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\vect{m}^{old}_1$)(\eq~\ref{eq:radonopt})}
                 \ENDIF
-                \STATE{$\mathcal{M}^{new} \leftarrow aggregate(\mathcal{M}^{old}_1, \vect{\lambda})$; \\
+                \STATE{$\vect{m}^{new} \leftarrow aggregate(\vect{m}^{old}_1, \vect{\lambda})$; \\
                 Break;\\}
             \ENDIF
             \STATE{
             \COMMENT{Aggregate Models in Parallel}\\
-            \STATE{$\mathcal{M}^{\text{new}}\leftarrow \emptyset$ }
+            \STATE{$\vect{m}^{\text{new}}\leftarrow \emptyset$ }
             \FOR{$j=1, \ldots, r^i$} 
-            \IF{Matrix induced by $\mathcal{M}^{old}_j$ is singular}
-            \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\mathcal{M}^{old}_j$)(\eq~\ref{eq:lstsq})}
+            \IF{Matrix induced by $\vect{m}^{old}_j$ is singular}
+            \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\vect{m}^{old}_j$)(\eq~\ref{eq:lstsq})}
             \ELSE
-            \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\mathcal{M}^{old}_j$)(\eq~\ref{eq:radonopt})}
+            \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\vect{m}^{old}_j$)(\eq~\ref{eq:radonopt})}
             \ENDIF
             \STATE{
-                $\vect{\theta}_{RAD}^j \leftarrow aggregate(\mathcal{M}^{old}_j, \vect{\lambda})$; (\eq~\ref{eq:radonpoint})\\
-                $\mathcal{M}^{\text{new}}\leftarrow \mathcal{M}^{\text{new}} \cup \vect{\theta}_{RAD}^j$;  \\
+                $\vect{\theta}_{RAD}^j \leftarrow aggregate(\vect{m}^{old}_j, \vect{\lambda})$; (\eq~\ref{eq:radonpoint})\\
+                $\vect{m}^{\text{new}}\leftarrow \vect{m}^{\text{new}} \cup \vect{\theta}_{RAD}^j$;  \\
             } 
             \ENDFOR
             }\\
-            \COMMENT{Partition $\mathcal{M}^{new}$ into $r^{i-1}$ subsets of size $r$}\\
-            \STATE{$\mathcal{M}^{\text{old}} \leftarrow  \{\{\vect{\theta}^1, \ldots \vect{\theta}^r\}_1, \ldots, \{\vect{\theta}^1, \ldots \vect{\theta}^r\}_{r^{i-1}}\}$\\}
+            \COMMENT{Partition $\vect{m}^{new}$ into $r^{i-1}$ subsets of size $r$}\\
+            \STATE{$\vect{m}^{\text{old}} \leftarrow  \{\{\vect{\theta}^1, \ldots \vect{\theta}^r\}_1, \ldots, \{\vect{\theta}^1, \ldots \vect{\theta}^r\}_{r^{i-1}}\}$\\}
             \ENDFOR
-            \RETURN {$\mathcal{M}^{new} = \{\vect{\theta}_{RAD}\}$}
+            \RETURN {$\vect{m}^{new} = \{\vect{\theta}_{RAD}\}$}
         \end{algorithmic}
     \end{algorithm}
 \end{algo}
 
-\paragraph*{Limitations}
-Given a set of parameter vectors we can compute their center point as radon point in polynomial time \wrt the dimensionality of the model parameters.
-However, this leads to certain drawbacks as number of models required to iteratively compute the radon points scales exponentially with the number of features of the data.
-For the aggregation of exponential family model this implies that the number of models scales with the number of parameters of that model as we aggregate a set of model parametes $\vect{\theta}$.
+\subsection{Limitations}
+Given a set of parameter vectors, we can compute their center point as Radon point in polynomial time \wrt the dimensionality of the model parameters.
+However, this leads to certain drawbacks as the number of models required to iteratively compute the Radon points scales exponentially with the number of features of the data.
+For the aggregation of exponential family model, this implies that the number of models scales with the number of parameters of that model as we aggregate a set of model parameters $\vect{\theta}$.
 
-Given a model with 1000 parameters, we would already require more than one million models for $h > 1$, which requires large quantity of models and data.
+Given a model with 1000 parameters, we would already require more than one million models for $h > 1$, which requires large quantities of models and data.
 Otherwise we would limit ourselves to $h=1$, which still requires $d+2 = 1002$ models for a single aggregation.
 
 We alleviate this issue by sampling additional model parameters from a distribution centered around the local model parameters. 
-Recall that in section \ref{ssec:asymp} we showed, that the MLE for exponential family 
-models is asymptotically normal.
 If we assume the local model parameters to be the "true" model parameters \wrt to the data seen we can sample additional model parameters. 
 This can be done for each local model up until the required amount of parameters $(d+2)^h$ have been sampled.
 
 
-\subsection{Bootstrap Aggregagation}
+\section{Bootstrap Aggregagation}
 
-With generative modelling we can easily sample additional data from local models by transferring the local model parameters to the coordinator node.
-Sampling can be realized in various different ways such as Gibbs Sampling or Perturb and Map.
-We then create a new Dataset from our samples and use this to train a new global model. 
-Instead of directly aggregating $\vect{\theta}^k$ we first sample new data  $\hat{\vect{x}}^k \sim \mathbb{P}_{\vect{\theta}^k}$ and then train new models on the aquired sample data.
-However, for exponential families training $k$ models with average sufficient statistics $\vect{\mu}^k$ is equal to training a single model with the average of all sufficient statistics:
+With generative modeling, we can sample additional data from local models by transferring the local model parameters to the coordinator node.
+Sampling can be realized with Gibbs Sampling or Perturb and Map as presented in \sect~\ref{sec:sampling}.
+We then create a new data set and use this to train a  global model. 
+Instead of directly aggregating $\vect{\theta}^k$ we first sample new data  $\hat{\vect{x}}^k \sim \mathbb{P}_{\vect{\theta}^k}$ and then train new models on the acquired sample data.
+However, for exponential families training $k$ models with average sufficient statistics $\vect{\mu}^k$ is equal to training a single model with the average over all sufficient statistics:
 \begin{equation}
     \begin{split}
         \bar{\vect{\theta}}_{BS} &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \log f(\vect{\theta}; \hat{\vect{x}}^k) \\
@@ -389,26 +392,26 @@ However, for exponential families training $k$ models with average sufficient st
     \end{split}
 \end{equation}
 
-Alternatively, we can consecutively sample new parameter vectors first
+\subsection{Bootstrap and MAP}
+Alternatively, we can consecutively sample new parameter vectors first.
 Recall that according to \ref{ssec:asymp} the MLE is asymptotically normal, then we have $\hat{\theta}^{k_i}  \sim \mathcal{N}(\vect{\theta}^k, i(\vect{\theta}^k)^{-1}/n)$, assuming that each local parameters are the ground truth.
 Followed by using the MAP estimate for each $\vect{x}^{k_i} = \arg\max_{\vect{x}} \mathbb{P}_{\hat{\vect{\theta}}^{k_i}}(\vect{x})$ obtaining data sets of MAP estimates from parameter distributed around the k-th local model.
 
+%\section{Model Sampling}
+%In Section~\ref{ssec:asymp} we have shown the asymptotic normality for the maximum likelihood estimator of canonical exponential families.
+%While the true distribution \wrt $\vect{\theta}^*$ is usually unknown, we may still be able to take advantage of the asymptotic properties. 
 
-\section{Model Sampling}
-In Section~\ref{ssec:asymp} we have shown the asymptotic normality for the maximum likelihood estimator of canonical exponential families.
-While the true distribution \wrt $\vect{\theta}^*$ is usually unknown, we may still be able to take advantage of the asymptotic properties. 
+%Given some local model $\vect{\theta}^i$ obtained from data sampled on the i-th device we may assume any other sample from the same device resulting in a different parameter vector $\vect{\hat{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$ to be distributed around the original sample. 
+%Since any $\hat{\vect{\theta}}$ sampled from this distribution can be interpreted as the MLE for a different i.i.d. sample we are able to generate new samples based on a single local estimate.
 
-Given some local model $\vect{\theta}^i$ obtained from data sampled on the i-th device we may assume any other sample from the same device resulting in a different parameter vector $\vect{\hat{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$ to be distributed around the original sample. 
-Since any $\hat{\vect{\theta}}$ sampled from this distribution can be interpreted as the MLE for a different i.i.d. sample we are able to generate new samples based on a single local estimate.
+%There are two things to consider when sampling new parameters.
+%First we have to determine where the generate the new samples.
+%Sampling on the devices itself leads to parallelism and thus speedup, while also increasing communication requirements, as all samples need to be communicated.
+%Generating the samples on the coordinator node minimizes communication cost, while increasing computation time for the sampling. 
+%Second, we have to find an efficient way to generate the covariance matrix as computation of the fisher information $i(\vect{\theta}^i)$ may not be feasible in terms of memory requirement especially when sampling on the local devices.
 
-There are two things to consider when sampling new parameters.
-First we have to determine where the generate the new samples.
-Sampling on the devices itself leads to parallelism and thus speedup, while also increasing communication requirements, as all samples need to be communicated.
-Generating the samples on the coordinator node minimizes communication cost, while increasing computation time for the sampling. 
-Second, we have to find an efficient way to generate the covariance matrix as computation of the fisher information $i(\vect{\theta}^i)$ may not be feasible in terms of memory requirement especially when sampling on the local devices.
+%Here we chose to generate additional samples on the coordinator while proposing different methods to obtain covariances.
 
-Here we chose to generate additional samples on the coordinator while proposing different methods to obtain covariances.
-
-\paragraph*{Covariance Matrix Generation}
+%\paragraph*{Covariance Matrix Generation}
 
 

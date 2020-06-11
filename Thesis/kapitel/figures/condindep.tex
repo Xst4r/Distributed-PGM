@@ -1,0 +1,12 @@
+\begin{figure}[H]
+    \center
+    \begin{tikzpicture}
+        \Vertex[x=0,y=0,color=tugreen,opacity=0.5,label=r, size=1, shape=circle]{r}
+        \Vertex[x=2,y=0,color=tuorange,opacity=0.5,label=s, size=1, shape=circle]{s}
+        \Vertex[x=4,y=0,color=tugreen,opacity=0.5,label=w, size=1, shape=circle]{w}
+        \Edge[](r)(s)
+        \Edge[](s)(w)
+        \end{tikzpicture}
+    \caption[Conditional Independence of Random Variables]{Minimal example for conditional independence consisting of a graph with three vertices and two edges. The random variable $X_r$ is conditionally independent of $X_w$ when $X_s$ is observed}
+    \label{fig:condind}
+\end{figure}

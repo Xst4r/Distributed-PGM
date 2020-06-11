@@ -22,6 +22,6 @@
         \Edge[Direct, label=$\mathcal{D}_n$](datan)(dn)
         \Edge[Direct ,bend=-10, label=$\hat{\vect{\theta}}$](a)(c)
         \end{tikzpicture}
-    \caption[Implementation Chart]{Implementation of the continuous structure, which allows for communication between coordinator and all devices. The coordinator then computes the aggregate and may send feedback in form of the aggregate back to all devices. The devices themselves may be connected as well. First the local data $\mathcal{D}_i$ is collected on each device. Then each device obtains the local parameters $\vect{\theta}^i$, which it then sends to the coordinator. Once a sufficient number of parameter vectors have arrived the coordinator computes an aggregate and optionally provides feedback about the quality, e.g., the aggreagate.}
+    \caption[Implementation Chart]{Implementation of the continuous structure, which allows for communication between coordinator and all devices. The coordinator then computes the aggregate and may send feedback in form of the aggregate back to all devices. The devices themselves may be connected as well. First the local data $\mathcal{D}_i$ is collected on each device. Then each device obtains the local parameters $\vect{\theta}^i$, which it then sends to the coordinator. Once a sufficient number of parameter vectors have arrived the coordinator computes an aggregate and optionally provides feedback about the quality, e.g., the aggregate.}
     \label{fig:dist}
 \end{figure}

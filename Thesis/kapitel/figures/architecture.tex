@@ -1,1 +1,51 @@
 %Tikz Magic
+\tikzstyle{data}=[rectangle split,
+                  rectangle split parts=3,
+                  rectangle split part fill={tugray!30,tugreen!20, tuorange!20},
+                  rounded corners,
+                  draw=black, 
+                  very thick,
+                  text centered]
+
+\tikzstyle{coordinator}=[rectangle split,
+                        rectangle split parts=2,
+                        rectangle split part fill={tugray!30,tugreen!20},
+                        rounded corners,
+                        draw=black, 
+                        very thick,
+                        text centered]
+\begin{figure}[h!]
+    \begin{subfigure}[t]{.5\textwidth}
+    \center
+    \begin{tikzpicture}[node distance=2cm]
+        \node [data] (a)  {CPU \nodepart{second} Memory \nodepart{third} Data};
+        \node [data]  at (4,4)  (b)    {CPU \nodepart{second} Memory \nodepart{third} Data};
+        \node [data]  at (0,4)  (c)    {CPU \nodepart{second} Memory \nodepart{third} Data};
+        \node [data]  at (4,0)  (d)    {CPU \nodepart{second} Memory \nodepart{third} Data};
+        \Edge[](a)(b)
+        \Edge[](a)(c)
+        \Edge[](b)(c)
+        \Edge[](a)(d)
+        \Edge[](b)(d)
+        \Edge[](c)(d)
+        \end{tikzpicture}
+        \subcaption[Cap]{Fully connected distributed learners each with the usual hardware stack and locally observed data.}
+    \end{subfigure}
+    \begin{subfigure}[t]{.5\textwidth}
+        \center
+        \begin{tikzpicture}[node distance=2cm]
+            \node [data] (a)  {CPU \nodepart{second} Memory \nodepart{third} Data};
+            \node [data]  at (4,4)  (b)    {CPU \nodepart{second} Memory \nodepart{third} Data};
+            \node [data]  at (0,4)  (c)    {CPU \nodepart{second} Memory \nodepart{third} Data};
+            \node [data]  at (4,0)  (d)    {CPU \nodepart{second} Memory \nodepart{third} Data};
+            \node [coordinator] at (2,2) (e) {CPU \nodepart{second} Memory};
+            \Edge[](a)(e)
+            \Edge[](b)(e)
+            \Edge[](c)(e)
+            \Edge[](d)(e)
+            \end{tikzpicture}
+            \subcaption[Cap]{Distributed learners in a federated system. Each learner is connected only to the central coordinator, which has no acess to the data.}
+        \end{subfigure}
+    \caption{Federated vs. Distributed Architecture}
+    \label{fig:architecutre}
+\end{figure}
