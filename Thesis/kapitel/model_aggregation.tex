@@ -28,12 +28,12 @@ For exponential families we already know from section \ref{ssec:asymp} that $\ve
 Basic approaches to federated learning involve training models on each learner first and afterward sending their models to the coordinator.
 Algorithm~\ref{alg:magg} presents this approach in a federated learning setting. 
 Each round, we update the local data set and continue estimating the model parameters in parallel. 
-We then send the local parameters to the coordinator then aggregating the models and checking for convergence.
-Note, that depending on the stopping criterion, we may need to supply additional information to the coordinator such as the number of locally observed samples. 
+We then send the local parameters to the coordinator, then aggregating the models and checking for convergence.
+Note that depending on the stopping criterion, we may need to supply additional information to the coordinator, such as the number of locally observed samples. 
 The stopping criterion may also involve the aggregate model or computing some distance function $d: \mathcal{H} \times \mathcal{H}  \rightarrow \mathbb{R}$  to determine whether the training should be stopped.
 \begin{algo}{Distributed Model Aggregation}
     \begin{algorithm}[H]
-    \caption[Distributed Learning with PGMs]{General approach to distributed learning. While the stopping criterion $C$ has not been fulfilled the distributed learners update the observed data in each round and train a new or updated model. Afterward, the local parameters are sent to the coordinator and aggregated with some aggregation algorithm.}
+    \caption[Distributed Learning with PGMs]{General approach to distributed learning. While the stopping criterion $C$ has not been fulfilled, the distributed learners update the observed data in each round and train a new or updated model. Afterward, the local parameters are sent to the coordinator and aggregated with some aggregation algorithm.}
         \begin{algorithmic}[1]
             \label{alg:magg}
             \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{R}^{\abs{V}}$ and Stopping Criterion C \\
@@ -65,13 +65,13 @@ The stopping criterion may also involve the aggregate model or computing some di
         \end{algorithmic}
     \end{algorithm}
 \end{algo}
-Some additions to this basic approach may include sending the aggregate back to a subset of learners, which violate some threshold e.g. local models that are considered as an outlier when compared to the other models.
-Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregation models received from distributed learners.
+Some additions to this basic approach may include sending the aggregate back to a subset of learners, which violate some threshold, e.g., local models that are considered as an outlier when compared to the other models.
+Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregating models received from distributed learners.
 
 %\section{Aggregation Mechanisms}
 We will now discuss different aggregation methods, which are represented by line 6 in \alg \ref{alg:magg}.
 The optimal model $m*$ is usually not known and cannot be directly estimated or obtained.
-While  $m*$ is unknown we can still compare different aggregation functions $f$ with each other to determine the most efficient and best-performing aggregator.
+While  $m*$ is unknown, we can still compare different aggregation functions $f$ with each other to determine the most efficient and best-performing aggregator.
 
 
 \section{Averaging}
@@ -102,14 +102,16 @@ We then obtain the following estimator for the mean of the normal distribution.
 \end{proof}
 Thus the arithmetic mean maximizes the likelihood of a normal distribution.
 
-This already implies that the arithmetic mean is asymptotically the proper maximum likelihood estimator for the true distribution. 
-However, this only applies in the asymptotic case and as such we want to explore ways to obtain better aggregates, especially when we only have a small sample size or models with high variance.
+This result already implies that asymptotically the arithmetic mean acts as the proper maximum likelihood estimator for the actual distribution. 
+However, this only applies in the asymptotic case. 
+As such, we want to explore ways to obtain better aggregates, especially when we only have a small sample size or models with high variance.
 
 \section{Weighted Averaging}
 In case we do not have a sufficient amount of samples to perform model averaging, we have to find an alternative to the arithmetic mean aggregation. 
-When the sample size is small we possibly observe models that have a comparably low likelihood of being observed, i.e., the observed models have high variance. 
+When the sample size is small, we possibly observe models that have a comparably low likelihood of being observed, i.e., the observed models have high variance. 
 The importance of these models is then overestimated since all local models contribute equally to the model average leading to overall worse aggregates.
-With the weighted arithmetic mean, we introduce weights $\vect{\lambda}$ assigning some measure of importance to a local model, with larger weights being more important and smaller ones being less important.
+With the weighted arithmetic mean, we introduce weights $\vect{\lambda}$ assigning some measure of importance to a local model. 
+Models with a larger weight contribute more to the aggregate, while the ones with smaller weights contribute less.
 Additionally we normalize the weights such that $\sum_{i=1}^k \lambda_i = 1, \lambda_i \geq 0$, i.e., the elements sum to one, which represents prior distribution over $\vect{\theta}^i$, where $\mathbb{P}(\vect{M} = \vect{\theta}^i) = \lambda_i$ for a finite set $\vect{m} = \{\vect{\theta}^1, \ldots, \vect{\theta}^k\} \subset \mathcal{M}$ of parameter samples from the probability distribution over $\vect{M}$.
 
 Then, instead of computing the arithmetic mean, which assumes all weights to be equal to $1$, we compute
@@ -133,13 +135,13 @@ Each weight is then given by
 which are the normalized weights based on all known local models.
 Intuitively, this measures the likelihood of each model based on some additional information such as expert knowledge.
 
-Given that the actual distribution of $\vect{\theta}$ is known we can simply use the complete MAP-Estimator, as this allows us to include prior information about the parameter distribution.
+Given that the actual distribution of $\vect{\theta}$ is known, we can simply use the complete MAP-Estimator, as this allows us to include prior information about the parameter distribution.
 
 \subsection{MAP Estimator}
-When dealing with likelihood optimization we usually assume the prior probability to be constant, that is, we treat all possible parameters as equally likely.
+When dealing with likelihood optimization, we usually assume the prior probability to be constant; that is, we treat all possible parameters as equally likely.
 The Maximum a-Posteriori(MAP)-Estimator includes the prior information such that we assume the parameters to follow some probability distribution.
-This is especially useful in settings, where data is scarce.
-However, if the underlying assumption of the prior's distribution does not hold they dominate the estimator resulting in worse models.
+Including expert knowledge is particularly useful in settings where data is scarce.
+However, if the underlying assumption of the prior's distribution does not hold, they dominate the estimator resulting in worse models.
 Recall that we obtain the posterior probability for a set of local models $\mathcal{M}$ as the product of likelihood and prior
 \begin{equation}
     \begin{split}
@@ -173,13 +175,14 @@ where $\tau$ is a hyperparameter that controls the importance of the prior mean,
 
 Instead of using a federated approach, we can also rely on a federated-decentralized hybrid approach, establishing connections or using existing connections between local devices to enable communication.
 Given a network graph, where edges are existing connections, we can exchange information between distributed learners alongside these connections.
-Exchanging information between neighboring nodes only is usually a compromise when it comes to network complexity.
+
+Restricting information exchange exclusively to neighboring nodes is often used as a trade-off to reduce network complexity.
 
 Then, let $\vect{\theta}^{i}$ be the model parameters of i$^{th}$ model $m^{i}$ with local data $\mathcal{D}^{i}$.
 Transmitting the model parameters $\vect{\theta}^{i}$  at node $V_i$  to other connected devices  $V_j$ with $i \neq j$ in peer-to-peer fashion allows us to evaluate models based on the training data of other learners.
 We obtain weights for the i$^{th}$ model based on the average performance on all of its neighbors, by computing the running average and variance of some performance measure such as accuracy or likelihood.
 
-Depending on the type of connection it may be required to use an online algorithm to compute average and variance based on scoring individual parameters from connected devices.
+Depending on the type of connection, it may be required to use an online algorithm to compute average and variance based on scoring individual parameters from connected devices.
 On such algorithm is Welford's algorithm, which can be used to compute running average and variance for some scoring function.
 Welford's algorithm has the property to asynchronously update the running average, while only retaining the number of elements that have already been averaged and the average itself.
 
@@ -187,12 +190,12 @@ The communication process is shown in \fig \ref{fig:dist}, where on the left, no
 
 \input{kapitel/figures/network_graph.tex}
 
-In practice we often constrain each device to be only connected to two other devices, such that  the underlying network structure is a chain graph.
-However, more complex approaches on general network graphs have been discussed in depth for example by Wolff~\cite{wolff2013local} for computing thresholding functions.
-The communication is not restricted to neighboring nodes only and once all nodes agree on a value to a certain extent, i.e., all nodes stop sending messages, the algorithm terminates.
+In practice, we often constrain each device to be only connected to two other devices, such that the underlying network structure is a chain graph.
+However, more sophisticated approaches on general network graphs have been discussed in-depth, for example, by Wolff~\cite{wolff2013local} for computing thresholding functions.
+The communication is not restricted to neighboring nodes only, and once all nodes agree on a value to a certain extent, i.e., all nodes stop sending messages, the algorithm terminates.
 When considering model aggregation, we choose a thresholding function that either computes the pairwise distance between parameters or once the average score is sufficiently good.
 
-Once all local models have received an average score the local parameters along with the score are sent to the coordinator to compute the weighted average
+Once all local models have received an average score, the local parameters along with the score are sent to the coordinator to compute the weighted average:
 
 \begin{equation}
     \label{eq:scorenorm}
@@ -201,17 +204,17 @@ Once all local models have received an average score the local parameters along 
 
 where $\bar{S}_i$ is the average score collected from all neighbors of $i$. 
 The normalization is applied to ensure that $\sum_{i=1}^k S_i = 1$, i.e., the aggregate is a convex combination of the local models.
-When comparing the arithmetic mean and weighted average the introduction of weights turns the average into an informed aggregation based on additional prior information about the aggregated elements, where the arithmetic mean is a special case of the weighted average with equal weights.
+When comparing the arithmetic mean and weighted average, the introduction of weights turns the average into an informed aggregation based on additional prior information about the aggregated elements, where the arithmetic mean is a special case of the weighted average with equal weights.
 
-However, the arithmetic mean suffers from outliers and the weighted average requires prior information.
+However, the arithmetic mean suffers from outliers, and the weighted average requires prior information.
 Instead, we can also aggregate a set of points using the center point or geometric median methods.
 
 \section{Radon Machines}
 \label{ssec:radon}
 A more robust method for solving the issue of model aggregation is the computation of Radon Points, which are center points of intersecting convex hulls and related to Tukey depth and the geometric median. 
-Center-point methods as well as the geometric median benefit from increased robustness when compared to arithmetic means.
+Center-point methods, as well as the geometric median benefit from increased robustness when compared to arithmetic means.
 The arithmetic mean can suffer heavily from outliers, while center point methods do not if the number of outliers is limited.
-This is reflected in the fact that we may observe "bad" models of up to fifty percent of the sample size, while still being able to obtain a good aggregate.
+This issue is reflected in the fact that we may observe "bad" models of up to fifty percent of the sample size, while still being able to obtain a suitable aggregate.
 
 \begin{definition}[parbox=false]{Center Point}
     Given a set of points $T \subset \mathbb{R}^{d}$ and a set  $\vect{H} \subset \mathbb{R}^{d-1}$ of separating hyerplanes that partition $T$  into two roughly equal sized sets $T_1, T_2$, a center point $p \in \mathbb{R}^d$ is a point, where all hyperplanes $h \in \vect{H}$ intersect.
@@ -225,7 +228,7 @@ While the geometric median is well defined, there exists no algorithm for exact 
 Instead, Kamp et al. \cite{kamp2017effective} introduced Radon Machines as a method for model ensembling to compute a center point for a set of models.
 A Radon point can be found in polynomial time \wrt the number of dimensions of the space the points are located in.
 \subsection{Radon Points}
-Given a pair of convex hulls defined by two sets of points defined the hull $S_1, S_2$, a Radon point is a point that is contained within the intersection of the two convex hulls of $S_1, S_2$. 
+Given a pair of convex hulls defined by a partition of points $S_1, S_2$, we find that all points inside the intersection beween these hulls are Radon points . 
 Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
 
 \begin{threm}[label=thm:radon]{Radon's Theorem}
@@ -244,9 +247,9 @@ Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
 \end{threm}
 
 Example~\ref{ex:radon} illustrates Radon's Theorem in 2-dimensional euclidean space.
-Given a set of $d+2 =4$ points we can express the Radon point as intersection of the convex hulls.
+Given a set of $d+2 =4$ points, we can express the Radon point as intersection of the convex hulls.
 In this case, the convex hulls are formed by a triangle around the fourth point.
-The convex hulls intersect exactly on the point in the center of the triangle and it is the unique solution to this problem.
+The convex hulls intersect exactly on the point in the center of the triangle, and it is the unique solution to this problem.
 
 \begin{example}{Radon Points in $\mathbb{R}^2$}
     \label{ex:radon}
@@ -291,17 +294,17 @@ We can find the model aggregate in terms of the Radon point by using the solutio
     \end{split}
 \end{equation}
 
-Having $d+2$ $\mathbb{R}^d$-dimensional points results in an overdetermined system with no unique solution.
-This issue can be solved by adding a constraint, e.g. fixing one arbitrary variable to a constant. 
-Note, that we still need $d+2$ parameter vectors to compute the Radon point.
-This allows, in absence of linear dependencies, finding a unique solution to the problem.
+There exists no unique solution for an overdetermined system with $d+2$ $\mathbb{R}^d$-dimensional points.
+This issue can be solved by adding a constraint, e.g., fixing one arbitrary variable to a constant. 
+Adding this constraint allows, in the absence of linear dependencies, finding a unique solution to the problem.
+Note that by definition we still need $d+2$ parameter vectors to compute the Radon point.
 
-However, any solution to the system of linear equations presented in \eq~\ref{eq:radonopt} is a Radon point and there may exist multiple solutions.
+However, any solution to the system of linear equations presented in \eq~\ref{eq:radonopt} is a Radon point, and there may exist multiple solutions.
 One particular issue that we may run into is that the maximum likelihood estimators obtained from sampling the same random variable approach each other in the limit of $n \rightarrow \infty$, possibly leading to the introduction of linear dependencies.
 While this is an issue for the system of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any one solution.
-This means, however, that we lose the property of the Radon point being the only center point as shown by Peterson et al.~\cite{peterson1972geometry}
-If the solution to the optimization problem is unique, the partition is unique and thus the Radon point is the center point of all model parameter vectors.
-Hence, if there is no unique solution there is not much information about the position of the Radon point except that it is some sort of center point and contained in the intersection of the two convex hulls.
+Without unique solution, however, we lose the property of the Radon point being the only center point as shown by Peterson et al.~\cite{peterson1972geometry}
+If the solution to the optimization problem is unique, the partition is unique, and thus the Radon point is the center point of all model parameter vectors.
+Hence, if there is no unique solution, there is not much information about the position of the Radon point except that it is some sort of center point and contained in the intersection of the two convex hulls.
 The least-squares solution is obtained by minimizing
 \begin{equation}
     \label{eq:lstsq}
@@ -322,7 +325,7 @@ As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries 
 
 \begin{algo}{Radon Machine}
     \begin{algorithm}[H]
-    \caption[Radon Machine for parallelized model aggregation for exponential family models]{Radon Machine for parallelized model aggregation for exponential family models. Each iteration consists of 1) Obtaining the coefficients for the convex combination of parameters and 2) computing the center point as the convex combination. In the last step, we only have a single set of $r$ parameter vectors that have to be aggregated to obtain the final result. In the case of linear dependencies between parameter vectors we use the least-squares optimization instead.}
+    \caption[Radon Machine for parallelized model aggregation using exponential family models.]{Radon Machine for parallelized model aggregation for exponential family models. Each iteration consists of 1) Obtaining the coefficients for the convex combination of parameters and 2) computing the center point as the convex combination. In the last step, we only have a single set of $r$ parameter vectors that have to be aggregated to obtain the final result. In the case of linear dependencies between parameter vectors we use the least-squares optimization instead.}
         \begin{algorithmic}[1]
             \label{alg:radon}
             \REQUIRE Model Parameters $\vect{m} = \{\vect{\theta}^1, \ldots,\: \vect{\theta}^{r^{h}}\}$, Radon Number $r$, Aggregation Steps $h$ \\
@@ -371,14 +374,14 @@ Given a model with 1000 parameters, we would already require more than one milli
 Otherwise we would limit ourselves to $h=1$, which still requires $d+2 = 1002$ models for a single aggregation.
 
 We alleviate this issue by sampling additional model parameters from a distribution centered around the local model parameters. 
-If we assume the local model parameters to be the "true" model parameters \wrt to the data seen we can sample additional model parameters. 
-This can be done for each local model up until the required amount of parameters $(d+2)^h$ have been sampled.
+If we assume the local model parameters to be the "true" model parameters \wrt to the data seen, we can sample additional model parameters.
+Sampling is repeated for each local model until we obtain the required amount of parameters, that is, for a given $h$ we have to sample $(d+2)^h$ parameter vectors.
 
 
 \section{Bootstrap Aggregagation}
 
 With generative modeling, we can sample additional data from local models by transferring the local model parameters to the coordinator node.
-Sampling can be realized with Gibbs Sampling or Perturb and Map as presented in \sect~\ref{sec:sampling}.
+Sampling can be realized with Gibbs Sampling or Perturb and Map, as presented in \sect~\ref{sec:sampling}.
 We then create a new data set and use this to train a  global model. 
 Instead of directly aggregating $\vect{\theta}^k$ we first sample new data  $\hat{\vect{x}}^k \sim \mathbb{P}_{\vect{\theta}^k}$ and then train new models on the acquired sample data.
 However, for exponential families training $k$ models with average sufficient statistics $\vect{\mu}^k$ is equal to training a single model with the average over all sufficient statistics:
@@ -396,6 +399,8 @@ However, for exponential families training $k$ models with average sufficient st
 Alternatively, we can consecutively sample new parameter vectors first.
 Recall that according to \ref{ssec:asymp} the MLE is asymptotically normal, then we have $\hat{\theta}^{k_i}  \sim \mathcal{N}(\vect{\theta}^k, i(\vect{\theta}^k)^{-1}/n)$, assuming that each local parameters are the ground truth.
 Followed by using the MAP estimate for each $\vect{x}^{k_i} = \arg\max_{\vect{x}} \mathbb{P}_{\hat{\vect{\theta}}^{k_i}}(\vect{x})$ obtaining data sets of MAP estimates from parameter distributed around the k-th local model.
+
+
 
 %\section{Model Sampling}
 %In Section~\ref{ssec:asymp} we have shown the asymptotic normality for the maximum likelihood estimator of canonical exponential families.

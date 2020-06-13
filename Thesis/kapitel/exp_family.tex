@@ -11,9 +11,9 @@ However, let us first define some basic concepts and notation, which are going t
 
 \section{Notation}
     \label{sec:nota}
-    Let us start by introducing tools and notations frequently encountered in probability theory and machine learning.
+    Let us start by introducing tools and notations encountered frequently in probability theory and machine learning.
     This includes the definition of random variables, probability distributions, data, and parameters.
-    A stochastic process is defined over random variables over a shared probability space, where expressions of random variables, the samples from a sample space are associated with a probability distribution. 
+    A stochastic process is defined over random variables over a shared probability space, where expressions of random variables, the samples from a sample space, are associated with a probability distribution. 
     We write $\mathbb{P}(X = x)$ for the probability of $X$ taking on value $x$.
     \begin{definition}{Random Variable}
         \label{def:randvar}
@@ -24,7 +24,7 @@ However, let us first define some basic concepts and notation, which are going t
     \end{definition}
 
     Random vectors will be written in bold letters $\vect{X} = (X_1, X_2, \ldots, X_m)$, where again each entry in the vector is a random variable.
-    The state-space of a random variable will be denoted as a cursive letter of that random variable e.g.$\mathcal{X}$ and the domain of a random vector likewise as $\vect{\mathcal{X}} = (\mathcal{X}_1, \mathcal{X}_2, \ldots, \mathcal{X}_m)$, where each $\mathcal{X}_i$ if the random variable is discrete, has a finite state-space.
+    The state-space of a random variable will be denoted as a cursive letter of that random variable e.g., $\mathcal{X}$ and the domain of a random vector likewise as $\vect{\mathcal{X}} = (\mathcal{X}_1, \mathcal{X}_2, \ldots, \mathcal{X}_m)$, where each $\mathcal{X}_i$ if the random variable is discrete, has a finite state-space.
     For example a six-sided die can be interpreted as univariate random variable with state-space $\mathcal{X} = \{1,2,3,4,5,6\}$, where each state has probability $\mathbb{P}(X=x) = 1/6$.
     Samples from a random variable $\vect{X}$  with state-space $\vect{\mathcal{X}}$ are denoted as lower case letters, e.g. $\vect{x} \in \mathcal{X}^m$ over an m-dimensional state-space.
     We express each element of a random variable in terms of a subscript, e.g., $\vect{X}_i$ or $\vect{X}_A$, where $A \subset\{1, \ldots, m\} $ addresses a subset of the dimensions.
@@ -39,11 +39,11 @@ However, let us first define some basic concepts and notation, which are going t
     Given a set of model parameters from distributed learners $\mathcal{M} = \{\vect{\theta}^1,  \ldots, \vect{\theta}^k\}$, each parameter vector $\vect{\theta}^i$ denotes the parameters obtained from the  $i^{th}$ learner, while $\vect{\theta_i}$ is the entry at position i$^{th}$ of a parameter vector.
     A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
     Additional notations for model parameters will be introduced if necessary.
-    In the context of optimization and optimality, we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
-    The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data is denoted as  $\vect{\hat{\theta}}$.
+    In the context of optimization and optimality, we assume $\vect{\theta}^*$ to be the actual, unknown parameter vector.
+    The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data, is denoted as  $\vect{\hat{\theta}}$.
     Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\theta}^{i}$ the i$^{th}$ local parameter vector respectively.
 
-    Now that we have defined so basic notation let us move on to the introduction of probabilistic graphical models, exponential families, and statistical inference.
+    Now that we have defined, so basic notation let us move on to the introduction of probabilistic graphical models, exponential families, and statistical inference.
 
 
 \section{Probabilistic Graphical Models}
@@ -59,7 +59,7 @@ We assume that samples from features in $\mathcal{D}$ are realizations of random
 
         Given a vertex $v \in V$, $\mathcal{N}(v) = \{w \:\lvert\: w \in V, (v,w) \in E\}$ is the set of neighbors in G, i.e., all nodes w that have an edge between themselves and v.
 
-        A path $P = \{v_1, \ldots, v_p\}$ is a series of vertices, where two subsequent vertices in the series have an existing edge in G. 
+        A path $P = \{v_1, \ldots, v_p\}$ is a series of vertices, where two subsequent vertices in the set have an existing edge in G. 
         A unique path is a path, where each vertex of G appears at most once in the path.
         If $v_1 = v_p$, the path is not unique and P is called a cycle.
     \end{definition}
@@ -99,29 +99,22 @@ An exception to this problem are special types of graphs such as trees or polytr
 \end{definition}
 
 % Capturing Dependencies
-%Let $\vect{X}$ be a random vector as defined in \sect \ref{sec:nota}. 
-%Each element $X_i \in \vect{X}$ corresponds to a dimension of the random vector.
-%The straightforward approach is to assume all entries to be statistically independent. 
-%We may then simply estimate the parameters of a probability distribution individually for each random variable in $\vect{X}$, disregarding possible dependencies.
-%This generally leads to worse overall estimates as the model can not capture existing dependencies between random variables.
-%With probabilistic graphical models we can express dependencies between random variables in terms of edges in a graph. 
-%Having the tools to model and express conditional independencies in such a way allows us to create more flexible and possibly more fitting distributions for our data $\mathcal{D}$.
+
 
 \input{kapitel/figures/data.tex}
 
 %Graph representation 
 We introduce a random variable for each feature in $\mathcal{D}$ while treating the observed data as the result of a stochastic process.
-Given a graph $G=(V,E)$, each vertex represents a single random variable and each edge between two vertices represents conditional independence. 
+Let $G=(V,E)$ be a graph, where each vertex represents a single random variable, and each edge between two vertices represents conditional independence. 
 \fig \ref{fig:data} shows the graph representation $G=(V,E)$ of a such distribution for a graph with eight vertices. 
 Each vertex $ v \in V$ indexes a random variable $X_v$.
 Our goal is now to estimate the joint probability distribution given the graph G with established conditional independencies.
 Parameter estimation and other operations associated with probabilistic graphical models are NP-Hard~\cite{cooper1990computational}.
-%This is a direct result of the requirement to compute the marginal distribution in order to perform inference.
-%This requires summing over all possible states for all random variables that are fully dependent on each other, which is the set of all maximal cliques in the graph, as we will later see.
+
 However, algorithms for general graphs exist, which allow us to find an approximate solution in order to perform parameter estimation and inference tasks.
 
 % Probability Dist. Factorization
-A large number of well-known distributions, such as the normal distribution or exponential distribution are from a class of distribution called the exponential family.
+A large number of standard distributions, such as the normal distribution or exponential distribution, are from a class of distribution called the exponential family.
 Probability distributions from the exponential family can be expressed as a product of a normalizer and some non-negative function $\psi: \mathcal{X}^m \rightarrow \mathbb{R}_+$ usually called potential function:
 \begin{equation}
     \label{eq:probpot}
@@ -129,36 +122,18 @@ Probability distributions from the exponential family can be expressed as a prod
 \end{equation}
 where $Z$, the partition function ensures that the probability distribution properly sums to one.
 If all entries in $\vect{X}$ are independent from each other we can write $\mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \prod_{i=1}^m \psi_i(x_i)$ as the probability of a set of independent random variables is the product of each individual probability.
-%\begin{example}{Normal Distribution}
-%    For a multivariate normal distribution with mean $\vect{\mu}$ and covariance matrix $\vect{\Sigma}$
-%    \begin{equation}
-%        \mathcal{N}(\vect{x}; \vect{\mu}, \vect{\Sigma}) = \frac{1}{\sqrt{2 \pi \abs{\Sigma}}} \cdot \exp\bigg(-\frac{1}{2} (\vect{x} - \vect{\mu})^T \Sigma^{-1}(\vect{x} - \vect{\mu}))\bigg)
-%    \end{equation}
-%    we can express the normal distribution in terms of partition and potential function as follows
-%    \begin{equation}
-%        Z = \sqrt{2 \pi \abs{\Sigma}}, \quad \psi(\vect{x}) = \exp\bigg(-\frac{1}{2} (\vect{x} - \vect{\mu})^T \Sigma^{-1}(\vect{x} - \vect{\mu}))\bigg).
-%    \end{equation}
-%    Here the partition $Z$ only depends on the covariance matrix and the potential function is expressed in terms of the model parameters $\vect{\mu}, \vect{\Sigma}$
-%    \label{ex:normdist}
-%\end{example}
-%After estimating the parameters for each distribution and device, we employ an aggregation mechanic to create a composite model.
-%Distributed integer probabilistic graphical models \cite{piatkowski2019distributed} have recently been considered by Piatkowski.
-%In this specific scenario the models were aggregated using the average over all local models.
-%Other existing aggregation mechanics are discussed in section.
-%Additionally we need to define a stopping criterion where every device will stop sending messages to other devices, which means we require some kind of convergence.
-%This is usually the case when most devices have a similar local model.
-%In the following we will consider existing work on that specific research area and then lay out the necessary steps and challenges for the thesis.
+
 
 %Capturing Statistical Independencies
-However, in practice, random variables are rarely fully independent of each other, while they also may not be completely dependent on all other random variables.
+However, in practice, random variables are rarely fully independent of each other, while they also may not be entirely dependent on all other random variables.
 This is captured by establishing conditional independencies between random variables.
-If the graph satisfies a set of properties, called the Markov Properties, the graph is a Markov Random Field and the joint probability distribution can be expressed in a convenient way.
+If the graph satisfies a set of properties, called the Markov Properties, the graph is a Markov Random Field, and the joint probability distribution can be expressed in a convenient way.
 
 \subsection{Markov Random Fields}
 %TODO Graph Representation
 %MRF Definition
 Markov Random Fields are undirected graphs used to express conditional independencies between random variables. 
-Markov Random Fields are probabilistic graphical models, that represent the joint probability of a random variable $(\vect{X}_v), \; v \in V$ and state-space $\mathcal{X}_v$ \wrt to the vertices and their conditional independencies through edges of the graph. 
+Markov Random Fields are probabilistic graphical models that represent the joint probability of a random variable $(\vect{X}_v), \; v \in V$ and state-space $\mathcal{X}_v$ \wrt to the vertices and their conditional independencies through edges of the graph. 
 
 For $\vect{X}$ to be considered a Markov Random Field \wrt G the Markov Properties, have to hold:
 
@@ -187,7 +162,7 @@ These subsets are independent if, given a third subset $C$, there exists no path
     X_A \independent X_B \lvert X_C
 \end{equation}
 
-Instead of obtaining the joint probability over all random variables simultaneously we can express \eq~\ref{eq:probpot} as a factorization over cliques given that $\vect{X}$ satisfies the Markov properties. 
+Instead of obtaining the joint probability over all random variables simultaneously, we can express \eq~\ref{eq:probpot} as a factorization over cliques given that $\vect{X}$ satisfies the Markov properties. 
 
 \paragraph*{Clique Factorization}
 
@@ -199,7 +174,7 @@ Now let $\mathcal{C}$ be set set of maximal cliques, i.e., the set of cliques th
 there exists no such pair of cliques in $\mathcal{C}$ such that either one is a true subset or the other.
 This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\max \mathcal{C} = \max \{\abs{\mathcal{C}_1}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
 
-If the Markov properties hold for $\vect{X}$ , we can express the joint probability distribution as factorization over the set of maximal cliques.
+If the Markov properties hold for $\vect{X}$, we can express the joint probability distribution as factorization over the set of maximal cliques.
 This allows us to split the potentials into smaller clique-based terms and compute them individually. 
 We assign a potential function $\psi_C: \mathcal{X}_C \rightarrow \mathbb{R}$ to every clique in the graph.
 
@@ -251,10 +226,10 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
     is the maximizer for the entropy $H(\mathbb{P})$.
     In order to find the optimal distribution, we additionally need to estimate the parameter $\vect{\theta}$ of $\mathbb{P}(X)$.
 
-    Let us start with the definition of Shannon Entropy and why it is necessary to introduce some notion of optimality when it comes to finding a distribution which fits our observed data $\mathcal{D}$.
+    Let us start with the definition of Shannon Entropy and why it is necessary to introduce some notion of optimality when it comes to finding a distribution that fits our observed data $\mathcal{D}$.
     The approach presented here follows the intuition presented by Wainwright and Jordan \cite{wainwright2008graphical}.
 
-    We want to find the distribution $\mathbb{P}$ from the space of all probability distributions $\mathcal{P}$, that fits the data  $\mathcal{D}$ the most.
+    We want to find the distribution $\mathbb{P}$ from the space of all probability distributions $\mathcal{P}$, which fits the data  $\mathcal{D}$ the most.
     However,  there are many such distributions $\mathbb{P} \in \mathcal{P}$ that satisfy this condition. 
     Let $\phi: \vect{\mathcal{X}}  \rightarrow \{0,1\}^d$ be the sufficient statistics of $\mathcal{D}$, that maps observations to a binary vector. 
     We then want to find a distribution such that:
@@ -315,7 +290,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
     \end{equation}
 
     Note that in \eq\ref{eq:gradesc} the index $t+1$ does refer to an update of $\vect{\theta}$ and not the t-th model.
-    Going forward we will use the index $t$ when referring to updates of parameters or models. 
+    Going forward, we will use the index $t$ when referring to updates of parameters or models. 
     The choice of $f$ is usually the likelihood function
     \begin{equation}
         \label{eq:likelihood}
@@ -327,7 +302,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
     \end{equation}
     Assuming a uniform prior distribution $\mathbb{P}(\vect{\theta})$ we obtain the model parameters $\vect{\theta}$ by maximizing the likelihood $\mathbb{P}(\mathcal{D} \lvert \vect{\theta})$.
 
-    It is convenient to reformulate the problem as minimization instead of  maximization by multiplying the objective by minus one. 
+    It is convenient to reformulate the problem as minimization instead of maximization by multiplying the objective by minus one. 
     Furthermore, we apply the logarithm to the objective, which preserves the quality of the solution, while being numerically more stable.
     We then obtain the following minimization problem
     \begin{equation}
@@ -368,7 +343,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
     Unfortunately, evaluating the gradient requires us to compute the log partition function $A(\vect{\theta})$, where we have to sum over all possible states.
     This problem is known to be \#P-Complete, i.e., there exists no algorithm for efficiently computing the log partition other than brute force evaluation.
     However, it is possible to find an exact solution in polynomial time if the graph structure is a tree or polytree.
-    Sum-Product message-passing algorithms on trees for example allow us to obtain an exact solution in polynomial time, while there are also algorithms for computing the log partition on a graph with bounded treewidth\cite{berg2014learning}.
+    Sum-Product message-passing algorithms on trees, for example, allow us to obtain an exact solution in polynomial time, while there are also algorithms for computing the log partition on a graph with bounded treewidth\cite{berg2014learning}.
 
     The problem of computing probabilities and the log partition function or partition function of a probability density is also known as inference.
     Here we will focus on inference where the graph G is a tree, which generally allows us to perform exact inference in polynomial time using sum-product message-passing algorithms such as Belief Propagation.
@@ -376,7 +351,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
     Before introducing the means to perform inference, we will first showcase some additional useful properties of the log partition function and canonical exponential family representation.
     
     \paragraph*{Log Partition Function}
-    For second-order methods such as Newton's Method the second derivative of the likelihood \wrt $\vect{\theta}$ may also be of interest.
+    For second-order methods such as Newton's Method, the second derivative of the likelihood \wrt $\vect{\theta}$ may also be of interest.
     It can be shown (see for example \cite{piatkowski2018exponential}), that the second derivative of the log-likelihood is simply the second derivative of the log partition function :
 
     \begin{equation}
@@ -389,7 +364,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
     \end{equation}
 
     However, in terms of distributed learning on resource-constrained systems, second-order methods or computation of the Fisher information matrix is often not possible due to the relatively high memory requirement.
-    Even for small models the memory consumption relative to the model is not negligible.
+    Even for small models, the memory consumption relative to the model is not negligible.
     The Fisher Information is still useful when investigating the asymptotic properties of exponential families. 
     One such property is that the maximum likelihood estimator of exponential families asymptotically follows a normal distribution.
 
@@ -401,8 +376,6 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
         Given a number of samples $n = \abs{\mathcal{D}}$ drawn i.i.d. from a random variable $\vect{X}$, we can show that in the limit of $n \rightarrow \infty$ the parameter vector follows a normal distribution $\mathcal{N}(\vect{\mu}, \vect{\Sigma})$ for some mean $\vect{\mu}$ and covariance matrix $\vect{\Sigma}$. 
         This property is reflected by Berk's Theorem of asymptotic normality.
 
-        %The diagonal representation only requires storing an array with $d$ elements and in sparse matrix representation $2d$ elements, one for the value itself and another for the position in the matrix. We do not require both row and column indices as they are equal in this case.
-        %Additionally, for elements $i,j$ belonging to the same clique the left hand side of \eq~\ref{eq:sparsefish} is zero as the probability of observing both $\phi_C(\vect{x})_i$ and $\phi_C(\vect{x})_j$ is by definition zero, i.e., each clique can only assume one state at a single time.
 
         \begin{threm}{Berk's Theorem of Asymptotic Normality\cite{berk1972consistency}}
             \label{theorem:berk}
@@ -428,7 +401,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
         is the expectation of the negative hessian for the log-likelihood given a probability density function $f$ evaluated at $\vect{\theta}$.
         Recall that the second derivative of the log-likelihood (\eq~\ref{eq:sparsefish}) is the second central moment, which in this case is $-i(\vect{\theta})$, the negative Fisher information.
         The Fisher Information can be interpreted as a measure of precision for a distribution, which is the information random samples from this distribution contain about the parameters.
-        Samples from distributions with low precision or equivalently high variance contain less information about the true parameters.
+        Samples from distributions with low precision or equivalently high variance contain less information about the actual parameters.
 
         For the true maximum likelihood estimator $\vect{\theta}^*$  and $n \rightarrow \infty$, the inverse fisher information $i(\vect{\theta}^*)^{-1}/ n = \frac{1}{n} \vect{\Sigma}$ is an estimator for the covariance matrix, implying that as $n$ increases the covariance decreases and the precision increases linear to the sample size.
 
@@ -440,7 +413,7 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
         \end{equation}
         Implying, that in the limit of $n \rightarrow \infty$ , the arithmetic mean converges towards the true maximum likelihood estimate for the normal distribution and thus to the true parameter vector for the canonical exponential family distribution.
         
-        Additionally if $\mathcal{N}$ is known we can sample the error between any maximum likelihood estimator and the true estimator $\epsilon \sim \mathcal{N}(0, i(\vect{\theta}^*)^{-1}/n)$, which can be used to generate new samples, i.e., new models without directly sampling data from $\vect{X}$.
+        Additionally if $\mathcal{N}$ is known, we can sample the error between any maximum likelihood estimator and the true estimator $\epsilon \sim \mathcal{N}(0, i(\vect{\theta}^*)^{-1}/n)$, which can be used to generate new samples, i.e., new models without directly sampling data from $\vect{X}$.
 
         This property can be helpful when sampling additional parameter vectors in a Perturb and MAP fashion. We will talk about this later in \sect \ref{ssec:pmap}.
         
@@ -451,11 +424,11 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
         Furthermore, all feasible solutions $\vect{\theta}  \in \Theta$ and their probability distribution functions are required to have the same support.
         
         Additionally, the likelihood has to be differentiable up to third-order or higher and that the true parameter vector $\vect{\theta}^*$ is an interior point of $\vect{\Theta}$.
-        Additionally the maximum likelihood estimator has to be unique, i.e., it is the global minimum of the likelihood achieved at $\ell'(\vect{\theta}) = 0$, which in turn implies strict convexity of the likelihood function.
+        Additionally, the maximum likelihood estimator has to be unique, i.e., it is the global minimum of the likelihood achieved at $\ell'(\vect{\theta}) = 0$, which in turn implies strict convexity of the likelihood function.
         Given these conditions hold for the MLE, it is consistent and regular.
 
-        We now assume, without loss of generality that these conditions hold for canonical exponential families.
-        Proof, that these conditions do indeed hold has been provided by Andersen~\cite{andersen1970asymptotic}.
+        We now assume, without loss of generality, that these conditions hold for canonical exponential families.
+        Proof that these conditions do indeed hold has been provided by Andersen~\cite{andersen1970asymptotic}.
         We will now provide a proof sketch for Berk's theorem using canonical exponential family distributions.
 
         \paragraph*{Proof of Berk's Theorem}
@@ -473,15 +446,6 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
             \end{split}
         \end{equation}
         where $\ell^{'}$ is the first derivative \wrt $\vect{\theta}^*$ and $\ell^{''}$ the second derivative.
-        %With Delt Operator instead of ''
-        %\begin{equation}
-            %\begin{split}
-            %0 &\approx \nabla_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D}) +(\hat{\vect{\theta}} - \vect{\theta}^*) \nabla^2_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D}) \\
-            %- (\hat{\vect{\theta}} - \vect{\theta}^*) \nabla^2_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D})&  \approx \nabla_{\vect{\theta}^*}\ell(\vect{\theta}^*) \\
-            %(\hat{\vect{\theta}} - \vect{\theta}^*)  &\approx - \frac{ \nabla_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D}) }{ \nabla^2_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D})} \\
-            %\sqrt{n}(\hat{\vect{\theta}} - \vect{\theta}^*)  &\approx - \sqrt{n} \frac{ \nabla_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D}) }{ \nabla^2_{\vect{\theta}^*}\ell(\vect{\theta}^*; \mathcal{D})} \\
-        %    \end{split}
-        %\end{equation}
       Then substituting the derivatives of the likelihood with the likelihood function for canonical exponential families from \eq~\ref{eq:sparsefish} we obtain for the denominator of \eq~\ref{eq:ll_general}
       \begin{equation}
         \begin{split}
@@ -497,8 +461,6 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
         \label{eq:asympnorm}
           \begin{split}
             \sqrt{n}(\hat{\vect{\theta}} - \vect{\theta}^*)  &\approx - \frac{\frac{1}{\sqrt{n}}( -\tilde{\mathbb{E}}_{\mathcal{D}}[\phi(x)] + \mathbb{E}_{\mathbb{P})}[\phi(x)])}{- i(\vect{\theta}^*)} \\
-            %\sqrt{n}(\hat{\vect{\theta}} - \vect{\theta}^*)  &\approx - \frac{\frac{1}{\sqrt{n}}( -\tilde{\mathbb{E}}_{\mathcal{D}}[\phi(x)] + \mathbb{E}_{\mathbb{P})}[\phi(x)])}{\frac{1}{n} \mathbb{E}[\phi(\vect{X}) \phi(\vect{X})] - \mathbb{E}[\phi(\vect{X})] \mathbb{E}[\phi(\vect{X})]} \\
-            %\sqrt{n}(\hat{\vect{\theta}} - \vect{\theta}^*)   &\approx - \frac{\frac{1}{\sqrt{n}}( -\tilde{\mathbb{E}}_{\mathcal{D}}[\phi(x)] + \mathbb{E}_{\mathbb{P})}[\phi(x)])}{- i(\vect{\theta}^*)} 
           \end{split}
       \end{equation}
 
@@ -533,20 +495,20 @@ In order to guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D
             \vect{\Sigma} =  i(\theta^*)^{-1}
         \end{equation}
 
-        Giving some thought to the interpretation of this result we see that a set of parameter vectors obtained from data sets $\{\mathcal{D}^1, \ldots \mathcal{D}^n\}$ is asymptotically normal around the true parameter vector for a sample size of $n \rightarrow \infty$.
+        Giving some thought to the interpretation of this result, we see that a set of parameter vectors obtained from data sets $\{\mathcal{D}^1, \ldots \mathcal{D}^n\}$ is asymptotically normal around the actual parameter vector for a sample size of $n \rightarrow \infty$.
         Parameter vectors of local devices can be treated as samples from a normal distribution.
         Likewise, we can sample from a normal distribution with mean $\vect{\theta}^j$ to generate new models assuming that the local parameter vector the asymptotic result.
         
-        Before we can sample from new parameters we first have to estimate parameters on the distributed learners. 
+        Before we can sample from new parameters, we first have to estimate parameters on the distributed learners. 
         We have seen in \eq~\ref{eq:likelihood_der} that we need to compute the log partition function in order to perform a gradient update.
-        This task belongs to  the scope of inference tasks, which we will now discuss.
+        This task belongs to the scope of inference tasks, which we will now discuss.
 
 \subsection{Inference}
 \label{ssec:inf}
 Performing evaluative tasks on statistical models is usually referred to as inference.
-Several tasks such as finding the probability for a given observation or finding the maximum a-posteriori state, i.e., the state with maximum probability can be attributed to inference.
+Several tasks, such as finding the probability for a given observation or finding the maximum a-posteriori state, i.e., the state with maximum probability, can be attributed to inference.
 Additionally, parameter estimation for $\ell(\mathcal{D}; \vect{\theta})$ also requires us to perform inference in each iteration, as we have to compute the log partition function.
-Since the log partition function depends on $\vect{\theta}$ it changes with every update and has to be computed at every gradient step.
+Since the log partition function depends on $\vect{\theta}$, it changes with every update and has to be computed at every gradient step.
 
 Inference can be broadly categorized into the four following areas, which all include in some way or another marginalization and computation of the partition function.
 
@@ -556,7 +518,7 @@ Given a single observation $\vect{x} \in \vect{\mathcal{X}}$ we want to find the
     \ell(\vect{\theta}; \vect{x}) = \inner{\vect{\theta}}{\vect{x}} - A(\vect{\theta})
 \end{equation}
 
-\paragraph*{Marginal Distribution}
+\paragraph*{Marginal distribution}
 Our goal here is to obtain the probability that a subset of states $A \subset V$ is in a fixed configuration.
 We compute joint probability \wrt A by marginalizing over all other nodes not included in $A$. 
 This is the more general case of the likelihood computation, where we obtain the probability for a fully observed sample.
@@ -566,7 +528,7 @@ The joint probability is then given by
     \end{equation}
 
 \paragraph*{Conditional Probability}
-Obtaining the conditional probability for an observed subset $B \subset V$ on another disjoint subset $A \subset V$ requires two steps. First, we have to marginalize over the joint probability of both sets followed by the probability of observing $B$ on its own.
+Obtaining the conditional probability for an observed subset $B \subset V$ on another disjoint subset $A \subset V$ requires two steps. First, we have to marginalize over the joint probability of both sets, followed by the probability of observing $B$ on its own.
     \begin{equation}
         \mathbb{P}_{\vect{\theta}}(\vect{X}_A = \vect{x}_A \lvert \vect{X}_B = \vect{x}_B) = \frac{\mathbb{P}_{\vect{\theta}}(\vect{X}_A = \vect{x}_A , \vect{X}_B = \vect{x}_B)}{\mathbb{P}_{\vect{\theta}}(\vect{X}_B = \vect{x}_B)}, \;\; A \cap B = \emptyset, A \cup B \subset V
     \end{equation}
@@ -582,12 +544,12 @@ Instead of summing over all other states we replace the sum with the maximum.
 \paragraph*{Belief Propagation}
 Even for a small number of nodes and states per node computation of the partition function and in turn, performing any type of inference becomes computationally intractable.
 Consider a graph with 100 nodes with a binary state-space for each random variable.
-In the worst case, i.e., a fully connected graph we have to iterate over all $2^{100} = 1.26\cdot 10^{30}$ states.
-While we can not obtain the exact solution for the marginalization for a graph with arbitrary structure, it is however possible to find an exact solution on trees or an approximate solution on general graphs.
+In the worst case, i.e., a fully connected graph, we have to iterate over all $2^{100} = 1.26\cdot 10^{30}$ states.
+While we can not obtain the exact solution for the marginalization for a graph with arbitrary structure, it is, however, possible to find an exact solution on trees or an approximate solution on general graphs.
 
 
-Belief propagation also known as Sum-Product message-passing, introduced by Pearl \cite{pearl1982reverend} solves this problem for trees and was later extended to be exact on polytrees \cite{kim1983computational}.
-In case the graph is not a tree we can still find an approximate solution via loopy belief propagation, whose properties have been extensively studied by Murphy et al. \cite{murphy2013loopy}.
+Belief propagation, also known as Sum-Product message-passing, introduced by Pearl \cite{pearl1982reverend} solves this problem for trees and has later been extended to be exact on polytrees \cite{kim1983computational}.
+In case the graph is not a tree, we can still find an approximate solution via loopy belief propagation, whose properties have been extensively studied by Murphy et al. \cite{murphy2013loopy}.
 
 Belief propagation takes advantage of the distributivity of potentials computed on each node.
 Instead of summing over all possible states, we can apply the generalized distributive law to express this as a product of sums.
@@ -606,8 +568,8 @@ Using the sum-product algorithm we can compute the marginal distribution for eve
 \end{equation}
 which is the sum over all probabilities, where $x_v$ appears.
 
-The sum-product algorithm takes advantage of the property that for a tree graph G, any subgraph $G' \subset G$ is also a tree. 
-This way we can break down the factorization from \eq\ref{eq:edgepot} into sub-problems, which can be further broken down to a factorization on a smaller tree.
+The sum-product algorithm takes advantage of the property that, for a tree graph G, any subgraph $G' \subset G$ is also a tree. 
+This way, we can break down the factorization from \eq\ref{eq:edgepot} into sub-problems, which can be further broken down to a factorization on a smaller tree.
 This divide and conquer approach can be used to compute all node marginals simultaneously and in parallel by passing messages between nodes.
 
 Now, consider an arbitrary vertex $u \in V$ of G, where $\mathcal{N}(s)$ is the set of neighbors of $u$.
@@ -634,14 +596,14 @@ This gives rise to a 2-pass algorithm for tree-structured graphs.
 In the converge-phase, we start by choosing an arbitrary global root, where the messages are collected.
 Then, we start computing messages on the leaves \wrt to the root as they do not depend on additional messages.
 Every root of a subtree waits for all messages to arrive and then sends the accumulated messages towards its parent. 
-Parent vertices are defined \wrt to the designated global root, i.e., since G is a tree any parent vertex for a given subtree is always closer to the chosen root than the root of the subtree.
+Parent vertices are defined \wrt to the designated global root, i.e., since G is a tree, any parent vertex for a given subtree is always closer to the chosen root than the root of the subtree.
 This process repeats until the messages have propagated to the designated root vertex.
 In the broadcast-phase, the root sends the collected messages to each neighbor, distributing the messages from different subtrees.
 
 \input{kapitel/figures/beliefpropagation.tex}
 
 In the general case, when the graph is not tree-structured, we can employ an approximation algorithm in a similar fashion. 
-Loopy belief propagation, as shown in \alg~\ref{alg:lbp} uses a similar approach but has no convergence guarantees.
+Loopy belief propagation, as shown in \alg~\ref{alg:lbp}, uses a similar approach but has no convergence guarantees.
 Instead of reaching guaranteed convergence in two passes, we compute new messages on each vertex by sending old messages back and forth between vertices.
 This is done by computing messages in both directions for each edge i.e., 
 \begin{equation}
@@ -682,25 +644,25 @@ The resulting partition function is the normalized to the probability distributi
 \end{algo}
 \subsection{Structure Learning}
 
-So far we have talked about estimating the parameters of exponential family models and performing probabilistic inference.
-Determining the structure of a probabilistic graphical model is also a critical task, that needs to be considered when dealing with probabilistic models.
-Given a data set $\mathcal{D}$ we associate each dimension of $\mathcal{D}_{\cdot i}$ with a univariate random variable $X_i$, which is then represented as a vertex in the graph.
+So far, we have talked about estimating the parameters of exponential family models and performing probabilistic inference.
+Determining the structure of a probabilistic graphical model is also a critical task that needs to be considered when dealing with probabilistic models.
+Given a data set $\mathcal{D}$, we associate each dimension of $\mathcal{D}_{\cdot i}$ with a univariate random variable $X_i$, which is then represented as a vertex in the graph.
 While the number of vertices is given by the number of features in $\mathcal{D}$, we rarely have explicit information about the conditional independencies between these random variables. 
 Therefore, it is necessary to estimate the independence structure, which usually involves finding dependencies between features in $\mathcal{D}$. 
-Given a graph $G=(V, \cdot)$ we want to find the subset of edges $E \subset V \times V$, which best represents the underlying independence structure of $\vect{X}$.
+Given a graph $G=(V, \cdot)$, we want to find the subset of edges $E \subset V \times V$, which best represents the underlying independence structure of $\vect{X}$.
 
-Even in case of a predetermined independence structure, we may still aim to either reduce the complexity by removing edges or verify the independence structure.
+Even in the case of a predetermined independence structure, we may still aim to either reduce the complexity by removing edges or verify the independence structure.
 Various approaches for finding conditional independencies between random variables exist.
 Algorithms such as the Chow-Liu algorithm generate a set of conditional independencies such that the resulting graph is a tree.
 Other algorithms are less constrained in the choice of edges and generate graphs without guarantees for the final structure.
-Chordalysis is one such tool that uses algorithms, which do not necessarily result in a tree-structured graph, which can be used for more complex structures that can not be properly represented as a tree. 
-Generally, tree structures are easier to deal with \wrt to training and inference but often yield worse results as they can not capture the proper independence structure, but rather an approximation of the true structure.
+Chordalysis is one such tool that uses algorithms, which do not necessarily result in a tree-structured graph, which can be used for more complex structures that can not be appropriately represented as a tree. 
+Generally, tree structures are easier to deal with \wrt to training and inference but often yield worse results as they can not capture the proper independence structure, but rather an approximation of the correct structure.
 
 For this work, we will focus on tree-structured graphs generated by the Chow-Liu algorithm, which uses a graph weighted by cross-correlation between random variables and minimum spanning trees in order to find the edges, with the highest correlation.
 However, the aggregation mechanics are not limited to trees and can be used by any set of parameter sharing the same structure.
 
 \paragraph*{Chow-Liu Algorithm}
-Chow and Liu introduced an algorithm~\cite{chow1968approximating} for approximating first order dependency structures using second order terms, where second order terms or probabilities are conditional probabilities conditioned on an additional random variable e.g. $\mathbb{P}(X \lvert Y)$.
+Chow and Liu introduced an algorithm~\cite{chow1968approximating} for approximating first-order dependency structures using second-order terms, where second-order terms or probabilities are conditional probabilities conditioned on an additional random variable e.g., $\mathbb{P}(X \lvert Y)$.
 The tree is constructed by finding the set of edges that minimizes the Kullback Leibler divergence between the true distribution $\mathbb{P}*$ and the distribution induced by the set of edges $\mathbb{P}_T$, where $T=(V, E_T)$ is a tree.
 We obtain the edges by computing the maximum spanning tree on a fully connected weighted graph.
 The weights for each edge are based on mutual information between all random variables.
@@ -721,18 +683,18 @@ Obtaining the minimum Kullback-Leibler divergence is then equivalent to computin
 
 \input{kapitel/figures/chowliu.tex}
 
-Here connected means, that there exists a path between each pair of vertices in G. 
+Connected indicates that there exists a path between each pair of vertices in G. 
 Such a spanning tree can be found with algorithms such as Prim's or Kruskal's algorithm.
 The resulting graph is then guaranteed to be a tree, with edge weights that minimize the Kullback-Leibler divergence between the true distribution and the distribution induced by the tree, i.e., out of all possible sets of edges forming a tree this is the best.
 
-Structure learning is a necessary step before starting parameter estimation as the structure directly affects the number of parameters, the final distribution and without structure, we only have statistically independent random variables. 
+Structure learning is a necessary step before starting parameter estimation as the structure directly affects the number of parameters, the final distribution, and without structure, we only have statistically independent random variables. 
 The tree is then used on all distributed learners to estimate parameters individually based on the locally observed data. 
 
 Now that we have introduced the necessary tools to create a probabilistic graphical model from a plain data set and estimate parameters for the canonical exponential family, we will move towards bringing these models into distributed learning.
 
 
 \section{Distributed Learning}
-%In the previous sections we explored probabilistic graphical models, inference and structure learning algorithms, which can be used on an arbitrary number of devices.
+%In the previous sections, we explored probabilistic graphical models, inference, and structure learning algorithms, which can be used on an arbitrary number of devices.
 %Next we will talk about 
 With an increasing demand for parallel or distributed programming and learning, caused by more frequently occurring data parallelisms~\cite{ben2006principles}, tasks that were solved on single-core CPUs now more often computed in a distributed environment.
 
@@ -744,9 +706,9 @@ However, this approach introduces a necessity for communication between devices 
 Our goal in this work is to aggregate probabilistic graphical models received from a set of distributed learners, such that in the end, we are able to create an aggregate model, while not being constrained to a centralized approach.
 This method scales well as we can arbitrarily increase the number of learners without being restricted to a single model only.
 Performing parameter estimation on distributed learners is straightforward and initially does not change much if each learner estimates their own set of parameters on local data.
-First, we need to identify the task and environment we want to apply distributed learning on.
+First, we need to identify the task and environment where we want to apply distributed learning.
 The available data may either be distributed onto different devices or stored at some central server.
-Depending on the data distribution and additional constraints such as privacy preservation or constrained communication the chosen approach varies greatly.
+Depending on the data distribution and additional constraints such as privacy preservation or constrained communication, the chosen approach varies greatly.
 Given a data set $\mathcal{D} = \{\mathcal{D}^1, \ldots \mathcal{D}^k\} \subseteq \vect{\mathcal{X}}^m$,
 where data chunks $\mathcal{D}^i$ are available on a set of distributed learners.
 Recall that we previously introduced horizontally distributed data, which is a subset of the data, such that $\mathcal{D}_{A} = \{\vect{x}^1, \ldots, \vect{x}^A \lvert A \leq n\}$ from state-space $\mathcal{X}^m$ is a subset of samples.
@@ -760,9 +722,9 @@ The distributed learners are able to communicate with a coordinator or among eac
 
 Connectivity between devices in networks may change over time, which requires a more dynamic approach that can deal with frequently changing network structure.
 The second approach uses a coordinator node to send or receive updates from distributed learners. 
-Most if not all communication is managed by the coordinator, while data may still be kept on the local devices only.
-In theory, it is also possible to combine both approaches, i.e., to allow communication between local devices to some degree to achieve a better local solution.
-Lastly, in the fully centralized approach, all data is kept on the server is then partitioned into chunks and sent to local devices, which then execute some task, which is for example the case in a Map\&Reduce framework~\cite{dean2010mapreduce}.
+Most, if not all, communication is managed by the coordinator, while data may still be kept on the local devices only.
+In theory, it is also possible to combine both approaches, i.e., to allow communication between local devices to some degree, to achieve a better local solution.
+Lastly, in the fully centralized approach, all data is kept on the server is then partitioned into chunks and sent to local devices, which then execute some tasks, which is, for example, the case in a Map\&Reduce framework~\cite{dean2010mapreduce}.
 
 Employing a set of distributed learners is useful when the data is horizontally distributed and can not be sent to a central server.
 This is the case when there is too much data to process relative to the available bandwidth or when the data contains private information.
@@ -785,19 +747,21 @@ We will now briefly discuss convergence and sample complexity.
 Given a set of distributed learners, we want to determine when to stop training the local models and when to stop exchanging model parameters and aggregate the model parameters.
 Even more so when memory, processing capabilities, and energy are limited.
 We distinguish between two types of convergence criteria, fixed and dynamic.
-Fixed convergence is determined at the start of each instance of distributed learners by setting a bound in form of a hyperparameter.
-Using such a bound we obtain for example a number of samples required to guarantee this bound and continue training until we have reached this threshold.
-Dynamic convergence requires communication between learners or the coordinator, which then monitors some criterion, and if it is fulfilled broadcasts a stopping command to all learners. 
+Fixed convergence is determined at the start of each instance of distributed learners by setting a bound in the form of a hyperparameter.
+Using such a bound, we obtain, for example, a number of samples required to guarantee this bound and continue training until we have reached this threshold.
+Dynamic convergence requires communication between learners or the coordinator, which then monitors some criterion, and if it is fulfilled, broadcasts a stopping command to all learners. 
 
 Moreover, each learner needs to determine a local point of convergence at which the learner posts its parameters to other learners or the coordinator. 
-This is called the local convergence criterion as opposed to the previously mentioned global convergence criterion.
+This is called the local convergence criterion, as opposed to the previously mentioned global convergence criterion.
 
 \paragraph*{Local Convergence}
 Local models are trained using gradient descent to minimize the likelihood. 
-Recall that the likelihood is convex, thus updates improve upon the objective, towards the global minimum.
-As $\vect{\theta}$ moves towards the global minimum and with appropriate step-size the difference between two subsequent objective function values decreases.
+Recall that the likelihood is convex. 
+Thus updates improve upon the objective towards the global minimum.
+As $\vect{\theta}$ moves towards the global minimum and with appropriate step-size, the difference between two subsequent objective function values decreases.
 Hence, we may use this difference as a method to determine convergence, given some threshold $\varepsilon$ we stop the optimization if the different between two likelihoods falls below this threshold, i.e.:
 \begin{equation}
+    \label{eq:stopcrit}
     \abs{\ell(\vect{\theta}^{(t+1)} ; \mathcal{D}) - \ell(\vect{\theta}^{(t)} ; \mathcal{D})} \leq \varepsilon,
 \end{equation}
 where the choice of $\varepsilon$ determines how small the likelihood rate of change has to be before terminating the training.
@@ -813,7 +777,7 @@ Alternatively, we may always train each model for a predetermined number of iter
 \paragraph*{Global Convergence}
 
 Data on the distributed learnings grows dynamically over time.
-On each device is dynamically accumulated, i.e. new data is observed in each round, where a each starts in a synchronous fashion on all learners.
+On each device, data is dynamically accumulated, i.e., new information is observed in each round, where each starts in a synchronous fashion on all learners.
 At the start of each round, every learner first checks if there are new samples available and extends the local sufficient statistics by the newly observed samples.
 This can be accomplished by keeping a record of the sufficient statistics and the number of samples observed.
 The new sufficient statistics at round $t+1$ are then the weighted average of the old average sufficient statistics and time $t$ and new observations 
@@ -822,7 +786,7 @@ The new sufficient statistics at round $t+1$ are then the weighted average of th
 \end{equation}
 
 However, the already observed data is still incorporated in the sufficient statistic and only changes depending on the number of new samples discovered.
-If the sufficient statistic does not change much, e.g. when we already have a large number of samples and only observe a small amount of new data, the objective is not likely to change too much. 
+If the sufficient statistic does not change much, e.g., when we already have a large number of samples and only observe a small amount of new data, the objective is not likely to change too much. 
 Instead of simply restarting the training, we can check if the old parameters on the i-th learner are still sufficiently close to the optimum in terms of the new data: 
 
 \begin{equation}
@@ -831,7 +795,7 @@ Instead of simply restarting the training, we can check if the old parameters on
 then choose to omit training, if the gradient is still $\epsilon$-close to zero.
 
 The total memory requirement is linear in the number of parameters, that is, the d-dimensional space that $\phi$ maps to, thus each model only requires $\mathcal{O}(d)$ memory.
-Using this iterative approach we can keep track of the number of samples observed and the current state of the model.
+Using this iterative approach, we can keep track of the number of samples observed and the current state of the model.
 Now, we need to determine a stopping criterion, which allows us to terminate the optimization and data gathering process if so desired. 
 Otherwise, we may also choose to keep the optimization and data acquisition running indefinitely in case we expect new observations to vary, such that the underlying distribution changes.
 
@@ -852,7 +816,7 @@ First, the Hoefding-Inequality is given by
     P(\vect{\bar{X}} - \mathbb{E}[\vect{\bar{X}}] \geq t ) \leq \exp^{-2\abs{\mathcal{D}]t^2}},
 \end{equation}
 
-where for some constant $t$ the probability of the difference between the empirical mean of a random variable and its expectation is being greater than $t$ is negatively exponential bounded by the amount of data seen.
+where for some constant $t$, the probability of the difference between the empirical mean of a random variable and its expectation is being higher than $t$ is negatively exponential bounded by the amount of data seen.
 
 Piatkowski~\cite{piatkowski2019distributed} has shown that for $t = \frac{\sqrt{(c+1) \log d}}{2\abs{\mathcal{D}}}$ the difference between two average sufficient statistics $\vect{\mu}^i = \frac{1}{\mathcal{D}_i} \sum_{x \in \mathcal{D}} \vect{\phi(x)}, \; \vect{\phi(x)} \in \mathbb{R}^d$ of a probabilistic graphical model is bounded by
 \begin{equation}
@@ -885,7 +849,7 @@ This means that there exists a no larger difference between entries of the two v
 \begin{equation*}
     Var[\vect{\mu}^{i}_k -  \vect{\mu}^{j}_k] \leq \frac{\epsilon^2}{4} = \sigma^2 \quad \forall i,j,k.
 \end{equation*}
-Given two average sufficient statistics, we can employ the Hoefding bound to guarantee the distance and variance between these two to be smaller than some $\epsilon$ with probability $\delta$
+Given two average sufficient statistics, we can employ the Hoefding bound to guarantee the distance and variance between these two to be smaller than some $\epsilon$ with probability $\delta$.
 
 Likewise, there is an explicit relationship between the sufficient statistics, sample size, and the model parameters, as shown by Bradley et al. \cite{bradley2012sample}, who consider the MLE bound \wrt to the sample size. 
 Let $C_min \geq 0$ be a bound on the smallest eigenvalue of the Fisher information obtained from the true parameters $\vect{\theta}^*$ and $\phi_{max}$ be the maximum magnitude of the sufficient statistics. 
@@ -915,18 +879,17 @@ and by the decreasing monotonicity of p-norms \cite{raissouli2010various} we hav
 
 As the amount of data on each device increases, we can also measure how close the sufficient statistics are with probability $\delta$ by rearranging the above equation. 
 This is the most common scenario in distributed learning. 
-As time progresses, the amount of data increases allowing us to continuously measure the distance and variance between the sufficient statistics.
-Once we reach our predetermined goal on a device, i.e. $\abs{\mathcal{D}}^i$ is sufficiently large to satisfy the bound we stop collecting more data send the parameters to the coordinator node.
+As time progresses, the amount of data increases, allowing us to measure the distance and variance between the sufficient statistics continuously.
+Once we reach our predetermined goal on a device, i.e., $\abs{\mathcal{D}}^i$ is sufficiently large to satisfy the bound, we stop collecting more data, send the parameters to the coordinator node.
 
 For a given probability $\delta$ and with variance threshold $\sigma^2 = (\epsilon/2)^2$ we rearrange \eq~\ref{eq:hoefd} to obtain 
 \begin{equation}
     \abs{\mathcal{D}} = \frac{(c+1) \log d}{2 \sigma^2},
-\end{equation}
+\end{equation} 
+which is the amount of data necessary to have a variance of at most $\sigma^2$ with probability $\delta$.
 
-which is the amount of data necessary to a have variance of at most $\sigma^2$ with probability $\delta$.
-
-We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$ the distance $\epsilon$ decreases and so does the variance. 
-In conclusion, we have shown that as the sample size increases the variance for the average sufficient statistics and in turn for model parameters decreases.
+We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$, the distance $\epsilon$ decreases, and so does the variance. 
+In conclusion, we have shown that as the sample size increases, the variance for the average sufficient statistics and, in turn, for model parameters decreases.
 This allows us to choose a variance or distance threshold and obtain the necessary amount of data to reach that threshold.
 
 Next, we will introduce methods for sampling from a generative model, which is one of the main advantages these types of models have over discriminative ones.
@@ -939,7 +902,7 @@ Furthermore, we may observe a learner generating incomplete data with missing en
 We can perform inference using the model to complete these samples in order to obtain fully observed data.
 This is usually based on the configuration with the highest likelihood given the seen entries of a sample.
 
-How do we sample from such a distribution? There are several different ways to sample from such a distribution, two of those are the Perturb and MAP approach and Gibbs sampling.
+How do we sample from such a distribution? There are several different ways to sample from such a distribution; two of those are the Perturb and MAP approach and Gibbs sampling.
 
 
 \subsection{Perturb and MAP}
@@ -959,7 +922,7 @@ where $\epsilon \sim f(x)$ may for example be a normal distribution.
 
 Now consider the asymptotic normality of exponential families as well as the bound on variances. 
 We can use both in such a way that $\epsilon\sim \mathcal{N}(0, i(\vect{\theta}^*)/n)$ is a sample from a normal distribution with variance based on the asymptotic normal distribution, which allows us to sample an error within the natural error range.
-This way we can sample from different MAP-States, while still accounting for the error of the current parameters \wrt to the true parameters.
+This way, we can sample from different MAP-States, while still accounting for the error of the current parameters \wrt to the true parameters.
 
 
 \begin{algo}{Perturb and MAP~\cite{papandreou2011perturb}}
@@ -977,10 +940,10 @@ This way we can sample from different MAP-States, while still accounting for the
 \end{algo}
 
 \subsection{Gibbs Sampling}
-The Gibbs Sampling algorithm as presented in \alg\ref{alg:gibbs} is another method of obtaining samples $\vect{x} \in \vect{\mathcal{X}}$ from a probability distribution. 
-Initially, we sample from a uniform distribution in the range $[0,1]$ and then proceed to compute the marginal probabilities for a single entry and replacing that entry with the most probable one.
-This is repeated for randomly chosen elements and it can be shown that the initially uniform sample asymptotically approaches the actual distribution.
-However, as this may be computationally inhibitive due to the iterative nature of this method we may stop after a certain number of iterations, obtaining a sample which is approximately from the distribution of $\vect{X}$.
+The Gibbs sampling algorithm, as presented in \alg\ref{alg:gibbs}, is another method of obtaining samples $\vect{x} \in \vect{\mathcal{X}}$ from a probability distribution. 
+Initially, we sample from a uniform distribution in the range $[0,1]$ and then proceed to compute the marginal probabilities for a single entry and to replace that entry with the most probable one.
+This is repeated for randomly chosen elements, and it can be shown that the initially uniform sample asymptotically approaches the actual distribution.
+However, as this may be computationally inhibitive due to the iterative nature of this method, we may stop after a certain number of iterations, obtaining a sample which is approximately from the distribution of $\vect{X}$.
 
 \begin{algo}{Gibbs Sampling~\cite{yildirim2012bayesian}}
     \begin{algorithm}[H]
