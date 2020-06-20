@@ -1,22 +1,22 @@
 % einleitung.tex
 \chapter{Introduction}
 Electronic devices capable of accumulating and processing data are becoming increasingly widespread in the industry, businesses, and private households.
-Not only are we collecting more data than ever before, but this data is also more spread and not readily available for data mining and machine learning tasks.
-For devices such as mobile phones, smart devices, or embedded systems, the question quickly becomes whether we are able and allowed to retrieve all of the collected data.
-This gives rise to an additional methodical layer as we not only have to consider the data mining or machine learning tasks but also how we store and communicate observations.
+Not only are we collecting more data than ever before, but this data is also more spread and not readily available for typical data mining and machine learning tasks.
+For devices such as mobile phones, smart devices, or embedded systems, the question quickly becomes whether we are able and allowed to process or retrieve the collected data.
+This problem statement gives rise to an additional methodical layer as we not only have to consider data mining or machine learning tasks but also how we store and communicate observations.
 We consider this additional layer as a network of an arbitrary number of devices, which can communicate with each other or a central server.
-Ideally, we collect observed data from connected devices to obtain the best possible results.
-However, this approach may not be achievable for all applications.
-Depending on the restrictions that apply to an application, we may not be able to tap into the full potential of the combined data.
+Ideally, we collect observed data from connected devices to harness the data's full potential.
+However, this approach is not practical for all applications.
+Depending on the restrictions that apply to such a task, we may not be able to tap into the full potential of the combined data.
 However, we still want to achieve the best possible results while staying within these restrictions.
 One possible solution is to directly use the devices as distributed learners, each computing a model with their locally observed data.
 This way, there is no need to exchange observations while being able to retrieve the resulting models for all devices in a network.
 
-One of the main reasons forcing us to include this intermediate step is bandwidth or storage limitations that do not permit continuously transmitting all observed data to a central server.
-While research on increasing the bandwidth of such applications progresses steadily, e.g., the new telecommunication standard 5G with a transmission rate of up to 10GBit/s \cite{nordrum2017ieee}, restrictions to bandwidth and communication still apply to some systems. 
-Especially when considering energy-efficiency, the constant transmission of data is not the best choice, and thus bringing machine learning tasks to the devices is a viable alternative.
-Additionally, user privacy is of significant concern in a setting where we learn from user-generated data may include sensitive information.
-While some users may agree to process their data, this is generally not the case and should not be taken for granted. 
+Among the main reasons forcing us to introduce this intermediate step are bandwidth or storage constraints that do not permit continuously transmitting all observed data to a central server.
+While research on increasing the bandwidth of such applications progresses steadily, e.g., the new telecommunication standard 5G with a transmission rate of up to 10GBit/s \cite{nordrum2017ieee}, restrictions to bandwidth and communication still apply to a large number of systems. 
+Especially when considering energy-efficiency, the constant transmission of data is not the best choice, and thus bringing machine learning tasks to the devices collecting data is a viable alternative.
+Additionally, user privacy is of significant concern in a setting where our goal is to analyze user-generated data, which may include sensitive information.
+While some users may consent to process their data, this is usually not the case and should not be taken for granted. 
 Hence, treating the data as inaccessible for external servers and dealing with this on a local level is something we have to consider.
 
 However, even anonymized data can be profiled and tracked back to the users from whom the data originated from, which requires us to be even more attentive about which data should and should not be used or collected. 
@@ -25,7 +25,7 @@ Even with user permission to perform machine learning tasks on devices, we still
 Similarly, on sensor networks with remote servers, our goal is to be as efficient as possible, taking constrained processing power and energy consumption into account.
 
 This work deals with statistical models and canonical exponential families on distributed devices.
-Briefly, we are investigating aggregation mechanics for statistical models received from a set of distributed devices to increase performance and reduce communication load on the network.
+Briefly,  our goal is to investigate aggregation mechanics for statistical models received from a set of distributed devices to increase performance and reduce communication load on the network.
 The data is assumed to be collected on each device, and besides, we consider the data to be stationary due to privacy concerns or bandwidth limitations.
 
 \section{Motivation and Related Work}
@@ -87,7 +87,7 @@ These topics form the crucial backbone of distributed learning and remain of sci
 
 Thresholding and convergence analysis can be used to efficiently determine when local models are sufficiently close to each other, and training can be terminated.
 Improved bounds lead to more efficient learners as models require fewer data to provide quality guarantees.
-This becomes an even bigger problem in decentralized architectures without a coordinator.
+Achieving convergence becomes an even bigger problem in decentralized architectures without a coordinator.
 While communication and message passing for this application on tree-structured networks usually lead to a correct solution in a finite amount of steps, this is not the case for general network graphs.
 Wolff \cite{wolff2013local} has proposed a method to approach thresholding in a distributed system for a network with an arbitrary set of active connections between devices.
 The proposed algorithm passes the local information about some defined threshold to neighboring nodes, which is then propagated between the network nodes. 
@@ -97,7 +97,7 @@ The threshold is geometrically interpreted as a convex hull, and models violatin
 Model aggregation and ensembling techniques have been explored for a variety of different models and machine learning applications.
 Research has been done from parametric Bayesian model aggregation \cite{hoeting1999bayesian}\cite{de2011bayesian} and ensembling methods such as Random Forests~\cite{breiman2001random} and distributed aggregation frameworks for neural networks \cite{mcmahan2016communication}.
 For one, we have the general approach to model aggregation and specifically in the distributed setting.
-Then we have to consider the sample complexity, i.e., having a general idea bout how much data we need on each device.
+Then we have to consider the sample complexity, i.e., having a general idea bout how much data we need on each device to converge.
 This can be done by using a general network approach or using existing bounds such as the Hoefding bound to guarantee the models being somewhat close.
 
 While much research has been done on these topics, we are going to apply model aggregation methods to a federated learning system using probabilistic graphical models.
@@ -105,12 +105,13 @@ Therefore studying and improving the performance of tasks associated with distri
 
 \section{Roadmap}
 
-We will start by defining the notation used throughout this work, followed by the theoretical background in probability theory, probabilistic graphical models, and exponential families.
-Additionally, we will discuss sampling algorithms for generative models and existing bounds that can be used to determine convergence for the distributed learners as well as the global process.
+We start by introducing the notation used throughout this work, followed by the theoretical background in probability theory, probabilistic graphical models, and exponential families.
+Additionally, we will discuss sampling algorithms for generative models and existing bounds that can be used to determine convergence for the distributed learners as well as the global learning task.
 
-Then we will discuss Model Aggregation and different approaches to model aggregation. 
-Afterward, we will have a detailed look at the architecture and its implementation, dependencies, and structure.
+Then we will discuss distributed and federated learning and different approaches to model aggregation. 
+Afterward, we will have a detailed look at our proposed architecture and its implementation, dependencies, and structure.
 
-Followed by implementation details and experimental setup and evaluation on data sets for the presented aggregation mechanics and evaluate the results based on standard criteria for likelihood optimization as objective value (likelihood) or accuracy and f1 score when dealing with classification. 
-Furthermore, we evaluate the number of samples required to obtain a stable maximum likelihood estimator and how close the models are in terms of the distance between parameters and statistics, while also considering the amount of communication required for each aggregation mechanic.
-Finally, we will provide a conclusion to the experiments and the thesis, while also providing a brief outlook on possible future work and areas that require more research.
+Followed by implementation details, experimental setup, and evaluation of data sets for the presented aggregation mechanisms. 
+We will then evaluate the results based on standard criteria for optimization tasks, such as average likelihood or accuracy, and F1 score, especially when dealing with classification tasks.  
+Furthermore, we evaluate the number of samples required to obtain a stable maximum likelihood estimator and how close the models are in terms of the distance between parameters and statistics, while also considering the amount of communication required for each aggregation mechanism.
+Finally, we will provide a conclusion to the experiments and our work, while also providing a brief outlook on possible future research.

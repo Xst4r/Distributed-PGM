@@ -19,14 +19,15 @@ Model aggregation is the task of combining a set of models obtained from a group
     We only require the parameters in addition to the graph and state-space to perform inference.
 \end{definition}
 
-In the context of this work feasible solutions are from a parametrized family of densities, i.e., the solution space $\mathcal{H} = \Theta$ and  $m^i = \{\vect{\theta}^i, \tilde{\vect{\mu}}^i, \ldots\}, \: \vect{\theta}^i \in \mathbb{R}^d$, where $d$ is the number of parameters of the model. 
+In the context of this work feasible solutions are from a parametrized family of densities, i.e., the solution space $\mathcal{H} = \Theta$ and  $m^i = \vect{\theta}^i \in \mathbb{R}^d$, where $d$ is the number of parameters of the model. 
+Note that we here restrict models to their parameters only, while they usually contain additional elements such as the sufficient statistics $\tilde{\vect{\mu}}$
 
 The aggregate function is then $f: \mathbb{R}^{d \times k} \rightarrow \mathbb{R}^{d}$ such that the input is a matrix with $d \times k$ entries, where each column corresponds to a single parameter vector.
 
-For exponential families we already know from section \ref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
+For exponential families we already know from  \autoref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
 
 Basic approaches to federated learning involve training models on each learner first and afterward sending their models to the coordinator.
-Algorithm~\ref{alg:magg} presents this approach in a federated learning setting. 
+\autoref{alg:magg} presents this approach in a federated learning setting. 
 Each round, we update the local data set and continue estimating the model parameters in parallel. 
 We then send the local parameters to the coordinator, then aggregating the models and checking for convergence.
 Note that depending on the stopping criterion, we may need to supply additional information to the coordinator, such as the number of locally observed samples. 
@@ -69,7 +70,7 @@ Some additions to this basic approach may include sending the aggregate back to 
 Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregating models received from distributed learners.
 
 %\section{Aggregation Mechanisms}
-We will now discuss different aggregation methods, which are represented by line 6 in \alg \ref{alg:magg}.
+We will now discuss different aggregation methods, which are represented by line 6 in \autoref{alg:magg}.
 The optimal model $m*$ is usually not known and cannot be directly estimated or obtained.
 While  $m*$ is unknown, we can still compare different aggregation functions $f$ with each other to determine the most efficient and best-performing aggregator.
 
@@ -81,7 +82,7 @@ Probably the most intuitive approach to aggregate a set of parameters or models 
     \label{eq:arithmean}
     \hat{\theta} = \frac{1}{k} \sum_{i=1}^k \theta^i
 \end{equation}
-Recall that in section \ref{ssec:asymp} we showed that the maximum likelihood estimator for canonical exponential families is asymptotically normal.
+Recall that in \autoref{ssec:asymp} we showed that the maximum likelihood estimator for canonical exponential families is asymptotically normal.
 Hence, each $\vect{\theta}^i$ is one sample from the normal distribution $\vect{\theta}^i \dot{\sim} \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ around the true parameters and the inverse Fisher information.
 We can then perform a maximum likelihood estimation for the parameters of a normal distribution. 
 Let $\vect{\theta}^*$ be the mean and $i(\vect{\theta}^*)^n$ be the covariance matrix and any set of $\vect{\theta}$ be the observed data.
@@ -159,7 +160,7 @@ Given a normal distributed prior for $\vect{\theta}$, we can  compute the MAP-es
     &= \arg\max_{\vect{\theta}} \sum_{i=1}^k   \log \mathcal{N}(\vect{\theta}; \vect{\theta}^*, i(\vect{\theta}^{-1}/n))+  \log \mathcal{N}(\vect{\theta}^i ; \vect{\theta}, \Sigma).
     \end{split}
 \end{equation}
-Taking the derivative of \eq~\ref{eq:mapest} \wrt $\vect{\theta}$ we get
+Taking the derivative of \autoref{eq:mapest} \wrt $\vect{\theta}$ we get
 \begin{equation}
     \vect{\theta} = \frac{\vect{\theta}^*  + n \cdot \Sigma \cdot i(\vect{\theta}^*) \sum_{i=1}^k \vect{\theta}^i}{1 + n \cdot \Sigma \cdot i(\vect{\theta}^*) \cdot k},
 \end{equation}
@@ -186,7 +187,7 @@ Depending on the type of connection, it may be required to use an online algorit
 On such algorithm is Welford's algorithm, which can be used to compute running average and variance for some scoring function.
 Welford's algorithm has the property to asynchronously update the running average, while only retaining the number of elements that have already been averaged and the average itself.
 
-The communication process is shown in \fig \ref{fig:dist}, where on the left, node $i$ sends its local parameters to neighboring nodes. The neighbors $k$ and $j$ return the local score, determined by some scoring function $S: \mathcal{H} \times \mathbb{R}^n \rightarrow \mathbb{R}$ with local model $m^{i} \in \mathcal{H}$ and parameters $\vect{\theta}^{i} \in \mathbb{R}^d$.
+The communication process is shown in  \autoref{fig:dist}, where on the left, node $i$ sends its local parameters to neighboring nodes. The neighbors $k$ and $j$ return the local score, determined by some scoring function $S: \mathcal{H} \times \mathbb{R}^n \rightarrow \mathbb{R}$ with local model $m^{i} \in \mathcal{H}$ and parameters $\vect{\theta}^{i} \in \mathbb{R}^d$.
 
 \input{kapitel/figures/network_graph.tex}
 
@@ -265,7 +266,7 @@ The convex hulls intersect exactly on the point in the center of the triangle, a
             &= 1 + 1 + 1 = -(-3) = 3 \\
         \end{split}
     \end{equation}
-    and plugging that into \eq~\ref{eq:radonpoint} we obtain the intersection of the convex hulls as
+    and plugging that into \autoref{eq:radonpoint} we obtain the intersection of the convex hulls as
     \begin{equation}
         \begin{split}
             \bar{\vect{\theta}}_{RAD} &= \sum_{i\in I} \frac{a_i}{A} \vect{\theta}^i = - \sum_{j \in J} \frac{a_j}{A} \vect{\theta}^j \\
@@ -299,7 +300,7 @@ This issue can be solved by adding a constraint, e.g., fixing one arbitrary vari
 Adding this constraint allows, in the absence of linear dependencies, finding a unique solution to the problem.
 Note that by definition we still need $d+2$ parameter vectors to compute the Radon point.
 
-However, any solution to the system of linear equations presented in \eq~\ref{eq:radonopt} is a Radon point, and there may exist multiple solutions.
+However, any solution to the system of linear equations presented in \autoref{eq:radonopt} is a Radon point, and there may exist multiple solutions.
 One particular issue that we may run into is that the maximum likelihood estimators obtained from sampling the same random variable approach each other in the limit of $n \rightarrow \infty$, possibly leading to the introduction of linear dependencies.
 While this is an issue for the system of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any one solution.
 Without unique solution, however, we lose the property of the Radon point being the only center point as shown by Peterson et al.~\cite{peterson1972geometry}
@@ -310,7 +311,7 @@ The least-squares solution is obtained by minimizing
     \label{eq:lstsq}
         \min_{\vect{\lambda}} \norm{S\vect{\lambda} - b}^2_2,
 \end{equation}
-where $b=(1, 0, \ldots, 0) \in \mathbb{R}^{d+2}$ is a zero vector with a single one at the first position and $S$ is the coefficient matrix containing model parameters (cf. \eq~\ref{eq:radonopt}).
+where $b=(1, 0, \ldots, 0) \in \mathbb{R}^{d+2}$ is a zero vector with a single one at the first position and $S$ is the coefficient matrix containing model parameters (cf. \autoref{eq:radonopt}).
 
 For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all positive entries of $\vect{\lambda}$ and $J$ contains negative or zero entries of $\vect{\lambda}$ the unique solution and model aggregate $\vect{\bar{\theta}}_{RAD}$ is then given by:
 \begin{equation}
@@ -335,9 +336,9 @@ As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries 
             \FOR{$i = h-1, \ldots, 0$}
             \IF{i==0}
                 \IF{Matrix induced by $\vect{m}^{old}_1$ is singular}
-                \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\vect{m}^{old}_1$)(\eq~\ref{eq:lstsq})}
+                \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\vect{m}^{old}_1$)(\autoref{eq:lstsq})}
                 \ELSE
-                \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\vect{m}^{old}_1$)(\eq~\ref{eq:radonopt})}
+                \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\vect{m}^{old}_1$)(\autoref{eq:radonopt})}
                 \ENDIF
                 \STATE{$\vect{m}^{new} \leftarrow aggregate(\vect{m}^{old}_1, \vect{\lambda})$; \\
                 Break;\\}
@@ -347,12 +348,12 @@ As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries 
             \STATE{$\vect{m}^{\text{new}}\leftarrow \emptyset$ }
             \FOR{$j=1, \ldots, r^i$} 
             \IF{Matrix induced by $\vect{m}^{old}_j$ is singular}
-            \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\vect{m}^{old}_j$)(\eq~\ref{eq:lstsq})}
+            \STATE{$\vect{\lambda} \leftarrow$ solveLeastSquares($\vect{m}^{old}_j$)(\autoref{eq:lstsq})}
             \ELSE
-            \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\vect{m}^{old}_j$)(\eq~\ref{eq:radonopt})}
+            \STATE{$\vect{\lambda} \leftarrow$ solveLinearEquations($\vect{m}^{old}_j$)(\autoref{eq:radonopt})}
             \ENDIF
             \STATE{
-                $\vect{\theta}_{RAD}^j \leftarrow aggregate(\vect{m}^{old}_j, \vect{\lambda})$; (\eq~\ref{eq:radonpoint})\\
+                $\vect{\theta}_{RAD}^j \leftarrow aggregate(\vect{m}^{old}_j, \vect{\lambda})$; (\autoref{eq:radonpoint})\\
                 $\vect{m}^{\text{new}}\leftarrow \vect{m}^{\text{new}} \cup \vect{\theta}_{RAD}^j$;  \\
             } 
             \ENDFOR
@@ -381,9 +382,10 @@ Sampling is repeated for each local model until we obtain the required amount of
 \section{Bootstrap Aggregagation}
 
 With generative modeling, we can sample additional data from local models by transferring the local model parameters to the coordinator node.
-Sampling can be realized with Gibbs Sampling or Perturb and Map, as presented in \sect~\ref{sec:sampling}.
+Sampling can be realized with Gibbs Sampling or Perturb and Map, as presented in \autoref{sec:sampling}.
 We then create a new data set and use this to train a  global model. 
 Instead of directly aggregating $\vect{\theta}^k$ we first sample new data  $\hat{\vect{x}}^k \sim \mathbb{P}_{\vect{\theta}^k}$ and then train new models on the acquired sample data.
+This approach was originally introduced by Han and Liu~\cite{han2016bootstrap}, where the bootstrap aggregation was used in conjunction with Gaussian mixture models.
 However, for exponential families training $k$ models with average sufficient statistics $\vect{\mu}^k$ is equal to training a single model with the average over all sufficient statistics:
 \begin{equation}
     \begin{split}
@@ -395,12 +397,8 @@ However, for exponential families training $k$ models with average sufficient st
     \end{split}
 \end{equation}
 
-\subsection{Bootstrap and MAP}
-Alternatively, we can consecutively sample new parameter vectors first.
-Recall that according to \ref{ssec:asymp} the MLE is asymptotically normal, then we have $\hat{\theta}^{k_i}  \sim \mathcal{N}(\vect{\theta}^k, i(\vect{\theta}^k)^{-1}/n)$, assuming that each local parameters are the ground truth.
-Followed by using the MAP estimate for each $\vect{x}^{k_i} = \arg\max_{\vect{x}} \mathbb{P}_{\hat{\vect{\theta}}^{k_i}}(\vect{x})$ obtaining data sets of MAP estimates from parameter distributed around the k-th local model.
-
-
+Thus, we can recover the global model, by simply summing over the average sufficient statistics.
+However, in case we cannot share the sufficient statistics we can instead sample from the model parameters and train a new model on the approximate sufficient statistics obtained from sampling.
 
 %\section{Model Sampling}
 %In Section~\ref{ssec:asymp} we have shown the asymptotic normality for the maximum likelihood estimator of canonical exponential families.

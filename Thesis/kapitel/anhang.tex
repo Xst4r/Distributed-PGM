@@ -1,8 +1,224 @@
 % anhang.tex
 \chapter{Appendix}
+\label{ch:apdx}
+\section{Additional Experiment Plots}
+Here we show the remaining plots from the experiments presented in \autoref{chapter:ch5}.
+The experiments are ordered by data set, regularization and bound. 
+\label{sec:apdx:exp}
+
+    \begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Susy, No regularization, Bound $\epsilon=0.05$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/susy_None_0.05.pdf}
+        \caption[Susy without regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis5}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+        \begin{figure}
+            \centering
+            \textbf{Susy, l2 regularization, Bound $\epsilon=0.1$}\par\medskip
+            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/susy_l2_0.1.pdf}
+            \caption[Susy plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \label{fig:analysis6}
+        \end{figure}
+    \end{landscape}
+
+\begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Covertype, No regularization, Bound $\epsilon=0.1$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_None_0.1.pdf}
+        \caption[Covertype plots without regularization and $\epsilon=0.1$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis7}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Covertype, No regularization, Bound $\epsilon=0.05$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_None_0.05.pdf}
+        \caption[Covertype without regularization and $\epsilon=0.05$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis8}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+        \begin{figure}
+            \centering
+            \textbf{Covertype, l2 regularization, Bound $\epsilon=0.1$}\par\medskip
+            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_l2_0.1.pdf}
+            \caption[Covertype plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \label{fig:analysis9}
+        \end{figure}
+    \end{landscape}
+
+\begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Dota2, No regularization, Bound $\epsilon=0.1$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_None_0.1.pdf}
+        \caption[Dota2 plots without regularization and $\epsilon=0.1$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis10}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Dota2, No regularization, Bound $\epsilon=0.05$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_None_0.05.pdf}
+        \caption[Dota2 plots without regularization and $\epsilon=0.05$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis11}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+        \begin{figure}
+            \centering
+            \textbf{Dota2, l2 regularization, Bound $\epsilon=0.1$}\par\medskip
+            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_l2_0.1.pdf}
+            \caption[Dota2 plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \label{fig:analysis12}
+        \end{figure}
+    \end{landscape}
 
 \section{Independence Structures}
 \label{sec:apdx:struc}
-\section{Likelihood Tables}
+
+\input{kapitel/figures/susy_independence.tex}
+\input{kapitel/figures/covertype_independence.tex}
+\input{kapitel/figures/dota_independence.tex}
+
+\clearpage
+\section{Likelihood \& Variance Tables}
+The standard deviations in tables \ref{tab:avg_std_01},\ref{tab:std_std_005},\ref{tab:std_std_01},\ref{tab_avg_std_005} are computed \wrt to each dimension and each set of local parameter vectors.
+We compute the mean of all variances for all experiments with the same regularization type and over all local model parameters with the same number of samples:
+\begin{equation}
+    \label{eq:meanvar}
+    \hat{\sigma}_{p,r} = \sqrt{\frac{1}{p} \sum_{i=1}^p \text{mean}(\text{var}((\vect{\Theta}^{i_r}))},
+\end{equation}
+where $p=4$ is the number of, $r$ is the number of samples, and $\Theta$ is the set of local parameter vectors.
+We obtain the variance of the variances analogous by replacing the inner average with the variance:
+\begin{equation}
+    \label{eq:varvar}
+    \hat{\sigma}_{p,r} = \sqrt{\frac{1}{p} \sum_{i=1}^p \text{var}(\text{var}((\vect{\Theta}^{i_r}))},
+\end{equation}
+where the inner variance is always taken \wrt to each dimension and the outer mean and variance are compted over all elements.
+
+\begin{table}[!htb]
+    \centering
+    \caption[]{This table shows the total average standard deviation (\eq~\ref{eq:meanvar}) for $\epsilon=0.1$ across local model parameters from all splits, in ascending order \wrt the sample size. We observe that the std. steadily decreases, but does not achieve the same score as the global model. The std. is computed \wrt all models with the same number of samples and for each parameter dimension individually.
+    }
+    \label{tab:avg_std_01}
+    \begin{tabular}{l||rr|rr|rr}
+    \toprule
+    {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
+    Num Samples &              &           &                  &               &             &          \\
+    \midrule
+    9           &         3.18 &      1.31 &             3.18 &          1.31 &        3.18 &     1.31 \\
+    36          &         2.68 &      1.81 &             2.68 &          1.81 &        2.68 &     1.81 \\
+    80          &         2.82 &      2.04 &             2.82 &          2.04 &        2.82 &     2.04 \\
+    141         &         2.93 &      2.16 &             2.93 &          2.16 &        2.93 &     2.16 \\
+    220         &         2.91 &      2.19 &             2.91 &          2.19 &        2.91 &     2.19 \\
+    317         &         2.83 &      2.17 &             2.83 &          2.17 &        2.83 &     2.17 \\
+    432         &         2.71 &      2.09 &             2.71 &          2.09 &        2.71 &     2.09 \\
+    564         &         2.57 &      1.99 &             2.57 &          1.99 &        2.57 &     1.99 \\
+    713         &         2.42 &      1.88 &             2.42 &          1.88 &        2.42 &     1.88 \\
+    880         &         2.28 &      1.79 &             2.28 &          1.79 &        2.28 &     1.79 \\
+    1065        &         2.14 &      1.69 &             2.14 &          1.69 &        2.14 &     1.69 \\
+    1268        &         2.03 &      1.61 &             2.03 &          1.61 &        2.03 &     1.61 \\
+    1488        &         1.92 &      1.53 &             1.92 &          1.53 &        1.92 &     1.53 \\
+    1725        &         1.84 &      1.46 &             1.84 &          1.46 &        1.84 &     1.46 \\
+    1980        &         1.77 &      1.48 &             1.77 &          1.48 &        1.77 &     1.48 \\
+    Full Data       &         0.29 &      0.23 &             0.29 &          0.23 &        0.29 &     0.23 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+    \begin{table}[!htb]
+        \centering
+        \caption[]{This table shows the total average standard deviation(\eq~\ref{eq:varvar})for $\epsilon=0.05$ across local model parameters from all splits, in ascending order \wrt the sample size. We observe that the std. steadily decreases, but does not achieve the same score as the global model. The std. is computed \wrt all models with the same number of samples and for each parameter dimension individually.
+        }
+        \label{tab_avg_std_005}
+        \begin{tabular}{l||rr|rr|rr}
+        \toprule
+        {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
+        Num Samples &              &           &                  &               &             &          \\
+        \midrule
+        35          &         2.68 &      1.81 &             2.68 &          1.81 &        2.68 &     1.81 \\
+        140         &         2.99 &      2.13 &             2.99 &          2.13 &        2.99 &     2.13 \\
+        315         &         2.88 &      2.15 &             2.88 &          2.15 &        2.88 &     2.15 \\
+        559         &         2.57 &      2.05 &             2.57 &          2.05 &        2.57 &     2.05 \\
+        873         &         2.27 &      1.84 &             2.27 &          1.84 &        2.27 &     1.84 \\
+        1257        &         2.02 &      1.68 &             2.02 &          1.68 &        2.02 &     1.68 \\
+        1711        &         1.84 &      1.53 &             1.84 &          1.53 &        1.84 &     1.53 \\
+        2234        &         1.67 &      1.41 &             1.67 &          1.41 &        1.67 &     1.41 \\
+        2827        &         1.55 &      1.34 &             1.55 &          1.34 &        1.55 &     1.34 \\
+        3490        &         1.48 &      1.28 &             1.48 &          1.28 &        1.48 &     1.28 \\
+        4223        &         1.41 &      1.27 &             1.41 &          1.27 &        1.41 &     1.27 \\
+        5026        &         1.37 &      1.23 &             1.37 &          1.23 &        1.37 &     1.23 \\
+        5899        &         1.33 &      1.20 &             1.33 &          1.20 &        1.33 &     1.20 \\
+        6841        &         1.29 &      1.17 &             1.29 &          1.17 &        1.29 &     1.17 \\
+        7439        &         1.27 &      1.14 &             1.27 &          1.14 &        1.27 &     1.14 \\
+        Full Data       &         0.27 &      0.25 &             0.27 &          0.25 &        0.27 &     0.25 \\
+        \bottomrule
+        \end{tabular}
+        \end{table}
+        
+        \begin{table}[!htb]
+            \centering
+            \caption[]{This table shows the total standard dev. of the standard deviation for $\epsilon=0.1$ across local model parameters from all splits, in ascending order \wrt the sample size. Intuitively this table shows the standard deviation across all standard deviations in each of the dimensions in $\vect{\theta}^i \in \mathbb{R}^d$.
+            }
+            \label{tab:std_std_01}
+            \begin{tabular}{l||rr|rr|rr}
+            \toprule
+            {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
+            \midrule
+            9     &         9.39 &      1.51 &             9.39 &          1.51 &        9.39 &     1.51 \\
+            36    &         8.13 &      3.39 &             8.13 &          3.39 &        8.13 &     3.39 \\
+            80    &         8.70 &      4.44 &             8.70 &          4.44 &        8.70 &     4.44 \\
+            141   &         9.02 &      4.93 &             9.02 &          4.93 &        9.02 &     4.93 \\
+            220   &         9.12 &      5.17 &             9.12 &          5.17 &        9.12 &     5.17 \\
+            317   &         9.08 &      5.37 &             9.08 &          5.37 &        9.08 &     5.37 \\
+            432   &         8.91 &      5.32 &             8.91 &          5.32 &        8.91 &     5.32 \\
+            564   &         8.59 &      5.20 &             8.59 &          5.20 &        8.59 &     5.20 \\
+            713   &         8.27 &      5.08 &             8.27 &          5.08 &        8.27 &     5.08 \\
+            880   &         7.89 &      5.02 &             7.89 &          5.02 &        7.89 &     5.02 \\
+            1065  &         7.53 &      4.83 &             7.53 &          4.83 &        7.53 &     4.83 \\
+            1268  &         7.24 &      4.67 &             7.24 &          4.67 &        7.24 &     4.67 \\
+            1488  &         6.94 &      4.49 &             6.94 &          4.49 &        6.94 &     4.49 \\
+            1725  &         6.70 &      4.36 &             6.70 &          4.36 &        6.70 &     4.36 \\
+            1980  &         6.46 &      4.58 &             6.46 &          4.58 &        6.46 &     4.58 \\
+            Full Data &         0.65 &      0.54 &             0.65 &          0.54 &        0.65 &     0.54 \\
+            \bottomrule
+            \end{tabular}
+            \end{table}
+            \begin{table}[!htb]
+                \centering
+                \caption{}
+                \label{tab:std_std_005}
+                \begin{tabular}{l||rr|rr|rr}
+                \toprule
+                {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
+                \midrule
+                35    &         8.06 &      3.26 &             8.06 &          3.26 &        8.06 &     3.26 \\
+                140   &         9.12 &      4.80 &             9.12 &          4.80 &        9.12 &     4.80 \\
+                315   &         9.07 &      5.19 &             9.07 &          5.19 &        9.07 &     5.19 \\
+                559   &         8.51 &      5.43 &             8.51 &          5.43 &        8.51 &     5.43 \\
+                873   &         7.89 &      5.17 &             7.89 &          5.17 &        7.89 &     5.17 \\
+                1257  &         7.21 &      5.00 &             7.21 &          5.00 &        7.21 &     5.00 \\
+                1711  &         6.64 &      4.73 &             6.64 &          4.73 &        6.64 &     4.73 \\
+                2234  &         6.12 &      4.50 &             6.12 &          4.50 &        6.12 &     4.50 \\
+                2827  &         5.75 &      4.43 &             5.75 &          4.43 &        5.75 &     4.43 \\
+                3490  &         5.62 &      4.33 &             5.62 &          4.33 &        5.62 &     4.33 \\
+                4223  &         5.45 &      4.57 &             5.45 &          4.57 &        5.45 &     4.57 \\
+                5026  &         5.33 &      4.56 &             5.33 &          4.56 &        5.33 &     4.56 \\
+                5899  &         5.24 &      4.52 &             5.24 &          4.52 &        5.24 &     4.52 \\
+                6841  &         5.13 &      4.48 &             5.13 &          4.48 &        5.13 &     4.48 \\
+                7439  &         5.04 &      4.38 &             5.04 &          4.38 &        5.04 &     4.38 \\
+                Full Data &         0.61 &      0.59 &             0.61 &          0.59 &        0.61 &     0.59 \\
+                \bottomrule
+                \end{tabular}
+                \end{table}
+                
 \label{sec:apdx:table}
 

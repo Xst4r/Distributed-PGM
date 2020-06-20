@@ -2,7 +2,7 @@
 
 \chapter{Implementation}
 \label{chapter:ch4}
-In this chapter, we will discuss the implementation, featuring the theoretical results from \chap~\ref{chapter:kap2} and aggregation methods presented in \chap~\ref{chapter:ch3} for probabilistic graphical models and exponential families.
+In this chapter, we will discuss the implementation, featuring the theoretical results from \autoref{chapter:kap2} and aggregation methods presented in \autoref{chapter:ch3} for probabilistic graphical models and exponential families.
 The implementation features a simulated environment with distributed learners and the coordinator.
 They have shared access to some data structures used for simulating the message exchange between both parties.
 We are going to discuss implemented features, design choices as well as providing a general idea about data processing, model initialization, and code architecture.
@@ -29,13 +29,13 @@ Let us now have a closer look at the code structure, data processing, and initia
 \section{Initialization Phase}
 \input{kapitel/figures/flowchart.tex}
 The initialization phase is executed at the program's start, loading the data, parameters, and creating mandatory objects such as the coordinator, models, and aggregators.
-\fig \ref{fig:flowchart} shows the initial setup.
+\autoref{fig:flowchart} shows the initial setup.
 First, for a data set $\mathcal{D}$, we create a data set object, which discretizes the data and creates the desired number of cross-validation splits. 
 For easier accessibility, the implementation features a basic framework for directly downloading and extracting datasets when providing a hyperlink to the data server.
 After that, we create a coordinator object, which has access to the data set, a sampler object, and the aggregators.
 The sampler is responsible for creating random index-based splits, accessible by the models, providing them access to the data set via index operations.
 Finally, we create the graph-based independence structure $G=(V,E)$  on a holdout set, where the number of vertices is the number of features in $\mathcal{D}$ and generating the conditional independencies using the Chow-Liu algorithm.
-We then create distributed models from the individual splits and graph, which then start alternating between run and aggregation phase (cf. \fig~\ref{fig:dist}).
+We then create distributed models from the individual splits and graph, which then start alternating between run and aggregation phase (cf. \autoref{fig:dist}).
 
 After the discretization, each random variable $X_i$ with state-space $\mathcal{X}_i$ has at most $\{0, \ldots, \max(\mathcal{D}_{\cdot i})\}$ observable states.
 Since we discretize the data before determining the independence structure, we obtain the number of states for each feature by merely taking the maximum among all observations from the corresponding feature. 
@@ -64,7 +64,7 @@ We may choose the number of quantiles based on the total range of each feature o
 
 \section{Run Phase}
 After creating all necessary objects, run, and aggregation phase begins alternating, where the available data on the learners increases each round.
-\fig~\ref{fig:dist} illustrates the sequence of operations.
+\autoref{fig:dist} illustrates the sequence of operations.
 First, each of the distributed learners trains a probabilistic graphical model with the locally available data.  
 Then, the coordinator receives and aggregates parameters from the distributed learners $\vect{m}$. 
 Optionally we return the aggregate to the distributed learners, using them as initial parameters for the upcoming round.
@@ -142,13 +142,13 @@ The coordinator then accesses the parameters for the aggregation phase.
 Upon completion of the run phase, the coordinator receives the updated local model parameters and uses these to create an aggregator instance.
 The parameters for an arbitrary aggregator object are typically passed as $\mathbb{R}^{d \times k}$ matrix, where, again, $d$ is the number of parameters for each model, and $k$ is the number of models.
 
-Before the aggregation, we may optionally choose to sample additional models, i.e., parameter vectors from existing ones taking advantage of the asymptotic normality of the MLE (cf. \ref{ssec:asymp}).
+Before the aggregation, we may optionally choose to sample additional models, i.e., parameter vectors from existing ones taking advantage of the asymptotic normality of the MLE (cf. \autoref{ssec:asymp}).
 This is especially useful for radon machines when we have close to $ r^h << k < r^{h+1}$ models, but strictly less than required for aggregating $r^{h+1}$ models for an arbitrary $h$.
 
-Parameters of exponential families are asymptotically normal distributed, as shown in \sect~\ref{ssec:asymp}.
+Parameters of exponential families are asymptotically normal distributed, as shown in \autoref{ssec:asymp}.
 Hence, we can center the sample distribution around $\vect{\theta}^i$ if we assume this to be the asymptotic result.
 In case, where it is not feasible to compute and store the Fisher information, we have to determine the covariance matrix for $\hat{\vect{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$ the asymptotic distribution.
-The different choices for correlation matrices are derived from the results in \sect~\ref{ssec:asymp} and \sect~\ref{ssec:bounds}.
+The different choices for correlation matrices are derived from the results in \autoref{ssec:asymp} and \autoref{ssec:bounds}.
 %We could use Wasserstein-2 Distance to measure the distance between the local distribution and the true distribution
 
 \subsection{Covariance Generation}
@@ -195,13 +195,13 @@ For distributions on local models, we add an error to the diagonal of the varian
 \begin{equation}
     \tilde{\Sigma}=  \frac{1}{\abs{\mathcal{D}} \cdot diag(i(\vect{\theta}^j))} + \epsilon,
 \end{equation}
-where $\epsilon$ is based on the bounds derived in \sect~\ref{ssec:bounds}.
+where $\epsilon$ is based on the bounds derived in \autoref{ssec:bounds}.
 
 Moreover, we may compute entries on the diagonal blocks, that is, entries between sufficient statistics from the same clique:
 \begin{equation}
     i(\vect{\theta})_{C_{ij}} = 0- \sum_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(X= \vect{x}) \phi_C(\vect{x})_i \sum_{\vect{x} \in \vect{\mathcal{X}}} \mathbb{P}_{\vect{\theta}}(X= \vect{x}) \phi_C(\vect{x})_j= - p_i p_j,
 \end{equation}
-where $ \mathbb{E}[\phi(\vect{X})_i \phi(\vect{X})_j]$ (cf. \eq~\ref{eq:sparsefish}) is always zero as the probability of observing two events simultaneously in a single clique is zero.
+where $ \mathbb{E}[\phi(\vect{X})_i \phi(\vect{X})_j]$ (cf. \autoref{eq:sparsefish}) is always zero as the probability of observing two events simultaneously in a single clique is zero.
 
 Since we are introducing additional variance between parameters of distributed learners, we can quantify this error and add it to the variance terms.
 As the addition of positive values to the diagonal preserves the properties of a covariance matrix, we may add an error term to the diagonal while preserving positive semidefiniteness, symmetry, and non-singularity.
@@ -214,25 +214,25 @@ In summary, we present three different ways of generating full covariance matric
 
 The aggregator interface provides the predefined functions for implementing additional aggregators.
 Aggregators receive the models along with additional, for the aggregation mandatory, user-defined parameters.
-We consider the input models to be either in matrix form or a list of PXPY model objects, which contain the parameters.
+We expect the input models to be either in matrix form or a list of PXPY model objects, which contain the parameters to be aggregated.
 Then, calling the aggregate function starts the aggregation process for the provided models. 
 Each aggregator stores the results in their instance, while also showing whether the aggregation was successful.
 Additional aggregators only require the implementation of the constructor and aggregate function with the predetermined input format.
 
 \paragraph*{Arithmetic Mean}
 We provide the models for the arithmetic mean by bringing the model parameters into matrix form, i.e., $\mathbb{R}^{d \times k}$ for d-dimensional parameters and k models.
-The aggregate is computed along the row-axis of the matrix according to \eq~\ref{eq:arithmean}
+The aggregate is computed along the row-axis of the matrix according to \autoref{eq:arithmean}
 
 \paragraph*{Weighted Average}
 The weighted average is computed as the weighted sum over the matrix rows.
 We showcase two approaches to determine the set of weights $\vect{\lambda}$.
-First we compute the likelihood $\log \mathcal{N}(\vect{\theta}^i; \hat{\vect{\theta}}, \vect{\Sigma})$, based on the maximum likelihood estimator for mean and covariance computed from all models and compute the normalized weights based on \eq~\ref{eq:normll}.
+First we compute the likelihood $\log \mathcal{N}(\vect{\theta}^i; \hat{\vect{\theta}}, \vect{\Sigma})$, based on the maximum likelihood estimator for mean and covariance computed from all models and compute the normalized weights based on \autoref{eq:normll}.
 Computing the likelihood is especially useful when we have additional information about $\mathcal{N}$, such as an improved estimate for the mean. 
-Given this prior, we can then better appraise the learner's models.
+Given this prior, we can then better assess the learner's models.
 
 The second approach is based on dynamically computing the mean and variance of some scoring metric using Welford's algorithm.
 Distributed learners exchange models and compute the classification score or likelihood on their observed data given external parameters.
-\alg~\ref{alg:welford} outlines these steps, where each vertex first sends its parameters to neighboring nodes and then computes and sends messages based on incoming parameters. 
+\autoref{alg:welford} outlines this routine, where each vertex first sends its parameters to neighboring nodes and then computes and sends messages based on incoming parameters. 
 Each node then updates the average score based on incoming messages.
 
 \begin{algo}{Welford's Algorithm~\cite{welford1962note}}
@@ -243,8 +243,8 @@ Each node then updates the average score based on incoming messages.
         \COMMENT{Initialization}\\
         \FORALL{$v \in V_N$}
         \STATE{Send $\vect{\theta}^v$ to neighbors $\mathcal{N}(v)$}\\
-        \STATE{$\tilde{\eta}^i \leftarrow 0$ }\\
-        \STATE{$\tilde{\sigma}^i \leftarrow 0$}\\
+        \STATE{$\tilde{\eta}^v \leftarrow 0$ }\\
+        \STATE{$\tilde{\sigma}^v \leftarrow 0$}\\
         \STATE{$i^v \leftarrow 1$}\\
         \ENDFOR \\
         \COMMENT{Process score and messages for all nodes}
@@ -280,10 +280,10 @@ Each node then updates the average score based on incoming messages.
 \end{algorithm}
 \end{algo}
 
-The coordinator then normalizes the weights (\eq~\ref{eq:scorenorm}) and computes the weighted average as usual.
+The coordinator then normalizes the weights (\autoref{eq:scorenorm}) and computes the weighted average as usual.
 
 \paragraph*{Radon Machines}
-While the concept of Radon Points allows us to compute the center point for a given set of points solving a system of linear equations we can not obtain a unique solution if the coefficient matrix is not full rank, i.e., is singular.
+While the concept of Radon Points allows us to compute the center point for a given set of points solving a system of linear equations, recall that we can not obtain a unique solution if the coefficient matrix is not full rank, i.e., is singular.
 This problem  is caused by two or more linear dependent columns or rows in the matrix.
 
 As the number of samples seen by each device increases the parameters approach each other to some extent, which in turn increases the likelihood of introducing linear dependencies between parameter vectors.
@@ -293,7 +293,7 @@ Identical parameters vectors become an issue when solving systems of linear equa
 The probability of introducing such dependencies increases with the amount of data, such that the solution may not be unique anymore.
 Instead of solving a system of linear equations, we can transform the problem into a least-squares minimization to find any non-unique solution, or the unique if it exists.
 
-In that case, we check if the coefficient matrix from \eq~\ref{eq:radonopt} is singular, and if it is, we switch to a least-squares optimization approach to obtain a feasible solution. 
+In that case, we check if the coefficient matrix from \autoref{eq:radonopt} is singular, and if it is, we switch to a least-squares optimization approach to obtain a feasible solution. 
 
 In the non-singular case the system of linear equations with coefficients $A \in \mathbb{R}^{d+2 \times d+2}$, variables and constants $\vect{x}, \vect{b} \in \mathbb{R}^{d+2}$
 
@@ -305,12 +305,12 @@ In the non-singular case the system of linear equations with coefficients $A \in
     \end{split}
 \end{equation}
 has a unique solution.
-Instead of directly solving \eq~\ref{eq:syseq} we obtain a solution by solving 
+Instead of directly solving \autoref{eq:syseq} we obtain a solution by solving 
 
 \begin{equation}
     \hat{\vect{x}} = \arg\min_{x} \norm{A\vect{x} - \vect{b}}^2_2,
 \end{equation}
-, which is a least squares minimization \wrt to the local model parameters, which are the columns of $A$ and constants $b$ from constraints introduced in \eq~\ref{eq:radonopt}.
+, which is a least squares minimization \wrt to the local model parameters, which are the columns of $A$ and constants $b$ from constraints introduced in \autoref{eq:radonopt}.
 
 We then arrive at a unique solution for $\vect{x}$ on non-singular matrices using either approach or, if the matrix is singular, one solution to the problem using the least-squares minimization.
 We will now move on to the experiments, setup, and empirical results evaluating the different aggregation methods.
@@ -319,7 +319,7 @@ We will now move on to the experiments, setup, and empirical results evaluating 
 \paragraph*{Bootstrap Aggregation}
 
 The bootstrap aggregation takes advantage of generative modeling, which allows us to generate new samples from a distribution.
-Here, we use Gibbs sampling (\alg~\ref{alg:gibbs}) with 20 iterations to generate new samples.
+Here, we use Gibbs sampling (\autoref{alg:gibbs}) with 20 iterations to generate new samples.
 We sample a total of $\sum_{i=1}^k \abs{\mathcal{D}^i} /2$ from each model, compute the sufficient statistics, and train a new model on the coordinator with the combined sample data.
 
 Having discussed the implementation of all aggregation methods, we conclude the implementation chapter.

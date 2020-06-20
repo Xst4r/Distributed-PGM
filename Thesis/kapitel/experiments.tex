@@ -2,30 +2,37 @@
 
 \chapter{Experiments}
 \label{chapter:ch5}
-Empirical evaluation is necessary to verify the theoretical properties of the aggregation mechanics and sampling methods.
-In this chapter we will discuss the experimental setup, talk about the data sets used and will evaluate the empirical results obtained from applying the aggregation techniques.
+We will now describe our experimental setup in detail, report our findings, and evaluate the experimental results.
+Afterward, we will briefly discuss the relevance and impact based on the empirical results.
 
 We are specifically going to investigate the following questions:
 \begin{itemize}
     \item Do local models benefit from aggregation?
-    \item Does any aggregation method outperform the others? 
+    \item How do aggregation methods compare to each other? 
     \item Do additional parameter samples affect the aggregate?
     \item How do aggregates perform when compared to the baseline?
 \end{itemize}
-First, we compared the performance of local models, aggregates, and baseline based on likelihood and performance. 
-Moreover, we continuously monitored the performance of local and aggregate model to record accuracy and likelihood in every round, where we increased the amount of data available each round.
-We ran experiments with five different aggregation methods and three covariance matrix sampling variants, while also testing the aggregation without additional sampling.
-Additionally, models where trained either without regularization or with $l2$ regularization.
-Operations that involve random events such as sampling or index shuffling were performed using a seeded randomizer to improve reproducibility.
+We evaluated and collected the performance of local models, aggregates, and baseline using the average relative likelihood, accuracy score, and F1-score. 
+Moreover, we continuously monitored the performance of the local and aggregate model to record accuracy and likelihood in every round, where we increased the amount of data available each round.
+We then trained a new model on each distributed learner using the extended data set.
+To achieve this, we precomputed the number of samples required to satisfy the Hoefding bound. 
+Let $n_{\max}$ be the number of samples required.
+We then divided the interval between zero and $[0, n_{\max}]$ into an arbitrary amount of rounds, e.g., fifteen $[10,20,30, \ldots, 150]$ for $n_{\max} = 150$. 
+Then for each round, we trained the distributed learners using that amount of samples while aggregating and evaluating the models.
+ 
+We conducted experiments using five different aggregation methods and three covariance matrix sampling variants, while also testing the aggregation without additional parameter vector sampling.
+Additionally, models on distributed learners were trained without regularization and once with $l2$ regularization.
+Operations that involve random events such as sampling or index shuffling were performed using a seeded random state.
 
-Directly comparing our results is difficult as not much work specifically on aggregating canonical exponential family models has been done. Han and Liu\cite{han2016bootstrap} evaluate aggregation on gaussian mixture models, while Kamp et. al. \cite{kamp2017effective} consider classifier ensembles.
-Moreover, the metrics used to compare and evaluate results vary greatly with accuracy, likelihood AUC/ROC measures or mean squared errors all being used to evaluate model performance.
-Here, we compare our results to integer exponential family models investiaged by Piatkowsiks~\cite{piatkowski2018exponential}obtained by computing the arithmetic mean. 
-Integer models restrict the solution space to being integer only, which is then an approximation of the real-valued solution.
+Directly comparing our results is difficult as not much work specifically on aggregating canonical exponential family models has been done. Han and Liu\cite{han2016bootstrap} considered aggregation on Gaussian mixture models, while Kamp et al. \cite{kamp2017effective} performed experiments using classifier ensembles.
+Moreover, the metrics used to compare and evaluate results vary greatly, such that direct comparison is difficult.
+Here, we compare our results to integer exponential family models investigated by Piatkowski~\cite{piatkowski2018exponential}obtained by computing the arithmetic mean over a set of distributed learners. 
+Integer Markov random fields restrict the solution space of $\vect{\theta}$ to integer values, which in practice is an approximation of the real-valued solution.
+However, the aggregate itself does not necessarily need to be an integer model.
 
-We start by introducing  the experimental setup in  \sect~\ref{sec:setup}, where we provide an overview of the data sets used.
-We then present the experiment framework and evaluation metrics in \sect~\ref{sec:experiments} and \sect~\ref{sec:evaluation}.
-Finally, in \sect~\ref{sec:results}, we present and evaluate the results.
+We start the evaluation by first introducing the experimental setup in \autoref{sec:setup}, where we provide an overview of the data sets and detailed data processing steps used.
+We then present the experiment framework and evaluation metrics in \autoref{sec:experiments} and \autoref{sec:evaluation}.
+Finally, in \autoref{sec:results}, we present, evaluate, and discuss the results.
 
 \section{Data}
 \label{sec:setup}
@@ -33,113 +40,131 @@ Finally, in \sect~\ref{sec:results}, we present and evaluate the results.
 We used three benchmark datasets from the UCI machine learning repository: SUSY~\cite{baldi2014searching}, Covertype~\cite{blackard2000comparison} and Dota2~\cite{tridgell2016dota2} to evaluate the aggregation methods.
 
 
-We discretize the features into their $q=10$ quantiles to obtain comparable results.
-Each feature that contains more that $q$ unique values into its $q=10$ quantiles, all other features are not discretized.
-Ideally, we determine the interval ranges and number of buckets prior to the discretization, where the intervals are then based on the total range of each feature.
+We discretized the features into their $q=10$ quantiles to obtain comparable results.
+Each feature containing more than $q$ unique values was discretized into its $q=10$ quantiles.
+Ideally, we determine the interval ranges and number of buckets before the discretization, where the intervals are then based on the total range of each feature.
 However, this is usually not the case, i.e., newly observed data from some feature $\mathcal{D}_{\cdot i}$ may contain values outside of the feature range observed in the training data. 
 We then observe values exceeding the original range, that is, $\sup(\hat{\vect{X}}_i) > \sup(\vect{X}_i) $ or  $\inf(\hat{\vect{X}}_i) < \inf(\vect{X}_i) $.
-In such a case we add two additional bins, where samples outside the original range are assigned to.
-Samples above or below the original range of $\mathcal{D}_{\cdot i}$ are then  mapped to buckets $0$ or $q+1$ respectively.
+We added two additional bins, where samples outside the original range were assigned.
+Samples above or below the original range of $\mathcal{D}_{\cdot i}$ were then mapped to buckets $0$ or $q+1$, respectively.
 
-Additionally we used cross-validation for the global models and for the distributed learners we partition the training portion of each split further in $k$ equal sized splits, where $k$ is the number of learners.
-While increasing or decreasing the number of local models is always possible, again we chose this according to the experiments already conducted by Piatkowski.
+Additionally, we used cross-validation for global models. 
+For the distributed learners, we partitioned the training portion of each split further into $k$ equal-sized sets, where $k$ is the number of learners.
 
-The independence structures are estimated the Chow-Liu algorithm and can be found in \sect~\ref{sec:apdx:struc}.
-Since we reestimate the structure for each experiment the structure varies slightly.
-The structures were generated on a holdout set of $n=10000$ sampled prior to creating the cross-validation splits.
-The holdout set was discretized separately , based on the ranges observed in the holdout set only.
-We then discretized the training data and based on the training data quantiles, the test data.
+The independence structures were estimated using the Chow-Liu algorithm and can be found in \autoref{sec:apdx:struc}.
+Since the structure was re-estimated for each experiment, the structures vary slightly.
+The structures were generated on a holdout set of $n=10000$ sampled before creating the cross-validation splits.
+The holdout set was discretized separately, based on the ranges observed in the holdout set only.
+We then discretized the training data and, based on the training data quantiles, the test data as well.
 
-We used three real-world data sets for the experiments and evaluation. 
-Each task associated with the data set is either a binary or multi-label classification task.
+We used three real-world data sets for the experiments and evaluations. 
+
+Each data set is based on a classification task, with two tasks being a binary classification and one multi-label classification.
 
 \paragraph*{Dota2}
 The Dota2 data set contains game results of roughly $n=100.000$ matches from the team-based video game Dota2, where five players on each side each pick one character from a growing pool of characters (114 at the time of recording the data).
 Each character can only be chosen by one team and only once.
 The data set contains one feature for each character, the game type, region id, and which of the result.
-Each character feature can take one of three values $\{-1,0,1\}$, where zero indicates that the character was not picked and -1, 1 that the character was picked by either team.
+Each character feature can take one of three values $\{-1,0,1\}$, where zero indicates that the character was not picked and -1, 1 that either team picked the character.
 The match result is a binary variable as there are no draws.
-We can then predict, which of the two teams won or for example choose a character based on already chosen ones, that best fits the team composition.
+We can then predict which of the two teams won or, for example, choose a character based on already chosen ones, that best fits the team composition.
 
 \paragraph*{Covertype}
 The Covertype data set contains cartographic features for  $n=581012$ forest cells of size $30m^2$.
-Here, the task is to determine one out of 7 possible forest cover types given a set of cartographic features such as elevation, slope or shade. 
-Some of these features are binary and thus need not to be discretized, while others such as elevation are discretized into 10 quantiles.
-This is a standard multi-label classification task with unbalanced classes.
+Here, the task is to determine one out of 7 possible forest cover types given a set of cartographic features such as elevation, slope, or shade. 
+Features may be binary and thus do not need to be discretized, while others such as elevation are discretized into ten quantiles.
+Covertype is a standard multi-label classification task with unbalanced classes.
 Two classes appear with higher frequency, while the other classes are rarely observed.
 
 \paragraph*{SUSY}
 The SUSY data set contains eight kinematic properties measured by particle detectors in a particle accelerator. 
-The features were obtained using Monte Carlo simulations, while the additional ten features are high level features derived from the original measurements.
-Here, we aim to distinguish between two signal processes one of which does produce supersymmetric particles, while the other does not. 
+The features were obtained using Monte Carlo simulations, while the additional ten features are high-level features derived from the original measurements.
+Here, we aim to distinguish between two signal processes, one of which does produce supersymmetric particles, while the other does not. 
 Thus, the task is a binary classification task containing $n=5000000$ already labeled samples.
 
-\section{Experiments}
+\section{Evaluation}
 \label{sec:experiments}
-We employ a set of parameters in order to control and evaluate experiments in different settings.
-For each experiment we employ all aggregation methods (if possible) and additionally use one type of covariance matrix to sample more parameter vectors. 
-This lets us effectively simulate more models, while also eliminating the need to train additional models, which is also useful when there is not much data to work with.
+We used a set of parameters in order to control and evaluate experiments in different settings.
+For each experiment, we employed all aggregation methods (if possible) and additionally generated one type of covariance matrix to sample $d+2$ parameter vectors. 
+Sampling parameter vectors lets us effectively simulate more models, while it also eliminated the requirement to train additional models, which is useful when the number of samples available is small.
 
-We train models in a cross-validation fashion with $c = 10$ splits on $k=10$ distributed learners.
-Each cross-validation training split is further divided into $k$ splits and made available to a learner.
-Then, we train each learner on a subset of the split, increasing the split size every round to simulate local data collection.
-Once the maximum number of iterations(i=5000) has been reached or the stopping criterion (\eq~\ref{eq:stopcrit}) is satisfied we terminate the training and send the local parameters to the coordinator.
+We trained models in a cross-validation fashion with $c = 10$ splits on $k=10$ distributed learners.
+Each cross-validation training split was further divided into $k$ splits and made available to a learner.
+Then, we trained each learner on a subset of the split, increasing the split size every round to simulate local data collection.
+Once the maximum number of iterations(i=5000) was reached, or the stopping criterion (\autoref{eq:stopcrit}) was satisfied, we terminated the training and sent the local parameters to the coordinator.
+We set the probability for the Hoefding bound to $\delta = 0.5$, as Radon machines are still $\epsilon$-good when half of the models are $\epsilon$-bad.
 
-\subsection{Aggregators}
 \subsection{Parameter Sampling}
-We sample additional parameter vectors such that we are able to employ the radon machines with $h=1$, which requires $(d+2)$ models.
-From each local model $m^i$ we sample $\lceil d+2/k \rceil$ parameter vectors., which are then used for all aggregators.
-Radon machines are to used in case we do not sample additional parameter vectors.
+We sampled additional parameter vectors, such that we were able to employ the Radon machines with $h=1$, which already required $(d+2)$ models.
+From each local model $m^i$, we sampled $\lceil d+2/k \rceil$ parameter vectors, which were then used for the Radon machines, averaging, and the likelihood-weighted averaging.
+The bootstrap and accuracy weighted average aggregator used the original $k$ parameter vectors instead of the sampled ones.
+Bootstrapping already samples more data from the original models, and the accuracy-weighted aggregator requires communication between the distributed learners.
+Increasing the number of distributed learners is a task that should be further investigated in the future.
+When not sampling additional parameter vectors, Radon machines were not used for the aggregation as there were not enough models for a single pass.
 
-\subsection{Evaluation}
+
+\subsection{Evaluation Metrics}
 \label{sec:evaluation}
-We evaluate the different aggregation and sampling methods by comparing likelihood, accuracy and f1-score in terms of the training and test data. 
-First we assess the general quality of the aggregate by computing the likelihood on the full training data $\mathcal{D}$.
+We evaluated the different aggregation and sampling methods by comparing likelihood, accuracy, and F1-score in terms of the training and test data. 
+First we assessed the general quality of the aggregate by computing the likelihood on the full training data $\mathcal{D}$.
 \begin{equation}
     \begin{split}
         \ell(\vect{\theta} ; \mathcal{D}) &= -\frac{1}{\abs{\mathcal{D}}} \sum_{\vect{x} \in \mathcal{D}} \inner{\phi(\vect{x})}{\vect{\theta}} - A(\vect{\theta}) \\    
         &= A(\vect{\theta}) - \inner{\vect{\mu}}{\vect{\theta}}
     \end{split}
 \end{equation}
-Additionally, we compare the aggregate likelihood with the local 
+
 \paragraph*{Relative Log-Likelihood}
-We measure the likelihood in terms of a quality function, which is the difference between the global model $\vect{\theta}^*$, which has had access to the full data set and any other local or aggregate model on the full data. 
+We measured the likelihood relative to the baseline likelihood, which is the difference between the global model $\vect{\theta}^*$ evaluated on the test data and any other local or aggregate model on the test data. 
+The relative average log-likelihood measures closeness between a model or aggregate and the baseline model. 
+The baseline or global model is a model that has had access to the full training data set.
 Since the likelihood is convex the global model is a lower bound for the likelihood, i.e., $\ell(\vect{\theta}^* ; \mathcal{D}) \leq   \ell(\vect{\theta} ; \mathcal{D})$ without additional sampling.
 The likelihood is convex, thus for 
 \begin{equation}
     \frac{\partial}{\partial \vect{\theta^*}} \ell(\vect{\theta}^* ; \mathcal{D})  = 0,
 \end{equation}
-the parameters $\vect{\theta}^*$ are optmial \wrt $\mathcal{D}$ and for any other $\vect{\theta} \neq \vect{\theta}^*$ we have 
+the parameters $\vect{\theta}^*$ are optimal \wrt $\mathcal{D}$ and for any other $\vect{\theta} \neq \vect{\theta}^*$ we have 
 
 \begin{equation}
     \frac{\partial}{\partial \vect{\theta}} \ell(\vect{\theta} ; \mathcal{D})  > 0,
 \end{equation}
-and thus obtaining a distance function (\eq~\ref{eq:regret})
+and thus obtaining a distance function (\autoref{eq:regret})
 \begin{equation}
+\label{eq:dist_ll}
 d_{\ell}(\vect{\theta}, \vect{\theta}^*; \mathcal{D}) = \ell(\vect{\theta} ; \mathcal{D}) -    \ell(\vect{\theta}^* ; \mathcal{D})
 \end{equation}
 
-\paragraph*{Accuracy}
-Classification tasks require the prediction of a label from a given set of possible outcomes given some input data. The data is usually divided into features and labels $\mathcal{D} = \{\vect{\mathcal{X}, \vect{\mathcal{Y}}}\} \subset \mathbb{R}^m \times \mathbb{N}$ , with features $\vect{\mathcal{X}}$ and labels or classes $\vect{\mathcal{Y}}$.
+To better capture the performance on unseen data we may also compute the relative average log likelihood \wrt the test data set $\mathcal{D}_{test}$:
+\begin{equation}
+    \label{eq:dist_ll_test}
+    d_{\ell}(\vect{\theta}, \vect{\theta}^*; \mathcal{D}_{test}) = \ell(\vect{\theta} ; \mathcal{D}_{test}) - \ell(\vect{\theta}^* ; \mathcal{D}_{test}).
+\end{equation}
+For the plots and tables in this work we used the distance measure from \autoref{eq:dist_ll}.
 
-Predictions with probabilistic graphical models are realized by conditional probabilities, i.e.
+\paragraph*{Accuracy}
+Classification tasks require the prediction of a label from a given set of possible outcomes given some input data.
+The data is usually divided into features and labels $\mathcal{D} = \{\mathcal{X}^m, \mathcal{Y}\} \subset \mathbb{R}^m \times \mathbb{N}$ , with features from $\mathcal{X}$ and labels from $\mathcal{Y}$.
+
+Predictions with probabilistic graphical models are obtained by maximizing the conditional probability
 \begin{equation}
     \hat{y} = \arg\max_{y \in \mathcal{Y}} \mathbb{P}_{\vect{\theta}}(\vect{Y} = y \lvert \vect{X} = \vect{x}) ,
 \end{equation}
-where the class $y$ with the highest probability condition on the observed $\vect{x}$ is chosen.
+where the class $y$ with the highest probability condition on the fully observed features $\vect{x}$ is chosen.
 
-The accuracy is then just the quotient of correct predictions and the cardinality of the true labes $\vect{y}^* \in \mathbb{R}^n$
+The accuracy is then the positive predictive ratio, i.e., the ratio of correct predictions and the number of overall predictions $\vect{y}^* \in \mathbb{R}^n$.
+For the accuracy we obtain:
 
 \begin{equation}
-    d_{acc}(\vect{\hat{y}}, \vect{y}^*) = \frac{\abs{\{\hat{y}_i \lvert \hat{y}_i = y^*_i, 0 \leq i \leq n\}}}{n}, 
+    d_{acc}(\vect{\hat{y}}, \vect{y}^*) = \frac{\abs{\{i \lvert \hat{y}_i = y^*_i, 0 \leq i \leq n\}}}{n}, 
 \end{equation}
 which provides the ratio of successfully predicted labels. 
 
 \paragraph*{F1-Score}
-Classification tasks, especially for multi-label classification, might contain a heavily unbalanced class distribution. 
-Such problems often arise in biology\cite{sonnenburg2007accurate} and even though classifiers tend to achieve high accuracy the actual performance is considered subpar.
+Classification tasks, especially for multi-label classification, often contain an unbalanced class distribution. 
+Such problems often arise, for example, in biology tasks such as splice site prediction\cite{sonnenburg2007accurate}, and even though classifiers tend to achieve high accuracy, the actual performance is terrible as the interesting class only represents 1\% of the total population.
+Thus predicting the other class already results in a 99\% positive predictive ratio.
 
-Scores, such as the F1-Score can take class inbalance into account by computing the weighted average based on class frequencyin order to provide a better measure of performance compared to accuracy alone.
+Scores, such as the F1-Score, can take class imbalance and importance into account by computing the weighted average based on class frequency to provide a better measure of performance compared to accuracy alone.
 The F1-Score \wrt to some label $i$ is obtained via 
 \begin{equation}
     f1(\hat{\vect{y}},\vect{y}^*)_i = \frac{\text{precision}(\hat{\vect{y}},\vect{y}^*)_i \cdot \text{recall}(\hat{\vect{y}},\vect{y}^*)_i}{\text{precision}(\hat{\vect{y}},\vect{y}^*)_i + \text{recall}(\hat{\vect{y}},\vect{y}^*)_i},
@@ -147,161 +172,185 @@ The F1-Score \wrt to some label $i$ is obtained via
 where precision and recall are measures based on true and false positive rate as well as true and false negative rate.\cite{friedman2001elements} \cite{hossin2015review}
 The F1-Score is the weighted average between precision and recall and in a multi-class scenario it can be computed as the arithmetic mean for each label
 \begin{equation}
-    d_{f1}(\hat{\vect{y}},\vect{y}^*) = \frac{1}{N} \sum_{i=1}^N f1_i(\hat{\vect{y}},\vect{y}^*)
+    d_{f1}(\hat{\vect{y}},\vect{y}^*) = \frac{1}{N} \sum_{i=1}^N f1_i(\hat{\vect{y}},\vect{y}^*),
 \end{equation}
+where we compute pairwise precision and recall between one class and all others.
 
-
-to achieve this we evaluate:
-
+We will now present the results based on the following metrics and, afterward, proceed to evaluate and discuss the experiments.
 \begin{itemize}
-    \item Likelihood of the local and aggregated weight vectors when plugged into the baseline model 
-    \item Performance scores such as accuracy, f1-score, which is especially useful for unbalanced classes 
-    \item Other stuff 
+    \item The relative Likelihood \wrt the baseline model with access to the full training data.
+    \item Accuracy score for all data sets
+    \item F1 score to better capture performance in a multi-label setting 
 \end{itemize}
+
+
+\subsection{Results}
+%Introduction
+We will now present and evaluate the results on the three data sets, obtained from running the experiments, as previously described. 
+We evaluate each aggregate model in terms of likelihood, classification accuracy, and F1-Score when compared to the local and baseline models.
+Recall that local models are the models obtained from distributed learners, i.e., their parameters and that the baseline or global model is the model that had access to the full data set.
+%TODO some introduction here then move to plots
+
+%Plot Description
+We present the results in Figures \ref{fig:analysis4} to \ref{fig:analysis3}, where each $3\times4$ plot represents a set of experiments with different regularization and $\epsilon$-value for the Hoefding bound. 
+For readabilities' sake, we moved the remaining plots to Appendix~\ref{sec:apdx:exp}.
+We compare the aggregation methods to the baseline model's performance and the average local models' performance. 
+The average local models' performance was obtained from averaging the $k=10$ distributed learners' models.
+Each row of the plots shows the aggregates' likelihood and performance score, while each column visualizes likelihood, accuracy, and F1-score when sampling from the respective covariance matrix.
+The x-axes show the number of samples available on each device, and the y-axis shows the evaluation metric.
+The average relative likelihood is shown in the log-scale for better comparability.
+
+\begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Susy, No regularization, Bound $\epsilon=0.1$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_None_0.1.pdf}
+        \caption[Susy plots without regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis4}
+    \end{figure}
+    \end{landscape}
+\begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Susy, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_l2_0.05.pdf}
+        \caption[Susy plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis1}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+    \begin{figure}
+        \centering
+        \textbf{Covertype, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
+        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/covertype_l2_0.05.pdf}
+        \caption[Covertype plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \label{fig:analysis2}
+    \end{figure}
+    \end{landscape}
+    \begin{landscape}
+        \begin{figure}
+            \centering
+            \textbf{Dota2, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
+            \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/dota2_l2_0.05.pdf}
+            \caption[Dota2 plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \label{fig:analysis3}
+        \end{figure}
+    \end{landscape}
+
+Recall that we compute the relative likelihood (\autoref{eq:dist_ll}) \wrt the likelihood obtained form the baseline model, which had access to the full training data.
+All values shown are the average over the cross-validation splits.
+
+The local model's relative likelihood, accuracy, and F1-Score show the average from all $k=10$ distributed learners.
+We further visually distinguish between aggregators using additional parameter vectors obtained from sampling, denoted by the circle("o") markers and aggregators that did not use additional parameter vectors with plus ("+") markers.
+
+\paragraph*{Likelihood}
+Each plot shows the relative likelihood for the aggregates and local models.
+The relative likelihood was computed \wrt the full training set and shifted by the average likelihood of the baseline model.
+Therefore, a relative likelihood of zero implies that for some other model, it is as good as the baseline.
+
+The relative likelihood steadily decreases towards zero, i.e., the aggregates properly converge towards the baseline model.
+We observe that, on average, all aggregation methods, except for the bootstrap aggregation, consistently outperform the local models. 
+Only when using the diagonal Fisher information to sample additional parameter vectors from unregularized models (e.g., \autoref{fig:analysis3}), we obtain aggregates that are initially worse than the local learners.
+We further notice that all learners consistently converge towards the baseline likelihood being as close as $d_{\ell} = 0.1$ for the larger bound $\epsilon = 0.1$ and for a smaller bound with $\epsilon = 0.05$ up to $d_{\ell} < 0.1$.
+%TODO !!!!!
+All aggregates converge equally fast towards the baseline likelihood, while generally outperforming the local models.
+The bootstrap aggregator's likelihood initially converges faster when compared to the other aggregation mechanisms. 
+The rate of convergence, however, tends to decrease with increasing sample size, while ultimately performing poorly when close to the baseline likelihood.
+%TODO !!!!!
+
+Interestingly, in the first few iterations, the relative likelihood and accuracy of the aggregates provide the most gain towards the baseline model. 
+Later on, aggregates and local models become increasingly similar. 
+
+Overall, most aggregates perform equally well, considering convergence towards the baseline likelihood.
+Initially, the bootstrap aggregation provides the best aggregates in terms of the likelihood, while the accuracy-weighted aggregate slightly outpaces the other aggregates when the number of samples increases.
+
+\paragraph*{Accuracy\& F1 Score}
+The second and third-row show accuracy and F1-score for all aggregates and local models.
+Baseline accuracy, for Susy heavily depends on the splits and ranges between 60\% to 70\%, while models trained on Covertype achieve approximately 70\% accuracy and on Dota2 55\%.
+We observe that the aggregates' and local models' accuracy converges early, with the aggregators converging slightly faster.
+We observed an exceptionally fast convergence \wrt accuracy in \autoref{fig:analysis4}, while the local models did not reach the aggregator accuracy.
+The goal of the aggregation is to match the baseline models as close as possible.
+The aggregate models perform slightly better, notably in the early stages, where the most accuracy is gained on the local models. 
+Later on, we do not see much of an increase in performance as local models and aggregates are very close to the baseline likelihood and accuracy.
+
+The F1-Score provides a better metric for the classifier performance in a multi-class setting. 
+Here we see, that aggregates tend to fall off slightly when compared to the local models.
+
+Overall, the performance in terms of accuracy and F1-Score is comparable to the global model, while only having seen a fraction of the data.
+Model aggregation leads to a performance increase in most cases, while no aggregate has a clear advantage against the others.
+
+\paragraph*{Influence of Sampling}
+We can interpret the variance applied to parameter sampling as a measure of uncertainty. 
+With increasing sample size $n$ the precision increases and in turn the variance decreases as $\Sigma = (1/n\cdot i(\vect{\theta}))$ when sampling from the diagonal Fisher information.
+Having observed less data, we are more uncertain about the actual parameters from distributed learners, while with an increasing number of samples, the variance decreases.
+We notably observe this property in \autoref{fig:analysis3}, where the initial aggregates perform worse than the local models.
+Here, the number of samples used for aggregation is not sufficient to counteract the high initial variance.
+Once we pass a threshold of around $n=500$  samples on each learner, the aggregates' performance increases, crossing the local model's likelihood.
+
+All in all, the aggregates converge faster than the local models and thus contribute to an overall improvement in likelihood and accuracy.
+
+
 \section{Discussion}
 \label{sec:results}
-\begin{table}
-    \centering
-    \caption{Relative Likelihood when compared to the baseline likelihood on the test split. This table shows the results for covertype using  fish sampling with epsilon  0.1 and  default regularization.}
-    \label{tab:0}
-    \begin{tabular}{|l||r|rrr|rr|}
-    \toprule
-    {} &  Local Average &  Average &  RadonMachine &  LL-Weighted &  Bootstrap &  Acc. Weighted \\
-    n\_data &                &         &               &              &            &                \\
-    \midrule
-    9      &          65.63 &      --- &           --- &          --- &      54.91 &          28.23 \\
-    33     &          48.57 &   714.98 &        854.45 &          --- &      20.18 &          20.11 \\
-    73     &          29.05 &   109.37 &        155.06 &       325.66 &       8.32 &          13.58 \\
-    130    &          16.33 &    72.31 &        106.21 &       151.95 &       3.64 &           8.04 \\
-    203    &           9.25 &    25.15 &         43.97 &        36.82 &       1.96 &           4.52 \\
-    292    &           5.19 &    20.46 &         24.78 &        55.31 &       1.49 &           2.49 \\
-    397    &           3.19 &     5.02 &          6.92 &        11.00 &       1.69 &           1.49 \\
-    519    &           2.01 &     4.53 &         15.58 &        13.80 &       1.60 &           0.88 \\
-    657    &           1.37 &     1.45 &          2.08 &         2.11 &       1.03 &           0.57 \\
-    810    &           1.02 &     0.98 &          3.44 &         1.93 &       1.08 &           0.41 \\
-    981    &           0.78 &     1.57 &          3.47 &         3.15 &       1.13 &           0.31 \\
-    1167   &           0.62 &     0.25 &          1.68 &         0.29 &       0.78 &           0.23 \\
-    1369   &           0.53 &     0.21 &          0.22 &         0.21 &       0.62 &           0.20 \\
-    1588   &           0.43 &     0.17 &          0.17 &         0.17 &       0.56 &           0.16 \\
-    1823   &           0.37 &     0.14 &          0.15 &         0.14 &       0.53 &           0.14 \\
-    \bottomrule
-    \end{tabular}
-    \end{table}
-    
-    \begin{figure}
-        \center
-        \begin{tikzpicture}
-            \clip (0,0) rectangle (17.0,15.0);
-            \Vertex[x=12.637,y=6.951,size=0.5,color=tuorange,opacity=0.7]{0}
-            \Vertex[x=13.224,y=8.670,size=0.5,color=tugreen,opacity=0.7]{3}
-            \Vertex[x=14.502,y=6.725,size=0.5,color=tugreen,opacity=0.7]{5}
-            \Vertex[x=12.634,y=8.090,size=0.5,color=tugreen,opacity=0.7]{9}
-            \Vertex[x=10.487,y=5.452,size=0.5,color=tublue,opacity=0.7]{54}
-            \Vertex[x=8.715,y=11.565,size=0.5,color=tugreen,opacity=0.7]{1}
-            \Vertex[x=7.132,y=12.694,size=0.5,color=tuorange,opacity=0.7]{6}
-            \Vertex[x=10.448,y=11.497,size=0.5,color=tuorange,opacity=0.7]{7}
-            \Vertex[x=8.610,y=10.130,size=0.5,color=tuorange,opacity=0.7]{8}
-            \Vertex[x=12.001,y=11.238,size=0.5,color=tugreen,opacity=0.7]{2}
-            \Vertex[x=13.029,y=10.213,size=0.5,color=tuorange,opacity=0.7]{4}
-            \Vertex[x=15.279,y=6.087,size=0.5,color=tuorange,opacity=0.7]{14}
-            \Vertex[x=15.747,y=6.864,size=0.5,color=tuorange,opacity=0.7]{15}
-            \Vertex[x=5.924,y=13.037,size=0.5,color=tugreen,opacity=0.7]{10}
-            \Vertex[x=7.538,y=13.901,size=0.5,color=tugreen,opacity=0.7]{11}
-            \Vertex[x=6.827,y=14.000,size=0.5,color=tugreen,opacity=0.7]{12}
-            \Vertex[x=5.999,y=11.852,size=0.5,color=tugreen,opacity=0.7]{13}
-            \Vertex[x=6.440,y=12.705,size=0.5,color=tugreen,opacity=0.7]{16}
-            \Vertex[x=5.108,y=11.775,size=0.5,color=tuorange,opacity=0.7]{43}
-            \Vertex[x=10.085,y=7.026,size=0.5,color=tuorange,opacity=0.7]{17}
-            \Vertex[x=2.368,y=11.619,size=0.5,color=tuorange,opacity=0.7]{18}
-            \Vertex[x=1.253,y=12.024,size=0.5,color=tugreen,opacity=0.7]{19}
-            \Vertex[x=1.757,y=12.689,size=0.5,color=tugreen,opacity=0.7]{20}
-            \Vertex[x=3.959,y=10.329,size=0.5,color=tugreen,opacity=0.7]{27}
-            \Vertex[x=10.642,y=6.917,size=0.5,color=tuorange,opacity=0.7]{21}
-            \Vertex[x=5.790,y=4.399,size=0.5,color=tuorange,opacity=0.7]{22}
-            \Vertex[x=6.961,y=3.509,size=0.5,color=tugreen,opacity=0.7]{32}
-            \Vertex[x=8.659,y=2.745,size=0.5,color=tuorange,opacity=0.7]{23}
-            \Vertex[x=6.917,y=5.374,size=0.5,color=tugreen,opacity=0.7]{33}
-            \Vertex[x=8.551,y=1.000,size=0.5,color=tugreen,opacity=0.7]{34}
-            \Vertex[x=9.886,y=3.161,size=0.5,color=tugreen,opacity=0.7]{35}
-            \Vertex[x=7.809,y=2.199,size=0.5,color=tugreen,opacity=0.7]{36}
-            \Vertex[x=7.463,y=2.745,size=0.5,color=tugreen,opacity=0.7]{37}
-            \Vertex[x=9.674,y=1.333,size=0.5,color=tugreen,opacity=0.7]{38}
-            \Vertex[x=10.054,y=1.846,size=0.5,color=tugreen,opacity=0.7]{39}
-            \Vertex[x=9.150,y=1.055,size=0.5,color=tugreen,opacity=0.7]{40}
-            \Vertex[x=9.626,y=2.552,size=0.5,color=tugreen,opacity=0.7]{41}
-            \Vertex[x=7.220,y=2.063,size=0.5,color=tugreen,opacity=0.7]{45}
-            \Vertex[x=7.524,y=1.524,size=0.5,color=tugreen,opacity=0.7]{46}
-            \Vertex[x=10.202,y=2.467,size=0.5,color=tugreen,opacity=0.7]{47}
-            \Vertex[x=9.216,y=3.550,size=0.5,color=tugreen,opacity=0.7]{48}
-            \Vertex[x=7.974,y=1.135,size=0.5,color=tugreen,opacity=0.7]{49}
-            \Vertex[x=9.432,y=1.871,size=0.5,color=tugreen,opacity=0.7]{50}
-            \Vertex[x=8.865,y=1.565,size=0.5,color=tugreen,opacity=0.7]{51}
-            \Vertex[x=8.226,y=1.652,size=0.5,color=tugreen,opacity=0.7]{52}
-            \Vertex[x=8.174,y=3.472,size=0.5,color=tugreen,opacity=0.7]{53}
-            \Vertex[x=5.308,y=8.004,size=0.5,color=tuorange,opacity=0.7]{24}
-            \Vertex[x=6.057,y=8.782,size=0.5,color=tugreen,opacity=0.7]{25}
-            \Vertex[x=6.176,y=7.988,size=0.5,color=tugreen,opacity=0.7]{26}
-            \Vertex[x=4.566,y=8.365,size=0.5,color=tugreen,opacity=0.7]{28}
-            \Vertex[x=4.210,y=7.479,size=0.5,color=tugreen,opacity=0.7]{29}
-            \Vertex[x=4.782,y=8.969,size=0.5,color=tugreen,opacity=0.7]{30}
-            \Vertex[x=5.359,y=8.909,size=0.5,color=tugreen,opacity=0.7]{31}
-            \Vertex[x=3.691,y=9.682,size=0.5,color=tuorange,opacity=0.7]{42}
-            \Vertex[x=2.783,y=10.701,size=0.5,color=tuorange,opacity=0.7]{44}
-            \Edge[](0)(3)
-            \Edge[](0)(5)
-            \Edge[](0)(9)
-            \Edge[](0)(54)
-            \Edge[](3)(4)
-            \Edge[](5)(14)
-            \Edge[](5)(15)
-            \Edge[](54)(17)
-            \Edge[](54)(21)
-            \Edge[](54)(23)
-            \Edge[](1)(6)
-            \Edge[](1)(7)
-            \Edge[](1)(8)
-            \Edge[](6)(10)
-            \Edge[](6)(11)
-            \Edge[](6)(12)
-            \Edge[](6)(13)
-            \Edge[](7)(2)
-            \Edge[](2)(4)
-            \Edge[](16)(43)
-            \Edge[](43)(27)
-            \Edge[](18)(19)
-            \Edge[](18)(20)
-            \Edge[](18)(27)
-            \Edge[](27)(24)
-            \Edge[](27)(42)
-            \Edge[](27)(44)
-            \Edge[](22)(32)
-            \Edge[](32)(23)
-            \Edge[](23)(33)
-            \Edge[](23)(34)
-            \Edge[](23)(35)
-            \Edge[](23)(36)
-            \Edge[](23)(37)
-            \Edge[](23)(38)
-            \Edge[](23)(39)
-            \Edge[](23)(40)
-            \Edge[](23)(41)
-            \Edge[](23)(45)
-            \Edge[](23)(46)
-            \Edge[](23)(47)
-            \Edge[](23)(48)
-            \Edge[](23)(49)
-            \Edge[](23)(50)
-            \Edge[](23)(51)
-            \Edge[](23)(52)
-            \Edge[](23)(53)
-            \Edge[](33)(24)
-            \Edge[](24)(25)
-            \Edge[](24)(26)
-            \Edge[](24)(28)
-            \Edge[](24)(29)
-            \Edge[](24)(30)
-            \Edge[](24)(31)
-            \end{tikzpicture}
-            \caption[test]{test}
-            \label{fig:test}
-    \end{figure}
+
+Our findings suggest that probabilistic graphical models trained in a federated system generally benefit from model parameter aggregation, especially when data is limited.
+The choice of the aggregation method did not significantly affect the quality of the solution, and sampling parameter vectors was a convenient method for using Radon machines.
+Furthermore, the bootstrap aggregation outperforms all other methods early on, implying that bootstrapping samples helps achieving faster convergence until the number of samples increases, where the convergence rate drops off.
+
+The empirical results suggest that the simple independence structure causes fast convergence and high similarity between aggregates.
+Since the models on distributed learners converge almost as fast as the aggregates, we quickly reach the pseudo-asymptotic case, where most models are approximately equal. 
+
+Radon Machines, for example, are used to compute the center point or center of mass, which is a generalized approach for computing the geometric median.
+While the geometric median, does generally not coincide with the maximum likelihood estimator of a normal distribution~\cite{small1990survey}, our experiments suggest that they are at least similar.
+The accuracy-weighted aggregator is better able to balance worse-performing models by assigning lower weights to these models, resulting in a slightly more stable aggregate.
+While this works on distributed models with a low amount of samples, the aggregates and local models do ultimately converge fast due to the independence graph's tree characteristic.
+Thus, the aggregators do improve the likelihood early by including prior information about the parameters.
+
+The noise introduced by sampling from the normal distribution reflects the actual uncertainty of the sample distribution.
+While the variance $1/(n \cdot \vect{\theta}^i)$ does decrease over time, it still introduced a new error when sampling models.
+
+In this case, we have created d+2 models from 10 models, which is an increase of 1500-2500 models based on the number of parameters.
+However, when we have a large number of models and only require some additional parameters to increase the aggregation depth of the radon machines, we can diversify the set of models by sampling.
+
+All in all, the convergence interval is with $n=250$ so small that significant improvements can only be observed in the first few iterations.
+
+\paragraph*{Do local models benefit from aggregation?}
+Especially in the early stages, where data is sparse, the aggregates severely outperform the distributed learners.
+Once the number of samples on the distributed learners increases, the performance gap between distributed learners and aggregates decreases, with aggregates still having a slight edge in terms of likelihood and accuracy.
+
+\paragraph*{How do aggregation methods compare to each other?}
+While the aggregates perform better than the models on distributed learners, no method was able to outperform the others when evaluating at the point of convergence.
+However, the bootstrap aggregation was initially faster to converge but did not come as close to the baseline as the other aggregations.
+Here, increasing the number of iterations for the Gibbs sampler or merely increasing the number of samples generated may improve upon these results.
+The Tables\ref{tab:1} and \ref{tab:12} exhibit a quantitative analysis of the relative likelihood.
+\autoref{tab:1} shows the relative likelihood without regularizer and without generating additional parameter vectors.
+The bootstrap aggregation converges faster, while the accuracy-weighted aggregate performs better after having observed $n=397$ samples.
+\autoref{tab:12} shows the relative likelihood with parameter vector sampling from the diagonal Fisher information. 
+We compare the aggregates using sample parameter vectors and the aggregates not using them separately.
+Here, the arithmetic mean performs the best out of the three methods, while again, the bootstrap aggregation is initially better than the accuracy-weighted aggregation.
+
+
+\paragraph*{Do additional parameter samples affect the aggregate?}
+The increased variance led to initially worse aggregates, while overall not improving the final result.
+Overall, sampling parameter vectors is useful for enabling aggregation methods such as Radon machines and increasing diversity, i.e., acting as a regularizer for the bias-variance tradeoff.
+Investigating the Fisher information matrix to find parameters with high variance may be an alternative to sampling parameter vectors.
+
+\paragraph*{How do aggregates perform when compared to the baseline?}
+The likelihood is an indicator of model performance but does not directly translate to accuracy and F1-score.
+Compared to the baseline, the aggregates were close, but in the end, could not fully capture the baseline distribution.
+Our experiments suggest that he bootstrap aggregation converges faster, but not correctly towards the baseline, such that the local models perform better with increasing sample size.
+
+\input{kapitel/figures/tables/covertype_table_1.tex}
+\input{kapitel/figures/tables/susy_table_12.tex}
+%\begin{table}
+%    \centering
+%    \caption{Relative Likelihood when compared to the baseline likelihood on the test split. This table shows the results for Covertype using fish sampling with epsilon  0.1 and  default regularization.}
+%    \label{tab:0}
+%    \resizebox{0.7\columnwidth}{!}{%
+%    \begin{tabular}{|l||r|rrr|rr|}
+%    \toprule
+%    \bottomrule
+%    \end{tabular}%
+%    }
+%    \end{table}
+   

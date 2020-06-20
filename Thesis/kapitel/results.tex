@@ -2,9 +2,38 @@
 
 \chapter{Conclusion}
 \label{chapter:ch6}
+The goal of our work was to improve exponential family models obtained from a set of distributed devices by using different aggregation mechanisms to combine the local parameter vectors.
+We began by exploring the literature in search of other aggregation approaches or methods that may be used to achieve the aggregation.
+We then introduced the necessary background of probabilistic graphical models, exponential families, and distributed learning in \autoref{chapter:kap2}.
+Afterward, in \autoref{chapter:ch3}, we introduced different approaches, which can be used for parameter aggregation.
+Finally, we presented our implementation in \autoref{chapter:ch4} and evaluated the aggregation mechanisms on three different data sets in \autoref{chapter:ch5}.
+
+We have shown that the maximum likelihood estimator for canonical exponential families is asymptotically normal.
+Furthermore, we have shown that based on the Hoefding- and PAC-bounds for canonical exponential families, the variance of model parameters is also bounded, based on the number of samples observed.
+While we used this property to determine a global stopping criterion, these properties still leave room for improvement.
+Additionally, we did use the asymptotic properties to increase the number of parameter vectors by sampling from a normal distribution.
+Especially in a distributed system, we would instead aim to stop as early as possible, while only aggregating once.
+We have empirically shown, that such an earlier stopping point exists for tree-structured independence graphs.
+
+The aggregation methods were then applied to the parameters of the local Markov random field models.
+The models were trained in a federated system; that is, all distributed learners were connected to a central coordinator in a simulated fashion.
+The experiments further suggest that the aggregation is particularly useful when there is not much data available, or the local models have a hard time converging.
+The scenario, where the independence structure is not a tree, should further be explored to back up our empirical results.
+
+The empirical experiments on the three data sets Covertype, Susy, and Dota2, suggest, that out of the five aggregation mechanisms tested, only the bootstrapping did not consistently outperform the local models in terms of the likelihood, while initially showcasing the fastest rate of convergence.
+The other aggregation mechanisms, arithmetic mean, Radon machines, and the weighted averages performed equally well in terms of likelihood and accuracy, with the accuracy weighted average slightly outperforming the other methods when fewer data were available.
+
 
 \section{Future Work}
-Clique-Wise Aggregation
-Structure and Parameter Aggregation
-More complex graphical models and more data
-investigate distributed aggregation 
+The results obtained in this work give rise to new research on aggregation mechanisms, bounds for distributed and federated learning, as well as the possibility to combine presented approaches such as bootstrapping and Radon machines.
+
+We propose to investigate variance-based thresholds and bound to reduce the number of samples necessary to reach convergence.
+Furthermore, we may explore more complex models in a distributed environment, not restricting the independence structure to trees, while also further reducing the communication cost between devices by investigating the possibility to restrict updates to a subset of cliques.
+
+Finally, we may not limit aggregation to parameters, but include structure as well for models from distributed learners with different state-spaces. 
+The groundwork for structure matching was already developed during this work in the form of an algorithm to match and extend local parameters across several devices.
+
+%\paragraph*{Bootstrap and MAP}
+%Alternatively, we can consecutively sample new parameter vectors first.
+%Recall that according to \ref{ssec:asymp} the MLE is asymptotically normal, then we have $\hat{\theta}^{k_i}  \sim %\mathcal{N}(\vect{\theta}^k, i(\vect{\theta}^k)^{-1}/n)$, assuming that each local parameters are the ground truth.
+%Followed by using the MAP estimate for each $\vect{x}^{k_i} = \arg\max_{\vect{x}} \mathbb{P}_{\hat{\vect{\theta}}^%{k_i}}(\vect{x})$ obtaining data sets of MAP estimates from parameter distributed around the k-th local model.
