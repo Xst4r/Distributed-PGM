@@ -10,8 +10,8 @@ The experiments are ordered by data set, regularization and bound.
     \begin{figure}
         \centering
         \textbf{Susy, No regularization, Bound $\epsilon=0.05$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/susy_None_0.05.pdf}
-        \caption[Susy without regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/susy_None_0.05_neg_relative.pdf}
+        \caption[Susy without regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
         \label{fig:analysis5}
     \end{figure}
     \end{landscape}
@@ -19,8 +19,8 @@ The experiments are ordered by data set, regularization and bound.
         \begin{figure}
             \centering
             \textbf{Susy, l2 regularization, Bound $\epsilon=0.1$}\par\medskip
-            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/susy_l2_0.1.pdf}
-            \caption[Susy plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/susy_l2_0.1_neg_relative.pdf}
+            \caption[Susy plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
             \label{fig:analysis6}
         \end{figure}
     \end{landscape}
@@ -29,8 +29,8 @@ The experiments are ordered by data set, regularization and bound.
     \begin{figure}
         \centering
         \textbf{Covertype, No regularization, Bound $\epsilon=0.1$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_None_0.1.pdf}
-        \caption[Covertype plots without regularization and $\epsilon=0.1$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_None_0.1_neg_relative.pdf}
+        \caption[Covertype plots without regularization and $\epsilon=0.1$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner.The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
         \label{fig:analysis7}
     \end{figure}
     \end{landscape}
@@ -38,8 +38,8 @@ The experiments are ordered by data set, regularization and bound.
     \begin{figure}
         \centering
         \textbf{Covertype, No regularization, Bound $\epsilon=0.05$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_None_0.05.pdf}
-        \caption[Covertype without regularization and $\epsilon=0.05$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_None_0.05_neg_relative.pdf}
+        \caption[Covertype without regularization and $\epsilon=0.05$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
         \label{fig:analysis8}
     \end{figure}
     \end{landscape}
@@ -47,8 +47,8 @@ The experiments are ordered by data set, regularization and bound.
         \begin{figure}
             \centering
             \textbf{Covertype, l2 regularization, Bound $\epsilon=0.1$}\par\medskip
-            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_l2_0.1.pdf}
-            \caption[Covertype plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/covertype_l2_0.1_neg_relative.pdf}
+            \caption[Covertype plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
             \label{fig:analysis9}
         \end{figure}
     \end{landscape}
@@ -57,8 +57,8 @@ The experiments are ordered by data set, regularization and bound.
     \begin{figure}
         \centering
         \textbf{Dota2, No regularization, Bound $\epsilon=0.1$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_None_0.1.pdf}
-        \caption[Dota2 plots without regularization and $\epsilon=0.1$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_None_0.1_neg_relative.pdf}
+        \caption[Dota2 plots without regularization and $\epsilon=0.1$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner.The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
         \label{fig:analysis10}
     \end{figure}
     \end{landscape}
@@ -66,8 +66,8 @@ The experiments are ordered by data set, regularization and bound.
     \begin{figure}
         \centering
         \textbf{Dota2, No regularization, Bound $\epsilon=0.05$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_None_0.05.pdf}
-        \caption[Dota2 plots without regularization and $\epsilon=0.05$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_None_0.05_neg_relative.pdf}
+        \caption[Dota2 plots without regularization and $\epsilon=0.05$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner.The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
         \label{fig:analysis11}
     \end{figure}
     \end{landscape}
@@ -75,8 +75,8 @@ The experiments are ordered by data set, regularization and bound.
         \begin{figure}
             \centering
             \textbf{Dota2, l2 regularization, Bound $\epsilon=0.1$}\par\medskip
-            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_l2_0.1.pdf}
-            \caption[Dota2 plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+            \includegraphics[height=\dimexpr \textheight - 4\baselineskip\relax]{kapitel/figures/dota2_l2_0.1_neg_relative.pdf}
+            \caption[Dota2 plots with l2 regularization and $\epsilon=0.1$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$ for each aggregate. Second and third row show accuracy and F1-score relative to the baseline on the test set.}
             \label{fig:analysis12}
         \end{figure}
     \end{landscape}
@@ -90,7 +90,7 @@ The experiments are ordered by data set, regularization and bound.
 
 \clearpage
 \section{Likelihood \& Variance Tables}
-The standard deviations in tables \ref{tab:avg_std_01},\ref{tab:std_std_005},\ref{tab:std_std_01},\ref{tab_avg_std_005} are computed \wrt to each dimension and each set of local parameter vectors.
+The standard deviations in tables \ref{tab:avg_std_01},~\ref{tab:std_std_005},~\ref{tab:std_std_01},~\ref{tab_avg_std_005} are computed \wrt to each dimension and each set of local parameter vectors.
 We compute the mean of all variances for all experiments with the same regularization type and over all local model parameters with the same number of samples:
 \begin{equation}
     \label{eq:meanvar}

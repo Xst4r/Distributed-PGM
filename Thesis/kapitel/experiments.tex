@@ -12,25 +12,25 @@ We are specifically going to investigate the following questions:
     \item Do additional parameter samples affect the aggregate?
     \item How do aggregates perform when compared to the baseline?
 \end{itemize}
-We evaluated and collected the performance of local models, aggregates, and baseline using the average relative likelihood, accuracy score, and F1-score. 
-Moreover, we continuously monitored the performance of the local and aggregate model to record accuracy and likelihood in every round, where we increased the amount of data available each round.
+We evaluated and collected the performance of local models, aggregates, and baseline using the average likelihood, accuracy score, and F1-score relative to the baseline scores. 
+Moreover, we continuously monitored the performance of the local and aggregate model to record accuracy and likelihood in every round, with an increasing number of samples.
 We then trained a new model on each distributed learner using the extended data set.
 To achieve this, we precomputed the number of samples required to satisfy the Hoefding bound. 
 Let $n_{\max}$ be the number of samples required.
-We then divided the interval between zero and $[0, n_{\max}]$ into an arbitrary amount of rounds, e.g., fifteen $[10,20,30, \ldots, 150]$ for $n_{\max} = 150$. 
+We then divided the interval between zero and $n_{\max}$ into an arbitrary amount of elements, e.g., fifteen $[10,20,30, \ldots, 150]$ for $n_{\max} = 150$. 
 Then for each round, we trained the distributed learners using that amount of samples while aggregating and evaluating the models.
  
 We conducted experiments using five different aggregation methods and three covariance matrix sampling variants, while also testing the aggregation without additional parameter vector sampling.
-Additionally, models on distributed learners were trained without regularization and once with $l2$ regularization.
+Additionally, we trained models on distributed learners without regularization and with $l2$ regularization.
 Operations that involve random events such as sampling or index shuffling were performed using a seeded random state.
 
-Directly comparing our results is difficult as not much work specifically on aggregating canonical exponential family models has been done. Han and Liu\cite{han2016bootstrap} considered aggregation on Gaussian mixture models, while Kamp et al. \cite{kamp2017effective} performed experiments using classifier ensembles.
+The direct comparison of our results is difficult as not much work specifically on aggregating canonical exponential family models has been done. Han and Liu~\cite{han2016bootstrap} considered aggregation on Gaussian mixture models, while Kamp et al. \cite{kamp2017effective} performed experiments using classifier ensembles.
 Moreover, the metrics used to compare and evaluate results vary greatly, such that direct comparison is difficult.
-Here, we compare our results to integer exponential family models investigated by Piatkowski~\cite{piatkowski2018exponential}obtained by computing the arithmetic mean over a set of distributed learners. 
+Here, we compare our results to integer exponential family models investigated by Piatkowski~\cite{piatkowski2018exponential} obtained by computing the arithmetic mean over a set of distributed learners. 
 Integer Markov random fields restrict the solution space of $\vect{\theta}$ to integer values, which in practice is an approximation of the real-valued solution.
 However, the aggregate itself does not necessarily need to be an integer model.
 
-We start the evaluation by first introducing the experimental setup in \autoref{sec:setup}, where we provide an overview of the data sets and detailed data processing steps used.
+We begin the evaluation by first introducing the experimental setup in \autoref{sec:setup}, where we provide an overview of the data sets and detailed data processing steps used.
 We then present the experiment framework and evaluation metrics in \autoref{sec:experiments} and \autoref{sec:evaluation}.
 Finally, in \autoref{sec:results}, we present, evaluate, and discuss the results.
 
@@ -40,8 +40,7 @@ Finally, in \autoref{sec:results}, we present, evaluate, and discuss the results
 We used three benchmark datasets from the UCI machine learning repository: SUSY~\cite{baldi2014searching}, Covertype~\cite{blackard2000comparison} and Dota2~\cite{tridgell2016dota2} to evaluate the aggregation methods.
 
 
-We discretized the features into their $q=10$ quantiles to obtain comparable results.
-Each feature containing more than $q$ unique values was discretized into its $q=10$ quantiles.
+We discretized the numerical features containing more than $q$ unique values into their $q=10$ quantiles to obtain comparable results.
 Ideally, we determine the interval ranges and number of buckets before the discretization, where the intervals are then based on the total range of each feature.
 However, this is usually not the case, i.e., newly observed data from some feature $\mathcal{D}_{\cdot i}$ may contain values outside of the feature range observed in the training data. 
 We then observe values exceeding the original range, that is, $\sup(\hat{\vect{X}}_i) > \sup(\vect{X}_i) $ or  $\inf(\hat{\vect{X}}_i) < \inf(\vect{X}_i) $.
@@ -51,15 +50,15 @@ Samples above or below the original range of $\mathcal{D}_{\cdot i}$ were then m
 Additionally, we used cross-validation for global models. 
 For the distributed learners, we partitioned the training portion of each split further into $k$ equal-sized sets, where $k$ is the number of learners.
 
-The independence structures were estimated using the Chow-Liu algorithm and can be found in \autoref{sec:apdx:struc}.
+The independence structures were estimated using the Chow-Liu algorithm and can be found in Appendix~\ref{sec:apdx:struc}.
 Since the structure was re-estimated for each experiment, the structures vary slightly.
-The structures were generated on a holdout set of $n=10000$ sampled before creating the cross-validation splits.
+The structures were generated on a holdout set of $n=10000$ samples before creating the cross-validation splits.
 The holdout set was discretized separately, based on the ranges observed in the holdout set only.
 We then discretized the training data and, based on the training data quantiles, the test data as well.
 
 We used three real-world data sets for the experiments and evaluations. 
 
-Each data set is based on a classification task, with two tasks being a binary classification and one multi-label classification.
+Each data set is based on a classification task, with two tasks being a binary classification and one multi-class classification.
 
 \paragraph*{Dota2}
 The Dota2 data set contains game results of roughly $n=100.000$ matches from the team-based video game Dota2, where five players on each side each pick one character from a growing pool of characters (114 at the time of recording the data).
@@ -73,7 +72,7 @@ We can then predict which of the two teams won or, for example, choose a charact
 The Covertype data set contains cartographic features for  $n=581012$ forest cells of size $30m^2$.
 Here, the task is to determine one out of 7 possible forest cover types given a set of cartographic features such as elevation, slope, or shade. 
 Features may be binary and thus do not need to be discretized, while others such as elevation are discretized into ten quantiles.
-Covertype is a standard multi-label classification task with unbalanced classes.
+Covertype is a standard multi-class classification task with unbalanced classes.
 Two classes appear with higher frequency, while the other classes are rarely observed.
 
 \paragraph*{SUSY}
@@ -86,7 +85,7 @@ Thus, the task is a binary classification task containing $n=5000000$ already la
 \label{sec:experiments}
 We used a set of parameters in order to control and evaluate experiments in different settings.
 For each experiment, we employed all aggregation methods (if possible) and additionally generated one type of covariance matrix to sample $d+2$ parameter vectors. 
-Sampling parameter vectors lets us effectively simulate more models, while it also eliminated the requirement to train additional models, which is useful when the number of samples available is small.
+Sampling parameter vectors lets us effectively simulate more models, while also eliminating the requirement to train additional models, which is useful when the number of samples available is small.
 
 We trained models in a cross-validation fashion with $c = 10$ splits on $k=10$ distributed learners.
 Each cross-validation training split was further divided into $k$ splits and made available to a learner.
@@ -115,15 +114,15 @@ First we assessed the general quality of the aggregate by computing the likeliho
 \end{equation}
 
 \paragraph*{Relative Log-Likelihood}
-We measured the likelihood relative to the baseline likelihood, which is the difference between the global model $\vect{\theta}^*$ evaluated on the test data and any other local or aggregate model on the test data. 
+We measured the likelihood relative to the baseline likelihood, which is the difference between the global model $\hat{\vect{\theta}}$ evaluated on the test data and any other local or aggregate model on the test data. 
 The relative average log-likelihood measures closeness between a model or aggregate and the baseline model. 
 The baseline or global model is a model that has had access to the full training data set.
-Since the likelihood is convex the global model is a lower bound for the likelihood, i.e., $\ell(\vect{\theta}^* ; \mathcal{D}) \leq   \ell(\vect{\theta} ; \mathcal{D})$ without additional sampling.
+Since the likelihood is convex the global model is a lower bound for the likelihood, i.e., $\ell(\hat{\vect{\theta}} ; \mathcal{D}) \leq   \ell(\vect{\theta} ; \mathcal{D})$ without additional sampling.
 The likelihood is convex, thus for 
 \begin{equation}
-    \frac{\partial}{\partial \vect{\theta^*}} \ell(\vect{\theta}^* ; \mathcal{D})  = 0,
+    \frac{\partial}{\partial \hat{\vect{\theta}}} \ell(\hat{\vect{\theta}} ; \mathcal{D})  = 0,
 \end{equation}
-the parameters $\vect{\theta}^*$ are optimal \wrt $\mathcal{D}$ and for any other $\vect{\theta} \neq \vect{\theta}^*$ we have 
+the parameters $\hat{\vect{\theta}}$ are optimal \wrt $\mathcal{D}$ and for any other $\vect{\theta} \neq \hat{\vect{\theta}}$ we have 
 
 \begin{equation}
     \frac{\partial}{\partial \vect{\theta}} \ell(\vect{\theta} ; \mathcal{D})  > 0,
@@ -131,37 +130,37 @@ the parameters $\vect{\theta}^*$ are optimal \wrt $\mathcal{D}$ and for any othe
 and thus obtaining a distance function (\autoref{eq:regret})
 \begin{equation}
 \label{eq:dist_ll}
-d_{\ell}(\vect{\theta}, \vect{\theta}^*; \mathcal{D}) = \ell(\vect{\theta} ; \mathcal{D}) -    \ell(\vect{\theta}^* ; \mathcal{D})
+d_{\ell}(\vect{\theta}, \hat{\vect{\theta}}; \mathcal{D}) = \ell(\vect{\theta} ; \mathcal{D}) -    \ell(\hat{\vect{\theta}} ; \mathcal{D})
 \end{equation}
 
 To better capture the performance on unseen data we may also compute the relative average log likelihood \wrt the test data set $\mathcal{D}_{test}$:
 \begin{equation}
     \label{eq:dist_ll_test}
-    d_{\ell}(\vect{\theta}, \vect{\theta}^*; \mathcal{D}_{test}) = \ell(\vect{\theta} ; \mathcal{D}_{test}) - \ell(\vect{\theta}^* ; \mathcal{D}_{test}).
+    d_{\ell}(\vect{\theta}, \hat{\vect{\theta}}; \mathcal{D}_{test}) = \ell(\vect{\theta} ; \mathcal{D}_{test}) - \ell(\hat{\vect{\theta}} ; \mathcal{D}_{test}).
 \end{equation}
 For the plots and tables in this work we used the distance measure from \autoref{eq:dist_ll}.
 
 \paragraph*{Accuracy}
-Classification tasks require the prediction of a label from a given set of possible outcomes given some input data.
-The data is usually divided into features and labels $\mathcal{D} = \{\mathcal{X}^m, \mathcal{Y}\} \subset \mathbb{R}^m \times \mathbb{N}$ , with features from $\mathcal{X}$ and labels from $\mathcal{Y}$.
+Classification tasks require the prediction of a label from a given set of possible outcomes given some input data  $\mathcal{D} = \{(\vect{x}_1, y_1), (\vect{x}_2, y_2), \ldots, (\vect{x}_n, y_n)\}$.
+%The data is usually divided into features and labels $\mathcal{D} = \{\mathcal{X}^m, \mathcal{Y}\} \subset \mathbb{R}^m \times \mathbb{N}$ , with features from $\mathcal{X}$ and labels from $\mathcal{Y}$.
 
 Predictions with probabilistic graphical models are obtained by maximizing the conditional probability
 \begin{equation}
-    \hat{y} = \arg\max_{y \in \mathcal{Y}} \mathbb{P}_{\vect{\theta}}(\vect{Y} = y \lvert \vect{X} = \vect{x}) ,
+    \tilde{y} = \arg\max_{y \in \mathcal{Y}} \mathbb{P}_{\tilde{\vect{\theta}}}(\vect{Y} = y \lvert \vect{X} = \vect{x}) ,
 \end{equation}
 where the class $y$ with the highest probability condition on the fully observed features $\vect{x}$ is chosen.
 
 The accuracy is then the positive predictive ratio, i.e., the ratio of correct predictions and the number of overall predictions $\vect{y}^* \in \mathbb{R}^n$.
-For the accuracy we obtain:
+We obtain the relative accuracy as difference between global accuracy and aggregate or local accuracy:
 
 \begin{equation}
-    d_{acc}(\vect{\hat{y}}, \vect{y}^*) = \frac{\abs{\{i \lvert \hat{y}_i = y^*_i, 0 \leq i \leq n\}}}{n}, 
+    d_{acc}(\vect{\tilde{y}}, \vect{\hat{y}}, \vect{y}^*) =  \frac{\abs{\{i \lvert \tilde{y}_i = y^*_i, 0 \leq i \leq n\}}}{n} -  \frac{\abs{\{i \lvert \hat{y}_i = y^*_i, 0 \leq i \leq n\}}}{n},
 \end{equation}
-which provides the ratio of successfully predicted labels. 
+where $\vect{\hat{y}}$ are the prediction obtained from the global model and $\tilde{\hat{y}}$ are predictions from a local model or aggregate.
 
 \paragraph*{F1-Score}
-Classification tasks, especially for multi-label classification, often contain an unbalanced class distribution. 
-Such problems often arise, for example, in biology tasks such as splice site prediction\cite{sonnenburg2007accurate}, and even though classifiers tend to achieve high accuracy, the actual performance is terrible as the interesting class only represents 1\% of the total population.
+The label distribution in multi-class classification tasks is often unbalanced, which requires different evaluation metrics.
+Such problems often arise, for example, in biology tasks such as splice site prediction~\cite{sonnenburg2007accurate}, and even though classifiers tend to achieve high accuracy, the actual performance is terrible as the interesting class only represents 1\% of the total population.
 Thus predicting the other class already results in a 99\% positive predictive ratio.
 
 Scores, such as the F1-Score, can take class imbalance and importance into account by computing the weighted average based on class frequency to provide a better measure of performance compared to accuracy alone.
@@ -169,42 +168,45 @@ The F1-Score \wrt to some label $i$ is obtained via
 \begin{equation}
     f1(\hat{\vect{y}},\vect{y}^*)_i = \frac{\text{precision}(\hat{\vect{y}},\vect{y}^*)_i \cdot \text{recall}(\hat{\vect{y}},\vect{y}^*)_i}{\text{precision}(\hat{\vect{y}},\vect{y}^*)_i + \text{recall}(\hat{\vect{y}},\vect{y}^*)_i},
 \end{equation}
-where precision and recall are measures based on true and false positive rate as well as true and false negative rate.\cite{friedman2001elements} \cite{hossin2015review}
-The F1-Score is the weighted average between precision and recall and in a multi-class scenario it can be computed as the arithmetic mean for each label
+where precision and recall are measures based on true and false positive rate as well as true and false negative rate\cite{friedman2001elements} \cite{hossin2015review}.
+The F1-Score is the weighted average between precision and recall, and in a multi-class scenario, it can be computed as the arithmetic mean for each label.
+We then obtain the relative f1-Score by taking the difference between aggregate and global F1-score:
 \begin{equation}
-    d_{f1}(\hat{\vect{y}},\vect{y}^*) = \frac{1}{N} \sum_{i=1}^N f1_i(\hat{\vect{y}},\vect{y}^*),
+    d_{f1}(\tilde{\vect{y}}, \hat{\vect{y}},\vect{y}^*) = \frac{1}{N} \sum_{i=1}^N f1_i(\tilde{\vect{y}},\vect{y}^*) - \frac{1}{N} \sum_{i=1}^N f1_i(\hat{\vect{y}},\vect{y}^*),
 \end{equation}
 where we compute pairwise precision and recall between one class and all others.
+Observing positive values for the F1-score then indicates that the local model or aggregate performs better than the global model and a negative score vice versa.
 
 We will now present the results based on the following metrics and, afterward, proceed to evaluate and discuss the experiments.
 \begin{itemize}
     \item The relative Likelihood \wrt the baseline model with access to the full training data.
-    \item Accuracy score for all data sets
-    \item F1 score to better capture performance in a multi-label setting 
+    \item Relative accuracy score for all data sets
+    \item relative F1-score to better capture performance in a multi-label setting 
 \end{itemize}
 
 
 \subsection{Results}
 %Introduction
-We will now present and evaluate the results on the three data sets, obtained from running the experiments, as previously described. 
-We evaluate each aggregate model in terms of likelihood, classification accuracy, and F1-Score when compared to the local and baseline models.
+We will now present and evaluate the results from running the previously described experiments on the three data sets. 
+We evaluate each aggregate model in terms of relative likelihood, classification accuracy, and F1-score when compared to the local and baseline models.
 Recall that local models are the models obtained from distributed learners, i.e., their parameters and that the baseline or global model is the model that had access to the full data set.
 %TODO some introduction here then move to plots
 
 %Plot Description
-We present the results in Figures \ref{fig:analysis4} to \ref{fig:analysis3}, where each $3\times4$ plot represents a set of experiments with different regularization and $\epsilon$-value for the Hoefding bound. 
+We present the results in Figures \ref{fig:analysis4} to \ref{fig:analysis3}, where each $3\times4$ plot represents a set of experiments with different values for regularization and $\epsilon$-value for the Hoefding bound. 
 For readabilities' sake, we moved the remaining plots to Appendix~\ref{sec:apdx:exp}.
 We compare the aggregation methods to the baseline model's performance and the average local models' performance. 
 The average local models' performance was obtained from averaging the $k=10$ distributed learners' models.
 Each row of the plots shows the aggregates' likelihood and performance score, while each column visualizes likelihood, accuracy, and F1-score when sampling from the respective covariance matrix.
 The x-axes show the number of samples available on each device, and the y-axis shows the evaluation metric.
+Positive values for the likelihood indicate the model being worse than the baseline, and negative values for accuracy and f1-score indicate worse performance when compared to the baseline.
 The average relative likelihood is shown in the log-scale for better comparability.
 
 \begin{landscape}
     \begin{figure}
         \centering
         \textbf{Susy, No regularization, Bound $\epsilon=0.1$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_None_0.1.pdf}
+        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_None_0.1_neg_relative.pdf}
         \caption[Susy plots without regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
         \label{fig:analysis4}
     \end{figure}
@@ -213,7 +215,7 @@ The average relative likelihood is shown in the log-scale for better comparabili
     \begin{figure}
         \centering
         \textbf{Susy, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_l2_0.05.pdf}
+        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_l2_0.05_neg_relative.pdf}
         \caption[Susy plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
         \label{fig:analysis1}
     \end{figure}
@@ -222,7 +224,7 @@ The average relative likelihood is shown in the log-scale for better comparabili
     \begin{figure}
         \centering
         \textbf{Covertype, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
-        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/covertype_l2_0.05.pdf}
+        \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/covertype_l2_0.05_neg_relative.pdf}
         \caption[Covertype plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Covertype data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
         \label{fig:analysis2}
     \end{figure}
@@ -231,7 +233,7 @@ The average relative likelihood is shown in the log-scale for better comparabili
         \begin{figure}
             \centering
             \textbf{Dota2, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
-            \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/dota2_l2_0.05.pdf}
+            \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/dota2_l2_0.05_neg_relative.pdf}
             \caption[Dota2 plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Dota2 data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
             \label{fig:analysis3}
         \end{figure}
@@ -245,7 +247,7 @@ We further visually distinguish between aggregators using additional parameter v
 
 \paragraph*{Likelihood}
 Each plot shows the relative likelihood for the aggregates and local models.
-The relative likelihood was computed \wrt the full training set and shifted by the average likelihood of the baseline model.
+The relative likelihood was computed \wrt the full training set and shifted by the negative average likelihood of the baseline model.
 Therefore, a relative likelihood of zero implies that for some other model, it is as good as the baseline.
 
 The relative likelihood steadily decreases towards zero, i.e., the aggregates properly converge towards the baseline model.
@@ -259,15 +261,15 @@ The rate of convergence, however, tends to decrease with increasing sample size,
 %TODO !!!!!
 
 Interestingly, in the first few iterations, the relative likelihood and accuracy of the aggregates provide the most gain towards the baseline model. 
-Later on, aggregates and local models become increasingly similar. 
+Later on, aggregates and local models become increasingly similar since aggregates, and local models both converge. 
 
 Overall, most aggregates perform equally well, considering convergence towards the baseline likelihood.
 Initially, the bootstrap aggregation provides the best aggregates in terms of the likelihood, while the accuracy-weighted aggregate slightly outpaces the other aggregates when the number of samples increases.
 
 \paragraph*{Accuracy\& F1 Score}
-The second and third-row show accuracy and F1-score for all aggregates and local models.
-Baseline accuracy, for Susy heavily depends on the splits and ranges between 60\% to 70\%, while models trained on Covertype achieve approximately 70\% accuracy and on Dota2 55\%.
-We observe that the aggregates' and local models' accuracy converges early, with the aggregators converging slightly faster.
+The second and third-row show accuracy and F1-score for all aggregates and local models relative to the baseline score.
+Baseline accuracy, for Susy heavily depends on the splits and ranges between 60\% - 70\%, while models trained on Covertype achieve approximately 70\% classification accuracy and 55\% on Dota2.
+We observe that the aggregates' and local models' accuracy converges early, with the aggregators typically converging faster.
 We observed an exceptionally fast convergence \wrt accuracy in \autoref{fig:analysis4}, while the local models did not reach the aggregator accuracy.
 The goal of the aggregation is to match the baseline models as close as possible.
 The aggregate models perform slightly better, notably in the early stages, where the most accuracy is gained on the local models. 
@@ -315,13 +317,13 @@ However, when we have a large number of models and only require some additional 
 All in all, the convergence interval is with $n=250$ so small that significant improvements can only be observed in the first few iterations.
 
 \paragraph*{Do local models benefit from aggregation?}
-Especially in the early stages, where data is sparse, the aggregates severely outperform the distributed learners.
-Once the number of samples on the distributed learners increases, the performance gap between distributed learners and aggregates decreases, with aggregates still having a slight edge in terms of likelihood and accuracy.
+Especially in the early stages, where data is scarce, the aggregates severely outperform the distributed learners.
+Once the number of samples on the distributed learners increases, the performance gap between distributed learners and aggregates diminishes, with aggregates still having a slight edge in terms of likelihood and accuracy.
 
 \paragraph*{How do aggregation methods compare to each other?}
 While the aggregates perform better than the models on distributed learners, no method was able to outperform the others when evaluating at the point of convergence.
 However, the bootstrap aggregation was initially faster to converge but did not come as close to the baseline as the other aggregations.
-Here, increasing the number of iterations for the Gibbs sampler or merely increasing the number of samples generated may improve upon these results.
+Here, increasing the number of iterations for the Gibbs sampler or merely increasing the number of samples generated may improve upon these results, this however, has implications for runtime.
 The Tables\ref{tab:1} and \ref{tab:12} exhibit a quantitative analysis of the relative likelihood.
 \autoref{tab:1} shows the relative likelihood without regularizer and without generating additional parameter vectors.
 The bootstrap aggregation converges faster, while the accuracy-weighted aggregate performs better after having observed $n=397$ samples.

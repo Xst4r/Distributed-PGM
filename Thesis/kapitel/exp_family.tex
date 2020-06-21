@@ -1,12 +1,12 @@
 % kapitel2.tex
 \chapter{Background}
 \label{chapter:kap2}
-In this chapter, we are going to introduce the necessary background in generative modeling, with a focus on canonical exponential family distributions, Markov random fields, and the parameter estimation for these types of models.
+We are now going to introduce the necessary background in generative modeling, with a focus on canonical exponential family distributions, Markov random fields, and the parameter estimation for these types of models.
 Additionally, we will introduce the general notion of distributed learning and algorithms to sample from generative models.
 
 As it is our goal to use aggregation methods on models obtained from distributed learners, we start by initially creating and training these models from observed data. 
 We will then put this result in the context of distributed learning as the next step towards an aggregate model.
-However, let us first define some basic concepts and notation, which are going to be used in this work.
+However, let us first define some basic concepts and notations, which are going to be used in this work.
 
 
 \section{Notation}
@@ -14,7 +14,7 @@ However, let us first define some basic concepts and notation, which are going t
     Let us start by introducing tools and notations encountered frequently in probability theory and machine learning.
     This includes the definition of random variables, probability distributions, data, and parameters.
     A stochastic process is defined over random variables over a shared probability space, where expressions of random variables, the samples from a sample space, are associated with a probability distribution. 
-    We write $\mathbb{P}(X = x)$ for the probability of $X$ taking on value $x$.
+    We write $\mathbb{P}(X = x)$ for the probability of a random variable $X$ taking on value $x$.
     \begin{definition}{Random Variable}
         \label{def:randvar}
         Let $(\Omega, \mathcal{F}, \mathbb{P})$ be a probability space, where $\Omega$ is the domain, $\mathcal{F}$ is a $\sigma$-Algebra containing all possible outcomes and $\mathbb{P}: \mathcal{F} \rightarrow [0,1]$ is a probability measure defined on all possible outcomes.
@@ -23,8 +23,9 @@ However, let us first define some basic concepts and notation, which are going t
         Parametrized probability measures will be denoted $\mathbb{P}_{\vect{\theta}} (X = x)$, i.e., the probability of $X$ taking on some value $x$.
     \end{definition}
 
-    Random vectors will be written in bold letters $\vect{X} = (X_1, X_2, \ldots, X_m)$, where again each entry in the vector is a random variable.
-    The state-space of a random variable will be denoted as a cursive letter of that random variable, e.g., $\mathcal{X}$ and the range of a random vector likewise as $\vect{\mathcal{X}} = (\mathcal{X}_1, \mathcal{X}_2, \ldots, \mathcal{X}_m)$, where each $\mathcal{X}_i$ if the random variable is discrete, has a finite state-space.
+    Random vectors will be written in bold-faced letters $\vect{X} = (X_1, X_2, \ldots, X_m)$, where each entry in the vector is a random variable itself.
+    The state-space of a random variable will be denoted as a cursive letter of that random variable, e.g., $\mathcal{X}$ and the range of a random vector likewise as $\vect{\mathcal{X}} = (\mathcal{X}_1, \mathcal{X}_2, \ldots, \mathcal{X}_m)$. 
+In this work, we only consider random variables $X$ with finite state-space $\mathcal{X}_i$.
     For example a six-sided die can be interpreted as univariate random variable with state-space $\mathcal{X} = \{1,2,3,4,5,6\}$, where each state has probability $\mathbb{P}(X=x) = 1/6$.
     Samples from a random variable $\vect{X}$  with state-space $\vect{\mathcal{X}}$ are denoted as lower case letters, e.g. $\vect{x} \in \mathcal{X}^m$ over an m-dimensional state-space.
     We express elements of a random variable with a  subscript, e.g., $\vect{X}_i$ or $\vect{X}_A$, where $A \subset\{1, \ldots, m\} $ addresses a subset of the dimensions.
@@ -39,12 +40,9 @@ However, let us first define some basic concepts and notation, which are going t
     Given a set of model parameters from distributed learners $\mathcal{M} = \{\vect{\theta}^1,  \ldots, \vect{\theta}^k\}$, each parameter vector $\vect{\theta}^i$ denotes the parameters obtained from the  $i^{th}$ learner, while $\vect{\theta_i}$ is the entry at position i$^{th}$ of a parameter vector.
     A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
     Additional notations for model parameters will be introduced if necessary.
-    In the context of optimization and optimality, we assume $\vect{\theta}^*$ to be the actual, unknown parameter vector.
+    In the context of optimization and optimality, we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
     The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data, is denoted as  $\vect{\hat{\theta}}$.
     Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\theta}^{i}$ the i$^{th}$ local parameter vector respectively.
-
-    Now that we have defined, so basic notation let us move on to the introduction of probabilistic graphical models, exponential families, and statistical inference.
-
 
 \section{Probabilistic Graphical Models}
 \label{sec:pgm}
@@ -71,7 +69,7 @@ When all random variables are statistically independent of each other  we obtain
     \mathbb{P}_{\vect{\theta}}(\vect{X} = \vect{x}) = \prod_{i=1}^m \mathbb{P}_{\vect{\theta}}(\vect{X}_i = \vect{x}_i)
 \end{equation}
 by factorization over the individual probabilities for each random variable.
-In practice, random variables are rarely fully independent, and thus the assumption of statistical independence does not perform well.
+In practice, random variables are rarely fully independent, and thus the assumption of statistical independence does not hold.
 Hence, it is vital to properly capture dependencies between random variables, which leads to the notion of conditional independence.
 
 \begin{definition}{Conditional Independence}
@@ -105,7 +103,7 @@ Hence, it is vital to properly capture dependencies between random variables, wh
 
 %Graph representation 
 We introduce a random variable for each feature in $\mathcal{D}$ while treating the observed data as samples obtained from a stochastic process.
-Let $G=(V,E)$ be a graph, where each vertex represents a single random variable, and each edge between two vertices represents conditional independence. 
+Let $G=(V,E)$ be a graph, where each vertex represents a single random variable, and each edge between two vertices represents a dependency. 
  \autoref{fig:data} shows the graph representation $G=(V,E)$ of a such distribution for a graph with eight vertices. 
 Each vertex $ v \in V$ indexes a random variable $X_v$.
 Our goal is now to estimate the joint probability distribution given the graph G with established conditional independencies.
@@ -113,31 +111,36 @@ Our goal is now to estimate the joint probability distribution given the graph G
 
 
 % Probability Dist. Factorization
-A large number of standard distributions, such as the normal distribution or exponential distribution, are from a class of distribution called the exponential family.
-Probability distributions from the exponential family can be expressed as a product of a normalizer and some non-negative function $\psi: \mathcal{X}^m \rightarrow \mathbb{R}_+$ usually called potential function:
+A large number of standard distributions, such as the normal distribution or exponential distribution, are contained in a class of distributions called the exponential family.
+Probability distributions of the exponential family can be expressed as a product of a normalizer and some non-negative function $\psi: \mathcal{X}^m \rightarrow \mathbb{R}_+$ usually called potential function:
 \begin{equation}
     \label{eq:probpot}
     \mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \psi(\vect{x}),
 \end{equation}
 where $Z$, the partition function ensures that the probability distribution properly sums to one.
-If all entries in $\vect{X}$ are independent from each other we can write $\mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \prod_{i=1}^m \psi_i(x_i)$ as the probability of a set of independent random variables is the product of each individual probability.
+%If all entries in $\vect{X}$ are independent from each other we can write $\mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \prod_{i=1}^m \psi_i(x_i)$ as the probability of a set of independent random variables is the product of each individual probability.
 
 
 %Capturing Statistical Independencies
-However, in practice, random variables are rarely fully independent of each other, while they also may not be entirely dependent on all other random variables.
+%However, in practice, random variables are rarely fully independent of each other, while they also may not be entirely dependent on all other random variables.
 This property is captured by establishing conditional independencies between random variables.
 If the graph satisfies a set of properties, called the Markov Properties, the graph is a Markov Random Field, and the joint probability distribution can be expressed conveniently.
 
 \subsection{Markov Random Fields}
 %MRF Definition
 Markov fandom fields are undirected graphs used to express conditional independencies between random variables. 
-Markov random fields are a type of probabilistic graphical model that represent the joint probability of a random variable $(\vect{X}_v), \; v \in V$ and state-space $\mathcal{X}_v$ \wrt to the vertices and their conditional independencies through edges of the graph. 
+Markov random fields are a type of probabilistic graphical model that represent the joint probability of a random variable $(\vect{X}_v), \; v \in V$ and state-space $\mathcal{X}_v$ \wrt to the vertices and their conditional independencies through edges of a graph. 
 
-For $\vect{X}$ to be considered a Markov random field \wrt G the Markov Properties, have to hold:
+A random variable $\vect{X}$ can be modeled as a Markov random field with a graph G if the Markov Properties hold:
 
 %MRF Properties
 \subsubsection*{Markov Properties}
-Probabilistic graphical models are considered Markov random fields if G is undirected and the three Markov properties hold for any set of random variables indexed by the vertices of G, $\vect{X} = \{X_v\}, v \in V$
+Probabilistic graphical models are considered Markov random fields if G is undirected, the three Markov properties hold for any set of random variables indexed by the vertices of G, $\vect{X} = \{X_v\}, v \in V$, and their distribution has the following form :
+
+\begin{equation}
+    \label{eq:probpot2}
+    \mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \psi(\vect{x}),
+\end{equation}
 
 \paragraph*{Pairwise Markov Property}
 Two random variables $X_u, X_v$ are independent given all other random variables if they are not adjacent, i.e. $\not\exists (u,v) \in E$ :
@@ -170,22 +173,21 @@ Now let $\mathcal{C}$ be set set of maximal cliques, i.e., the set of cliques th
     \forall C_i, C_j \in \mathcal{C},\; i \neq j  : C_i \not\subset C_j,\; C_j \not\subset C_i,\; C_i \neq C_j
 \end{equation}
 there exists no such pair of cliques in $\mathcal{C}$ such that either one is a true subset or the other.
-This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\max \mathcal{C} = \max \{\abs{\mathcal{C}_1}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
+This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\arg\max \mathcal{C} = \max \{\abs{\mathcal{C}_1}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
 
 If the Markov properties hold for $\vect{X}$, we can express the joint probability distribution as factorization over the set of maximal cliques.
-This characteristic allows us to split the potentials into smaller clique-based terms and compute them individually. 
-We assign a potential function $\psi_C: \mathcal{X}_C \rightarrow \mathbb{R}$ to every clique in the graph.
+This characteristic allows us to split the potentials into smaller clique-based terms and compute them individually and defined the joint probability density function with  potential functions$\psi_C: \mathcal{X}_C \rightarrow \mathbb{R}$ according to the Hammersly-Clifford theorem as follows:
 
 \begin{equation}
-        \mathbb{P}(\vect{X}=\vect{x}) = \frac{1}{Z} \cdot \psi(\vect{x})= \frac{1}{Z} \cdot \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C)
-\end{equation},
-where $Z$ is the normalizer of the probability density function, which ensures that $\mathbb{P}$  properly sums to one:
-
-\begin{equation}
-    \frac{1}{Z} \sum_{\vect{x}\in \mathcal{\vect{X}}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C) = 1. 
+        \mathbb{P}(\vect{X}=\vect{x}) = \frac{1}{Z} \cdot \psi(\vect{x})= \frac{1}{Z} \cdot \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C),
 \end{equation}
+where $Z$ is the normalizer of the probability density function, which ensures that $\mathbb{P}$  properly normalizes:
 
-The partition function $Z$ is then obtained by summing over the product of all maximal cliques in the graph for all possible states
+%\begin{equation}
+%    \frac{1}{Z} \sum_{\vect{x}\in \mathcal{X}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C) = 1. 
+%\end{equation}
+
+%The partition function $Z$ is then obtained by summing over the product of all maximal cliques in the graph for all possible states
 \begin{equation}
     Z = \sum_{x\in \mathcal{X}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C).
 \end{equation}
@@ -193,7 +195,7 @@ Positive potential functions with discrete state-space $\mathcal{X}_C$ can be ex
 \begin{equation}
     \psi_C(\vect{x}_c) = \exp(\inner{\vect{\theta}_C}{\phi_C(\vect{x})}).
 \end{equation}
-We obtain the complete parameter vector and sufficient statistics by simply concatenating the individual results from each clique in order of appearance, which is usually determine by the order of edges in $E$.
+We obtain the complete parameter vector and sufficient statistics by simply concatenating the individual results for each clique in fixed but arbitrary order, which is usually determined by the order of edges in $E$.
 The dimensionality of $\vect{\theta}$ is then given by $d = \sum_{C \in \mathcal{C}} \abs{\mathcal{X}_C}$ the sum over all clique state-spaces.
 To guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D})$ has to be a sufficient statistic for $\vect{X}$ \wrt $\mathcal{D}$.
 \paragraph*{Sufficiency}
@@ -227,7 +229,7 @@ To guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D})$ has t
     Let us start with the definition of Shannon Entropy and why it is necessary to introduce some notion of optimality when it comes to finding a distribution that fits our observed data $\mathcal{D}$.
     The approach presented here follows the intuition presented by Wainwright and Jordan \cite{wainwright2008graphical}.
 
-    We want to find the distribution $\mathbb{P}$ from the space of all probability distributions $\mathcal{P}$, which fits the data  $\mathcal{D}$ the most.
+    We want to find the distribution $\mathbb{P}$ from the space of all probability distributions $\mathcal{P}$, which matches the data  $\mathcal{D}$ the best.
     However, there are many such distributions $\mathbb{P} \in \mathcal{P}$ that satisfy this condition. 
     Let $\phi: \vect{\mathcal{X}}  \rightarrow \{0,1\}^d$ be the sufficient statistics of $\mathcal{D}$, that maps observations to a binary vector. 
     We then want to find a distribution such that:
@@ -280,11 +282,11 @@ To guarantee independence from the data$\mathcal{D}$,  $\phi(\mathcal{D})$ has t
     \subsection{Training}
     \label{ssec:train}
 
-    Now that we know, the type of probability distribution that maximizes the entropy we have to determine the parameters $\vect{\theta} \in \Theta$, where $\Theta = \{\vect{\theta} \;\lvert A(\vect{\theta}) < \infty\} \subset \mathbb{R}^d$ is the set of feasible solutions.
-    Using the gradient descent as first order iterative optimization method for a function $f: \mathbb{R}^d \rightarrow \mathbb{R}$, we can find the optimum by updating the parameters in an iterative fashion:
+    Now that we know, the type of probability distribution that maximizes the entropy we have to determine the parameters $\vect{\theta} \in \Theta$ given a set of samples $\mathcal{D}$, where $\Theta = \{\vect{\theta} \;\lvert A(\vect{\theta}) < \infty\} \subset \mathbb{R}^d$ is the set of feasible solutions.
+    Using gradient descent as first order iterative optimization method for a function $f: \mathbb{R}^d \rightarrow \mathbb{R}$, we can find the optimum by updating the parameters in an iterative fashion:
     \begin{equation}
         \label{eq:gradesc}
-        \vect{\theta}^{t+1} = \vect{\theta}^{t} + \alpha \nabla f(\vect{\theta}^{t}).
+        \vect{\theta}^{t+1} = \vect{\theta}^{t} - \alpha \nabla f(\vect{\theta}^{t}).
     \end{equation}
 
     Note that in \autoref{eq:gradesc} the index $t+1$ does refer to an update of $\vect{\theta}$ and not the t-th model.
@@ -342,9 +344,9 @@ Averaging with the sample size prevents this issue for first-order gradient meth
     This problem is known to be \#P-Complete, i.e., there exists no algorithm for efficiently computing the log partition other than brute force evaluation.
     Parameter estimation and other operations involving computation of the log partition function are NP-Hard~\cite{cooper1990computational}.
     However, it is possible to find an exact solution in polynomial time if the graph structure is a tree or polytree.
-    Sum-Product message-passing algorithms on trees, for example, allow us to obtain an exact solution in polynomial time, while there are also algorithms for computing the log partition on a graph with bounded treewidth\cite{berg2014learning}.
+    Sum-Product message-passing algorithms on trees, for example, allow us to obtain an exact solution in polynomial time, while there are also algorithms for computing the log partition on a graph with bounded treewidth~\cite{berg2014learning}.
 
-    The problem of computing probabilities and the log partition function or partition function of a probability density is also known as inference.
+    The problem of computing probabilities and the log partition function or partition function of a probability density is also known as probabilistic inference.
     Here we will focus on inference when the graph G is a tree, which generally allows us to perform exact inference in polynomial time using sum-product message-passing algorithms such as Belief Propagation.
 
     Before introducing the means to perform inference, we will first showcase some additional useful properties of the log partition function and canonical exponential family representation.
@@ -419,7 +421,7 @@ Averaging with the sample size prevents this issue for first-order gradient meth
         \paragraph*{Conditions}
         In order for Berk's Theorem to hold for a family of distributions, some conditions have to be satisfied.
 
-        First, the maximum likelihood estimator has to be consistent, such that for $n\rightarrow \infty$ the parameter vector $\vect{\theta}$ consistently approaches the true parameter vector $\vect{\theta}^*$ such that $\vect{\theta} - \vect{\theta}^* \approx 0$ the difference between the MLE and the true parameters is clos to zero.
+        First, the maximum likelihood estimator has to be consistent, such that for $n\rightarrow \infty$ the parameter vector $\vect{\theta}$ consistently approaches the true parameter vector $\vect{\theta}^*$ such that $\vect{\theta} - \vect{\theta}^* \approx 0$ the difference between the MLE and the true parameters is close to zero.
         Furthermore, all feasible solutions $\vect{\theta}  \in \Theta$ and their probability distribution functions are required to have the same support.
         
         Additionally, the likelihood has to be differentiable up to third-order or higher and that the true parameter vector $\vect{\theta}^*$ is an interior point of $\vect{\Theta}$.
@@ -494,7 +496,7 @@ Averaging with the sample size prevents this issue for first-order gradient meth
             \vect{\Sigma} =  i(\theta^*)^{-1}
         \end{equation}
 
-        Giving some thought to the interpretation of this result, we see that a set of parameter vectors obtained from data sets $\{\mathcal{D}^1, \ldots \mathcal{D}^n\}$ is asymptotically normal around the actual parameter vector for a sample size of $n \rightarrow \infty$.
+        Giving some thought to the interpretation of this result, we see that a set of parameter vectors obtained from data sets $\{\mathcal{D}^1, \ldots, \mathcal{D}^n\}$ is asymptotically normal around the actual parameter vector for a sample size of $n \rightarrow \infty$.
         Parameter vectors of local devices can be treated as samples from a normal distribution.
         Likewise, we can sample from a normal distribution with mean $\vect{\theta}^j$ to generate new models assuming that the local parameter vector the asymptotic result.
         
@@ -502,7 +504,7 @@ Averaging with the sample size prevents this issue for first-order gradient meth
         We have seen in \autoref{eq:likelihood_der} that we need to compute the log partition function in order to perform a gradient update.
         This task belongs to the scope of inference tasks, which we will now discuss.
 
-\subsection{Inference}
+\subsection{Probabilistic Inference}
 \label{ssec:inf}
 Performing evaluation tasks on statistical models is usually referred to as inference.
 Several tasks, such as finding the probability for a given observation or finding the maximum a-posteriori state, i.e., the state with maximum probability, are associated with inference.
@@ -541,7 +543,7 @@ Instead of summing over all other states we replace the sum with the maximum.
 \end{equation}
 
 \paragraph*{Belief Propagation}
-Even for a small number of nodes and states per node computation of the partition function and in turn, performing any type of inference becomes computationally intractable.
+Even for a small number of nodes and states per node computation of the partition function and in turn, performing any type of inference becomes computationally intractable with a computational complexity of $\mathcal{O}(\lvert \mathcal{X}_C \rvert^n)$.
 Consider a graph with 100 nodes with a binary state-space for each random variable.
 In the worst case, i.e., a fully connected graph, we have to iterate over all $2^{100} = 1.26\cdot 10^{30}$ states.
 While we can not obtain the exact solution for the marginalization for a graph with arbitrary structure, it is, however, possible to find an exact solution on trees or an approximate solution on general graphs.
@@ -648,11 +650,11 @@ Determining the structure of a probabilistic graphical model is also a critical 
 Given a data set $\mathcal{D}$, we associate each dimension of $\mathcal{D}_{\cdot i}$ with a univariate random variable $X_i$, which is then represented as a vertex in the graph.
 While the number of vertices is given by the number of features in $\mathcal{D}$, we rarely have explicit information about the conditional independencies between these random variables. 
 Therefore, it is necessary to estimate the independence structure, which usually involves finding dependencies between features in $\mathcal{D}$. 
-Given a graph $G=(V, \cdot)$, we want to find the subset of edges $E \subset V \times V$, which best represents the underlying independence structure of $\vect{X}$.
+Given a graph $G=(V, \cdot)$, we want to find the subset of edges $E \subset V \times V$, which results in the best matching independence structure for $\vect{X}$.
 
 Even in the case of a predetermined independence structure, we may still aim to either reduce the complexity by removing edges or verify the independence structure.
 Various approaches for finding conditional independencies between random variables exist.
-Algorithms such as the Chow-Liu algorithm generate a set of conditional independencies such that the resulting graph is a tree.
+Algorithms such as the Chow-Liu algorithm~\cite{chow1968approximating} generate a set of conditional independencies such that the resulting graph is a tree.
 Other algorithms are less constrained in the choice of edges and generate graphs without guarantees for the final structure.
 Chordalysis is one such tool that uses algorithms, which do not necessarily result in a tree-structured graph, which can be used for more complex structures that can not be appropriately represented as a tree. 
 Generally, tree structures are easier to deal with \wrt to training and inference but often yield worse results as they can not capture the proper independence structure, but rather an approximation of the correct structure.
@@ -675,18 +677,18 @@ The cost function $c(u,v)$ is the mutual information between two random variable
     c(\vect{X}_v, \vect{X}_u) = I(X_v, X_u) = \sum_{\vect{x}_v \in \mathcal{X}_v} \sum_{\vect{x}_u \in \mathcal{X}_u} \mathbb{P}(\vect{x}_v,\vect{x}_u) \log \frac{\mathbb{P}(\vect{x}_v,\vect{x}_u) }{\mathbb{P}(\vect{x}_v)  \mathbb{P}(\vect{x}_u)},
 \end{equation}
 where the probabilities are usually the relative frequencies of the observed events from $\mathcal{D}$.
-Obtaining the minimum Kullback-Leibler divergence is then equivalent to computing the maximum spanning tree on the connected graph as this is the tree that minimizes the Kullback Leibler divergence.
+Obtaining the minimum Kullback-Leibler divergence is then equivalent to computing the maximum spanning tree on the connected graph as this is the tree that minimizes the Kullback Leibler divergence.~\cite{kirshner2012conditional}
 \begin{equation}
     \min_{E_T} KL(\mathbb{P}^*, \mathbb{P}_{E_T}) = \max_{E_T} \sum_{(u,v) \in E_T} c(\vect{X}_v, \vect{X}_u), \; s.t. \; \abs{E_T} = \abs{V}-1 .
 \end{equation}
 
 \input{kapitel/figures/chowliu.tex}
 
-Connected indicates that there exists a path between each pair of vertices in G. 
-Such a spanning tree can be found with algorithms such as Prim's or Kruskal's algorithm.
-The resulting graph is then guaranteed to be a tree, with edge weights that minimize the Kullback-Leibler divergence between the true distribution and the distribution induced by the tree, i.e., out of all possible sets of edges forming a tree this is the best.
+A graph is considered connected if there exists a path between each pair of vertices in G. 
+Such a spanning tree can be found with algorithms such as Prim's or Kruskal's algorithm~\cite{graham1985history}.
+The resulting graph is then guaranteed to be a tree, with edge weights that minimize the Kullback-Leibler divergence between the true distribution and the distribution induced by the tree given $\mathcal{D}$.
 
-Structure learning is a necessary step before starting parameter estimation as the structure directly affects the number of parameters, the final distribution, and without structure, we only have statistically independent random variables. 
+If an expert does not provide the independence structure, estimating the structure is a necessary step before starting parameter estimation as the structure directly affects the number of parameters, the final distribution, and without structure, we only have statistically independent random variables. 
 The tree is then used on all distributed learners to estimate parameters individually based on the locally observed data. 
 
 Now that we have introduced the necessary tools to create a probabilistic graphical model from a plain data set and estimate parameters for the canonical exponential family, we will move towards bringing these models into distributed learning.
@@ -695,7 +697,7 @@ Now that we have introduced the necessary tools to create a probabilistic graphi
 \section{Distributed Learning}
 %In the previous sections, we explored probabilistic graphical models, inference, and structure learning algorithms, which can be used on an arbitrary number of devices.
 %Next we will talk about 
-With an increasing demand for parallel or distributed programming and learning, caused by more frequently occurring data parallelisms~\cite{ben2006principles}, tasks that were solved on single-core CPUs now more often computed in a distributed environment.
+With an increasing demand for parallel or distributed programming and learning, caused by more frequently occurring data parallelisms~\cite{ben2006principles}, tasks that were solved on single-core CPUs are now more often computed in a distributed environment.
 
 While the increase in CPU performance has diminished over the past few years~\cite{herlihy2011art} due to space and cooling constraints on processors, the amount of individual devices and data collected on these devices has drastically increased~\cite{kaisler2013big}.
 Alternatives to centralized machine learning are often found in distributed learning, where the task is split into several smaller tasks, which are then computed in parallel. 
@@ -723,14 +725,14 @@ Connectivity between devices in networks may change over time, which requires a 
 The second approach uses a coordinator node to send or receive updates from distributed learners. 
 Most, if not all, communication is managed by the coordinator, while data may still be kept on the local devices only.
 In theory, it is also possible to combine both approaches, i.e., to allow communication between local devices to some degree, to achieve a better local solution.
-Lastly, in the fully centralized approach, all data is kept on the server is then partitioned into chunks and sent to local devices, which then execute some tasks, which is, for example, the case in a Map\&Reduce framework~\cite{dean2010mapreduce}.
+Lastly, in the fully centralized approach, all data is kept on the server is then partitioned into chunks and sent to local devices, which then execute some tasks, which is, for example, the case in a Map and Reduce framework~\cite{dean2010mapreduce}.
 
 Employing a set of distributed learners is useful when the data is horizontally distributed and can not be reliably sent to a central server.
 This is the case when, for example, there is too much data to process relative to the available bandwidth or when the data contains private information.
 Generally, in such instances, it is a good idea to keep communication costs as low as possible as high communication costs only increase the complexity of the overall model.
 Statistical models allow for efficient communication as it is sufficient to send the estimated local model parameters $\vect{\theta}^i$ to the coordinator. 
 
-Probabilistic graphical models are compact as we are only required to store the sufficient statistics, the number of samples, model parameters and graph on a distributed learner resulting in a memory complexity of $\mathcal{O}(d + \abs{E})$, where d is the number of parameters and $\abs{E}$ are the number of edges in the graph. 
+Probabilistic graphical models are compact as we are only required to store the sufficient statistics, the number of samples, model parameters and graph on a distributed learner resulting in a memory complexity of $\mathcal{O}(d)$, where d is the number of parameters. 
 Already observed and processed data can be safely dropped from memory once the local sufficient statistics are updated.
 
 The two major questions we have to answer in a distributed environment are:
@@ -757,7 +759,7 @@ This condition is called the local convergence criterion, as opposed to the prev
 
 \paragraph*{Local Convergence}
 Local models are trained using gradient descent to minimize the likelihood. 
-Recall that the likelihood is convex. 
+Recall that the negative likelihood is convex. 
 Thus updates improve upon the objective towards the global minimum.
 As $\vect{\theta}$ moves towards the global minimum and with appropriate step-size, the difference between two subsequent objective function values decreases.
 Hence, we may use this difference as a method to determine convergence, given some threshold $\varepsilon$ we stop the optimization if the different between two likelihoods falls below this threshold, i.e.:
@@ -892,7 +894,7 @@ We see that as $\abs{\mathcal{D}}$ increases, for a fixed $\delta$, the distance
 In conclusion, we have shown that as the sample size increases, the variance for the average sufficient statistics and, in turn, for model parameters decreases.
 This result allows us to choose a variance or distance threshold and obtain the necessary amount of data to reach that threshold.
 
-Next, we will introduce methods for sampling from a generative model, which is one of the main advantages these types of models have over discriminative ones.
+Next, we will introduce methods for sampling from a generative model, which is one of the main advantages these types of models have in contrast to discriminative ones.
 
 \section{Sampling}
 \label{sec:sampling}

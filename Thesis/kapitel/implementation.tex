@@ -4,16 +4,17 @@
 \label{chapter:ch4}
 In this chapter, we will discuss the implementation, featuring the theoretical results from \autoref{chapter:kap2} and aggregation methods presented in \autoref{chapter:ch3} for probabilistic graphical models and exponential families.
 The implementation features a simulated environment with distributed learners and the coordinator.
-They have shared access to some data structures used for simulating the message exchange between both parties.
+The learners have shared access to some data structures used for simulating the message exchange between both parties.
 We are going to discuss implemented features, design choices as well as providing a general idea about data processing, model initialization, and code architecture.
 
 The framework is implemented with Python as it is highly accessible and features C-based packages for efficient linear algebra operations and data processing.
-Python enables fast and efficient execution and evaluation or most standard operations, while also preserving the option to interface to C and C++ libraries if necessary for additional computational speedup.
+With Python, we furthermore preserve the option to interface to C and C++ libraries if necessary for additional computational speedup.
 
-We mainly use well-known python modules such as NumPy, SciPy, Pandas, and Scikit-Learn for data processing, matrix management, and evaluation.
-Moreover, we use the PXPY C++ module for probabilistic graphical models and probabilistic inference.
 
-Distributed learning is implemented in a simulated fashion, as the goal of this work is to present model aggregation techniques.
+We mainly use well-known python modules such as NumPy\footnote[1]{\hypersetup{pdfborder=1 1 1}\href{https://numpy.org/}{https://numpy.org/}\hypersetup{hidelinks}}, SciPy\footnote[2]{\hypersetup{pdfborder=1 1 1}\href{https://www.scipy.org/}{https://www.scipy.org/}\hypersetup{hidelinks}}, Pandas\footnote[3]{\hypersetup{pdfborder=1 1 1}\href{https://pandas.pydata.org/}{https://pandas.pydata.org/}\hypersetup{hidelinks}}, and Scikit-Learn~\cite{scikit-learn} for data processing, matrix management, and evaluation.
+Moreover, we use the \texttt{PXPY}\footnote[4]{\hypersetup{pdfborder=1 1 1}\href{https://randomfields.org/}{https://randomfields.org/}\hypersetup{hidelinks}} C++ module for probabilistic graphical models and probabilistic inference.
+
+Our goal in this work is to present model aggregation techniques; therefore, distributed learning is implemented in a simulated fashion.
 The simulation pattern consists of two objects, coordinator and learners, exchanging data on shared memory. 
 The coordinator object has access to a model object, which holds the results for all distributed learners.
 Depending on the aggregation method, the coordinator may have access to additional data, such as the total number of distributed learners, parameter vectors, or likelihood. 
@@ -35,15 +36,15 @@ For easier accessibility, the implementation features a basic framework for dire
 After that, we create a coordinator object, which has access to the data set, a sampler object, and the aggregators.
 The sampler is responsible for creating random index-based splits, accessible by the models, providing them access to the data set via index operations.
 Finally, we create the graph-based independence structure $G=(V,E)$  on a holdout set, where the number of vertices is the number of features in $\mathcal{D}$ and generating the conditional independencies using the Chow-Liu algorithm.
-We then create distributed models from the individual splits and graph, which then start alternating between run and aggregation phase (cf. \autoref{fig:dist}).
+Afterward, we create distributed models from the individual splits and graph, which then start alternating between run and aggregation phase (cf. \autoref{fig:dist}).
 
-After the discretization, each random variable $X_i$ with state-space $\mathcal{X}_i$ has at most $\{0, \ldots, \max(\mathcal{D}_{\cdot i})\}$ observable states.
-Since we discretize the data before determining the independence structure, we obtain the number of states for each feature by merely taking the maximum among all observations from the corresponding feature. 
+We discretize the data before determining the independence structure. Then, the number of states for each feature is the maximum among all observations from the corresponding discretized feature. 
+After the discretization, each random variable $X_i$ with discretized state-space $\hat{\mathcal{X}}_i$ has at most $\{0, \ldots, \max(\hat{\mathcal{D}}_{\cdot i})\}$ observable states.
 
 Having prior information about structure and state-space is vital as the aggregation methods used for this work rely on having an identical structure and known state-space across the distributed learners.
 
 \subsection{Cross-Validation}
-For any data object, we create the cross-validation sets are by seeding a randomizer, which allows us to recreate the results by storing the seed.
+We generate cross-validation splits by a fixed seed to increase the reproducibility of our results.
 Furthermore, we add an index over the data, which is then shuffled and split into the desired number of cross-validation runs.
 For each run, we assign one split to represent the test data, while the remaining folds are used for training.
 The training data is again shuffled and distributed by a secondary index set to all distributed learners.
@@ -54,6 +55,7 @@ By discretizing the data, we can group observations into a fixed number of bins,
 We discretize data by mapping each sample to a bin index.
 Consider, for example, a sample $x=5$ and two bins consisting of an index and limits $(1,[0,10)),(2,[10,20))$, implicitly assigning x to the first bin and thus mapping x to the first index. 
 Observations outside the original interval range are assigned to the 0-th and q-th bin, respectively.
+
 We discretize the data using the $q$ quantiles on each feature, which are computed based on the training data. 
 The number of quantiles $q$ is either chosen to be the same across all features or for each feature individually.
 Furthermore, if the number of quantiles is higher than the state-space for any random variable $X_i$, we do not compute the discretized feature as the number of possible observations is less than $q$.
@@ -63,7 +65,7 @@ Choosing the correct number of quantiles is difficult and requires prior knowled
 We may choose the number of quantiles based on the total range of each feature or based on some prior information about a feature, such as what physical measurement or unit it represents.
 
 \section{Run Phase}
-After creating all necessary objects, run, and aggregation phase begins alternating, where the available data on the learners increases each round.
+After creating all necessary objects, the run, and aggregation phases begin alternating, where the available data on the learners increases each round.
 \autoref{fig:dist} illustrates the sequence of operations.
 First, each of the distributed learners trains a probabilistic graphical model with the locally available data.  
 Then, the coordinator receives and aggregates parameters from the distributed learners $\vect{m}$. 
@@ -81,24 +83,24 @@ In case we need to perform additional modifications to the training, extending t
 However, in our case, a single model class for all data sets was sufficient.
 Each model, when created, uses an instantiation of a data set class and features optional parameters to control the simulated, distributed environment. 
 Setting these parameters entails, for example, fixing the maximum number of iterations for each training pass and the number of distributed learners.
-Each distributed learner is using a PXPY model for training and inference at its core.
+Each distributed learner is implemented by a \texttt{PXPY} model for training and inference at its core.
 
-\subsection{PXPY}
-PXPY\cite{piatkowski2018exponential} (PX) is a toolkit for performing probabilistic inference and parameter estimation using graphical models using exponential family distributions.
+\subsection{\texttt{PXPY}}
+\texttt{PXPY}~\cite{piatkowski2018exponential} (\texttt{PX}) is a toolkit for performing probabilistic inference and parameter estimation using graphical models using exponential family distributions.
 Initially implemented as a C++ module, PX also features a Python front-end for easier access to core functionalities.
 PX offers a variety of model- and inference types such as Markov random fields with real value or integer parameters, while also providing different parallelized inference algorithms such as belief-, loopy belief propagation or the junction tree algorithm.
 
-Core features include the model- training, evaluation, and inference while providing means to influence the optimization with user-defined callbacks or functions hooks that allow to add regularization terms manually or to check progress and convergence of the training.
+Core features include the model- training, evaluation, and inference while providing means to influence the optimization with user-defined callbacks or functions hooks that allow adding regularization terms manually or to check progress and convergence of the training.
 
 Options are passed via register entries using a virtual machine, which is then accessed by the C++ core to execute the algorithms with the provided options.
 
 The graph's independence structure can be directly passed as an edge list or be inferred directly from the data using structure learning algorithms such as the Chow-Liu algorithm.
 Additionally, we may choose between several default graph structures such as chain, grid, or star graphs.
 
-Optimization is done through negative average likelihood minimization using first-order proximal gradient methods (cf. Piatkowski \cite{piatkowski2018exponential} with the Fast Iterative Shrinking-Thresholding Algorithm (FISTA)).
-Functionality for gradient manipulation is provided by explicitly passing function hooks to PX, which are then called at the corresponding optimization step and execute the user-defined function.
+Optimization is done through negative average likelihood minimization using first-order proximal gradient methods with the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) (see Piatkowski \cite{piatkowski2018exponential}).
+Functionality for gradient manipulation is provided by explicitly passing function hooks to \texttt{PX}, which are then called at the corresponding optimization step and execute the user-defined function.
 Hooks may be used, for example, to add a regularization term to the gradient before updating the objective function. 
-Here, PX calls available hooks for regularization, providing a content object containing the current gradient, weights, step size, and the current number of iterations, which can then be directly manipulated with in-memory operations.
+Here, \texttt{PX} calls available hooks for regularization, providing an optimization-state object containing the current gradient, weights, step size, and the current number of iterations, which can then be directly manipulated with in-memory operations.
 Likewise, we may also check if the objective value is close to converging between two gradient descent iterations and stop the optimization altogether if desired.
 
 \subsection{Training}
@@ -106,24 +108,24 @@ At the start of each training iteration, we first increment the number of sample
 We may then either update the previous model by extending the sufficient statistics with the new data or train a new model. 
 In either case we  have to keep the graph $G$, state-space $\vect{\mathcal{X}}$, average sufficient statistics $\tilde{\mathbb{E}}_{\mathcal{D}^i}[\phi(x)] = \tilde{\vect{\mu}}^i$ and the previous parameters $\vect{\theta}^i$ in memory in order to update the i-th learner.
 
-When creating a new PX model, the state-space is usually inferred directly from the data, while the graph has to be passed either as an edge list or as a PX graph object. 
+When creating a new \texttt{PX} model, the state-space is usually inferred directly from the data, while the graph has to be passed either as an edge list or as a \texttt{PX} graph object. 
 Here we run into the issue of the state-spaces for distributed learners not being identical, especially when the number of samples is low. 
 When having only a small number of samples, some states are with high probability not observed, which leads to an incomplete state-space and thus to a varying number of parameters. 
-This issue is solved by providing px with an additional sample $\mathcal{D}'^i = \mathcal{D}^i \cup \vect{x}_{max}$ with $\vect{x}_{max} = (max(\mathcal{D}_{\cdot 1}), \ldots, max(\mathcal{D}_{\cdot m}))$, which contains the maximum observed (or discretized) value for each feature.
+This issue is solved by providing \texttt{PX} with an additional sample $\mathcal{D}'^i = \mathcal{D}^i \cup \vect{x}_{max}$ with $\vect{x}_{max} = (max(\mathcal{D}_{\cdot 1}), \ldots, max(\mathcal{D}_{\cdot m}))$, which contains the maximum observed (or discretized) value for each feature.
 Since the state-space is created by taking the maximum value of each feature, this leads to all distributed learners having the same number of parameters.
-Afterwards, we simply remove scale back the sufficient statistics such that
+Afterwards, we remove the additional sample from the sufficient statistics such that
 \begin{equation}
     \tilde{\vect{\mu}}^t_{m^i} = \frac{(n^t_{m^i} + 1) \cdot \tilde{\vect{\mu}}^{'i}_{m^i} - \phi(\vect{x}_{max})}{n^t_{m^{i}}},
 \end{equation}
-while keeping the number of parameters equal across all learners.
+while keeping the dimensionality of parameters equal across all learners.
 This way, we ensure all models having the same structure and number of parameters, even when some configurations have not been observed yet.
 
-We start the parameter estimation by invoking the train method of PX, passing the graph and data along with a maximum number of iterations.
-Optionally, we provide the progress hooks to be called from within PX.
+We start the parameter estimation by invoking the train method of \texttt{PX}, passing the graph and data along with a maximum number of iterations.
+Optionally, we provide the progress hooks to be called from within \texttt{PX}.
 On each gradient descent iteration, we monitor the difference between current and previous likelihood. 
 Once the difference is sufficiently small, we start a grace period of, for example, $t=100$ iterations, after which we terminate training, given that the difference remains below that threshold.
 
-When using a regulariser on the likelihood, we provide PX with an additional regularization hook. 
+When using a regulariser on the likelihood, we provide \texttt{PX} with an additional regularization hook. 
 The hook then copies the sum of gradient and derivative regulariser to the memory reserved for the gradient.
 For the $\ell_2$ regularization we, for example, have 
 \begin{equation}
@@ -145,8 +147,7 @@ The parameters for an arbitrary aggregator object are typically passed as $\math
 Before the aggregation, we may optionally choose to sample additional models, i.e., parameter vectors from existing ones taking advantage of the asymptotic normality of the MLE (cf. \autoref{ssec:asymp}).
 This is especially useful for radon machines when we have close to $ r^h << k < r^{h+1}$ models, but strictly less than required for aggregating $r^{h+1}$ models for an arbitrary $h$.
 
-Parameters of exponential families are asymptotically normal distributed, as shown in \autoref{ssec:asymp}.
-Hence, we can center the sample distribution around $\vect{\theta}^i$ if we assume this to be the asymptotic result.
+Due to the asymptotic normality, we can center the sample distribution around $\vect{\theta}^i$ if we assume this to be the asymptotic result.
 In case, where it is not feasible to compute and store the Fisher information, we have to determine the covariance matrix for $\hat{\vect{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$ the asymptotic distribution.
 The different choices for correlation matrices are derived from the results in \autoref{ssec:asymp} and \autoref{ssec:bounds}.
 %We could use Wasserstein-2 Distance to measure the distance between the local distribution and the true distribution
@@ -154,7 +155,7 @@ The different choices for correlation matrices are derived from the results in \
 \subsection{Covariance Generation}
 \label{ssec:covgen}
 
-Recall, that we want to sample from $\vect{\theta} \sim \mathcal{N}(\vect{\theta}^*, \cdot)$ for some correlation matrix $\vect{\Sigma}$ under the assumption that $\vect{\theta}^*$ are the true parameters.
+Recall, that we want to sample from $\vect{\theta} \sim \mathcal{N}(\vect{\theta}^*, \cdot)$ for some covariance matrix $\vect{\Sigma}$ under the assumption that $\vect{\theta}^*$ are the true parameters.
 In this case we can use either the full covariance matrix $\vect{\Sigma}$, the diagonal $diag(\Sigma)$ or a single value $\sigma^2 I$.
 Ideally, we want to compute the fisher information \wrt $\vect{\theta}^*$, but this is not always possible.
 
@@ -213,8 +214,8 @@ In summary, we present three different ways of generating full covariance matric
 \subsection{Aggregators}
 
 The aggregator interface provides the predefined functions for implementing additional aggregators.
-Aggregators receive the models along with additional, for the aggregation mandatory, user-defined parameters.
-We expect the input models to be either in matrix form or a list of PXPY model objects, which contain the parameters to be aggregated.
+Aggregators receive the models alongside additional, for the aggregation mandatory, user-defined parameters.
+We expect the input models to be either in matrix form or a list of \texttt{PXPY} model objects, which contain the parameters to be aggregated.
 Then, calling the aggregate function starts the aggregation process for the provided models. 
 Each aggregator stores the results in their instance, while also showing whether the aggregation was successful.
 Additional aggregators only require the implementation of the constructor and aggregate function with the predetermined input format.
@@ -284,11 +285,11 @@ The coordinator then normalizes the weights (\autoref{eq:scorenorm}) and compute
 
 \paragraph*{Radon Machines}
 While the concept of Radon Points allows us to compute the center point for a given set of points solving a system of linear equations, recall that we can not obtain a unique solution if the coefficient matrix is not full rank, i.e., is singular.
-This problem  is caused by two or more linear dependent columns or rows in the matrix.
+This problem is caused by two or more linear dependent columns or rows in the matrix.
 
-As the number of samples seen by each device increases the parameters approach each other to some extent, which in turn increases the likelihood of introducing linear dependencies between parameter vectors.
-Since we assume the data to be identically and independently distributed (i.i.d.), all samples are from the same random variable. 
-With a large enough sample size, the local parameters vectors are going to equalize.
+As the number of samples seen by each device increases, the parameters approach each other to some extent, which in turn increases the likelihood of introducing linear dependencies between parameter vectors.
+Since we assume the data to be identically and independently distributed (i.i.d.), all samples are from the same distribution. 
+As the sample size increases, the local parameters vectors are going to approach each other.
 Identical parameters vectors become an issue when solving systems of linear equations as linear dependencies cause the system to be overdetermined, which then has no unique solution anymore.
 The probability of introducing such dependencies increases with the amount of data, such that the solution may not be unique anymore.
 Instead of solving a system of linear equations, we can transform the problem into a least-squares minimization to find any non-unique solution, or the unique if it exists.
@@ -322,6 +323,8 @@ The bootstrap aggregation takes advantage of generative modeling, which allows u
 Here, we use Gibbs sampling (\autoref{alg:gibbs}) with 20 iterations to generate new samples.
 We sample a total of $\sum_{i=1}^k \abs{\mathcal{D}^i} /2$ from each model, compute the sufficient statistics, and train a new model on the coordinator with the combined sample data.
 
+\hypersetup{pdfborder=1 1 1}
 Having discussed the implementation of all aggregation methods, we conclude the implementation chapter.
 The implementation is available on \href{https://github.com/Xst4r/Distributed-PGM/tree/master/Code}{GitHub}.
 We will now move on to the experiments and results and, finally, summarize our findings and discuss future work.
+\hypersetup{hidelinks}

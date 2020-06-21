@@ -1,5 +1,6 @@
 \begin{figure}[!htb]
     \center
+    \resizebox{\linewidth}{!}{
     \begin{tikzpicture}
         \Vertex[x=8,y=6,color=tuorange,opacity=0.5,label=Coordinator, size=2, shape=rectangle]{coord}
         \Vertex[x=12,y=4,color=tugray, opacity=0.5,label=Structure, size=1.5, shape=diamond]{struct}
@@ -30,6 +31,7 @@
         \Edge[Direct, style=dashed](split)(m2)
         \Edge[Direct, style=dashed](split)(m3)
         \end{tikzpicture}
+    }%
     \caption[Initialization phase for the distributed PGM]{Initialization phase for the distributed PGM approach. The data is loaded into a dataset class, where it is stored and discretized. Afterwards, the data along with a sampler is sent to the coordinator, where the splits for the devices are generated. Afterwards we estimate the indepency structure of the graph and the number of states for each node in the graph. This information is then broadcast to all models.}
     \label{fig:flowchart}
 \end{figure}

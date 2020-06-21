@@ -15,12 +15,12 @@ Model aggregation is the task of combining a set of models obtained from a group
     \end{equation}
     where $m^*$ is the optimal aggregate model and $d: \mathcal{H} \times \mathcal{H} \rightarrow \mathbb{R}$ is some quality measure or distance function.
     Note that we only need to aggregate these elements of $m^i$ that fully characterize the model.
-    Consider statistical models with known structure and distribution. 
-    We only require the parameters in addition to the graph and state-space to perform inference.
+    %Consider statistical models with known structure and distribution. 
+    %We only require the parameters in addition to the graph and state-space to perform inference.
 \end{definition}
 
 In the context of this work feasible solutions are from a parametrized family of densities, i.e., the solution space $\mathcal{H} = \Theta$ and  $m^i = \vect{\theta}^i \in \mathbb{R}^d$, where $d$ is the number of parameters of the model. 
-Note that we here restrict models to their parameters only, while they usually contain additional elements such as the sufficient statistics $\tilde{\vect{\mu}}$
+Note that we restrict models to their parameters only, while they usually contain additional elements such as the sufficient statistics $\tilde{\vect{\mu}}$.
 
 The aggregate function is then $f: \mathbb{R}^{d \times k} \rightarrow \mathbb{R}^{d}$ such that the input is a matrix with $d \times k$ entries, where each column corresponds to a single parameter vector.
 
@@ -28,8 +28,8 @@ For exponential families we already know from  \autoref{ssec:asymp} that $\vect{
 
 Basic approaches to federated learning involve training models on each learner first and afterward sending their models to the coordinator.
 \autoref{alg:magg} presents this approach in a federated learning setting. 
-Each round, we update the local data set and continue estimating the model parameters in parallel. 
-We then send the local parameters to the coordinator, then aggregating the models and checking for convergence.
+Each round, we update the local data sets and use those to estimate the parameters in parallel. 
+Afterward, we send the local parameters to the coordinator, which performs the aggregation and convergence-checks.
 Note that depending on the stopping criterion, we may need to supply additional information to the coordinator, such as the number of locally observed samples. 
 The stopping criterion may also involve the aggregate model or computing some distance function $d: \mathcal{H} \times \mathcal{H}  \rightarrow \mathbb{R}$  to determine whether the training should be stopped.
 \begin{algo}{Distributed Model Aggregation}
@@ -37,7 +37,7 @@ The stopping criterion may also involve the aggregate model or computing some di
     \caption[Distributed Learning with PGMs]{General approach to distributed learning. While the stopping criterion $C$ has not been fulfilled, the distributed learners update the observed data in each round and train a new or updated model. Afterward, the local parameters are sent to the coordinator and aggregated with some aggregation algorithm.}
         \begin{algorithmic}[1]
             \label{alg:magg}
-            \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{R}^{\abs{V}}$ and Stopping Criterion C \\
+            \REQUIRE Datasets $\mathcal{\vect{D}} = \{\mathcal{D}_1, \ldots,\: \mathcal{D}_k\}$, Graph $G=(V,\:E)$, States $s \in \mathbb{N}^{\abs{V}}$ and Stopping Criterion C \\
             \ENSURE Aggregate Model $\vect{\tilde{\theta}}$  \\
             \WHILE{not STOP} \STATE{%
             \COMMENT{Train models on each learner in parallel}\\
@@ -67,10 +67,10 @@ The stopping criterion may also involve the aggregate model or computing some di
     \end{algorithm}
 \end{algo}
 Some additions to this basic approach may include sending the aggregate back to a subset of learners, which violate some threshold, e.g., local models that are considered as an outlier when compared to the other models.
-Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregating models received from distributed learners.
+%Let us now discuss different types of aggregation functions $f \in \mathcal{F}$ that can be used to achieve our goal of aggregating models received from distributed learners.
 
 %\section{Aggregation Mechanisms}
-We will now discuss different aggregation methods, which are represented by line 6 in \autoref{alg:magg}.
+We will now discuss different aggregation methods $f \in \mathcal{F}$, which are represented by line 6 in \autoref{alg:magg}.
 The optimal model $m*$ is usually not known and cannot be directly estimated or obtained.
 While  $m*$ is unknown, we can still compare different aggregation functions $f$ with each other to determine the most efficient and best-performing aggregator.
 
@@ -177,7 +177,7 @@ where $\tau$ is a hyperparameter that controls the importance of the prior mean,
 Instead of using a federated approach, we can also rely on a federated-decentralized hybrid approach, establishing connections or using existing connections between local devices to enable communication.
 Given a network graph, where edges are existing connections, we can exchange information between distributed learners alongside these connections.
 
-Restricting information exchange exclusively to neighboring nodes is often used as a trade-off to reduce network complexity.
+Restricting information exchange exclusively to neighboring nodes is often used as a trade-off to reduce network complexity and therefore communication complexity.
 
 Then, let $\vect{\theta}^{i}$ be the model parameters of i$^{th}$ model $m^{i}$ with local data $\mathcal{D}^{i}$.
 Transmitting the model parameters $\vect{\theta}^{i}$  at node $V_i$  to other connected devices  $V_j$ with $i \neq j$ in peer-to-peer fashion allows us to evaluate models based on the training data of other learners.
@@ -200,11 +200,11 @@ Once all local models have received an average score, the local parameters along
 
 \begin{equation}
     \label{eq:scorenorm}
-    \tilde{\vect{\theta}}_{DEC} = \frac{1}{\sum_{i=1}^k S_i} \cdot \sum_{i=1}^k \bar{S}_i \vect{\theta}^{(i)},
+    \tilde{\vect{\theta}}_{DEC} = \frac{1}{\sum_{i=1}^k \bar{S_i}} \cdot \sum_{i=1}^k \bar{S}_i \vect{\theta}^{(i)},
 \end{equation}
 
-where $\bar{S}_i$ is the average score collected from all neighbors of $i$. 
-The normalization is applied to ensure that $\sum_{i=1}^k S_i = 1$, i.e., the aggregate is a convex combination of the local models.
+where $\bar{S}_i = 1/\abs{\mathcal{N}(i)}\sum_{j\in \mathcal{N}(i)} S(\vect{\theta}^i)_j$ is the average score collected from all neighbors of $i$. 
+The normalization is applied to ensure that $\sum_{i=1}^k \bar{S}_i = 1$, i.e., the aggregate is a convex combination of the local models.
 When comparing the arithmetic mean and weighted average, the introduction of weights turns the average into an informed aggregation based on additional prior information about the aggregated elements, where the arithmetic mean is a special case of the weighted average with equal weights.
 
 However, the arithmetic mean suffers from outliers, and the weighted average requires prior information.
@@ -302,8 +302,8 @@ Note that by definition we still need $d+2$ parameter vectors to compute the Rad
 
 However, any solution to the system of linear equations presented in \autoref{eq:radonopt} is a Radon point, and there may exist multiple solutions.
 One particular issue that we may run into is that the maximum likelihood estimators obtained from sampling the same random variable approach each other in the limit of $n \rightarrow \infty$, possibly leading to the introduction of linear dependencies.
-While this is an issue for the system of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any one solution.
-Without unique solution, however, we lose the property of the Radon point being the only center point as shown by Peterson et al.~\cite{peterson1972geometry}
+While this is an issue for the system of linear equation, as the solution may not be unique anymore, we can simply use the optimization problem to minimize the sum of squares to find any solution.
+However, Without a unique solution, we lose the property of the Radon point being the only center point as shown by Peterson et al.~\cite{peterson1972geometry}
 If the solution to the optimization problem is unique, the partition is unique, and thus the Radon point is the center point of all model parameter vectors.
 Hence, if there is no unique solution, there is not much information about the position of the Radon point except that it is some sort of center point and contained in the intersection of the two convex hulls.
 The least-squares solution is obtained by minimizing
