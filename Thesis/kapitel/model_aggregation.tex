@@ -22,9 +22,9 @@ Model aggregation is the task of combining a set of models obtained from a group
 In the context of this work feasible solutions are from a parametrized family of densities, i.e., the solution space $\mathcal{H} = \Theta$ and  $m^i = \vect{\theta}^i \in \mathbb{R}^d$, where $d$ is the number of parameters of the model. 
 Note that we restrict models to their parameters only, while they usually contain additional elements such as the sufficient statistics $\tilde{\vect{\mu}}$.
 
-The aggregate function is then $f: \mathbb{R}^{d \times k} \rightarrow \mathbb{R}^{d}$ such that the input is a matrix with $d \times k$ entries, where each column corresponds to a single parameter vector.
+The aggregate function is then $f: \mathbb{R}^{d \times k} \rightarrow \mathbb{R}^{d}$ such that the input is a matrix with \\ $d \times k$ entries, where each column corresponds to a single parameter vector.
 
-For exponential families we already know from  \autoref{ssec:asymp} that $\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
+For exponential families we already know from  \autoref{ssec:asymp} that \\$\vect{M} \sim \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ is asymptotically normal.
 
 Basic approaches to federated learning involve training models on each learner first and afterward sending their models to the coordinator.
 \autoref{alg:magg} presents this approach in a federated learning setting. 
@@ -80,7 +80,7 @@ While  $m*$ is unknown, we can still compare different aggregation functions $f$
 Probably the most intuitive approach to aggregate a set of parameters or models is to simply compute the  arithmetic mean of all parameters.
 \begin{equation}
     \label{eq:arithmean}
-    \hat{\theta} = \frac{1}{k} \sum_{i=1}^k \theta^i
+    \tilde{\vect{\theta}} = \frac{1}{k} \sum_{i=1}^k \vect{\theta}^i
 \end{equation}
 Recall that in \autoref{ssec:asymp} we showed that the maximum likelihood estimator for canonical exponential families is asymptotically normal.
 Hence, each $\vect{\theta}^i$ is one sample from the normal distribution $\vect{\theta}^i \dot{\sim} \mathcal{N}(\vect{\theta}^*, i(\vect{\theta}^*)^{-1}/n)$ around the true parameters and the inverse Fisher information.
@@ -117,7 +117,7 @@ Additionally we normalize the weights such that $\sum_{i=1}^k \lambda_i = 1, \la
 
 Then, instead of computing the arithmetic mean, which assumes all weights to be equal to $1$, we compute
 \begin{equation}
-     \hat{\vect{\theta}} = \sum_{i=1}^k \lambda_i \theta^i = \tilde{\mathbb{E}}_{\vect{m}}[\vect{M}],
+     \tilde{\vect{\theta}}_{LL} = \sum_{i=1}^k \lambda_i \vect{\theta}^i = \tilde{\mathbb{E}}_{\vect{m}}[\vect{M}],
 \end{equation}
 which is the empirical expected value of $\vect{M}$ if and only if $\vect{\lambda}$ is a probability measure.
 Obtaining these weights is a challenging task as this requires prior knowledge about each local model or the distribution of local models.
@@ -218,7 +218,7 @@ The arithmetic mean can suffer heavily from outliers, while center point methods
 This issue is reflected in the fact that we may observe "bad" models of up to fifty percent of the sample size, while still being able to obtain a suitable aggregate.
 
 \begin{definition}[parbox=false]{Center Point}
-    Given a set of points $T \subset \mathbb{R}^{d}$ and a set  $\vect{H} \subset \mathbb{R}^{d-1}$ of separating hyerplanes that partition $T$  into two roughly equal sized sets $T_1, T_2$, a center point $p \in \mathbb{R}^d$ is a point, where all hyperplanes $h \in \vect{H}$ intersect.
+    Given a set of points $T \subset \mathbb{R}^{d}$ and a set  $\vect{H} \subset \mathbb{R}^{d-1}$ of separating hyperplanes that partition $T$  into two roughly equal sized sets $T_1, T_2$, a center point $p \in \mathbb{R}^d$ is a point, where all hyperplanes $h \in \vect{H}$ intersect.
 
     If the partition is in general position, i.e., the partition is a unique solution to the problem, the Radon point induced by the partition is guaranteed to be the center point of $T$, as shown by Peterson.~\cite{peterson1972geometry}
 \end{definition}
@@ -229,7 +229,7 @@ While the geometric median is well defined, there exists no algorithm for exact 
 Instead, Kamp et al. \cite{kamp2017effective} introduced Radon Machines as a method for model ensembling to compute a center point for a set of models.
 A Radon point can be found in polynomial time \wrt the number of dimensions of the space the points are located in.
 \subsection{Radon Points}
-Given a pair of convex hulls defined by a partition of points $S_1, S_2$, we find that all points inside the intersection beween these hulls are Radon points . 
+Given a pair of convex hulls defined by a partition of points $S_1, S_2$, we find that all points inside the intersection between these hulls are Radon points . 
 Radon's Theorem was originally proposed by Radon in 1921 \cite{radon1921mengen}:
 
 \begin{threm}[label=thm:radon]{Radon's Theorem}
@@ -263,13 +263,14 @@ The convex hulls intersect exactly on the point in the center of the triangle, a
     \begin{equation}
         \begin{split}
             A &= \sum_{i\in I} a_i = - \sum_{j \in J} a_j \\
-            &= 1 + 1 + 1 = -(-3) = 3 \\
+            &= 1 + 1 + 1 = -(-3) = 3, \\
         \end{split}
     \end{equation}
-    and plugging that into \autoref{eq:radonpoint} we obtain the intersection of the convex hulls as
+    where $I=\{1,2,3\},J=\{4\}$ are indexing sets over the set of points $S$ with $S_I = S_1,\; S_J = S_2$.
+    Inserting the weights into \autoref{eq:radonpoint} we obtain the intersection of the convex hulls as
     \begin{equation}
         \begin{split}
-            \bar{\vect{\theta}}_{RAD} &= \sum_{i\in I} \frac{a_i}{A} \vect{\theta}^i = - \sum_{j \in J} \frac{a_j}{A} \vect{\theta}^j \\
+            \tilde{\vect{\theta}}_{RAD} &= \sum_{i\in I} \frac{a_i}{A} \vect{\theta}^i = - \sum_{j \in J} \frac{a_j}{A} \vect{\theta}^j \\
             &= \frac{1}{3} \vect{\theta}^{I_1} + \frac{1}{3} \vect{\theta}^{I_2} + \frac{1}{3} \vect{\theta}^{I_3} = 1 \vect{\theta}^{J_1} \\
             & =  (1.5, 1)^T = (1.5, 1)^T.
         \end{split}
@@ -313,20 +314,20 @@ The least-squares solution is obtained by minimizing
 \end{equation}
 where $b=(1, 0, \ldots, 0) \in \mathbb{R}^{d+2}$ is a zero vector with a single one at the first position and $S$ is the coefficient matrix containing model parameters (cf. \autoref{eq:radonopt}).
 
-For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all positive entries of $\vect{\lambda}$ and $J$ contains negative or zero entries of $\vect{\lambda}$ the unique solution and model aggregate $\vect{\bar{\theta}}_{RAD}$ is then given by:
+For a valid solution $\vect{\lambda}$ and Sets $I,J$, such that $I$ contains all positive entries of $\vect{\lambda}$ and $J$ contains negative or zero entries of $\vect{\lambda}$ the unique solution and model aggregate $\tilde{\vect{\theta}}_{RAD}$ is then given by:
 \begin{equation}
     \label{eq:radonpoint}
     \begin{split}
     A &= \sum_{i\in I} \lambda_i = - \sum_{j\in J} \lambda_j, \; \;\lambda_i > 0, \; \lambda_j \leq 0 \\
-    \vect{\bar{\theta}}_{RAD} &= \sum_{i\in I} \frac{\lambda_i}{A} \vect{\theta}^{(i)} = - \sum_{j\in J} \frac{\lambda_j}{A} \vect{\theta}^{(j)}.
+    \vect{\tilde{\theta}}_{RAD} &= \sum_{i\in I} \frac{\lambda_i}{A} \vect{\theta}^{(i)} = - \sum_{j\in J} \frac{\lambda_j}{A} \vect{\theta}^{(j)}.
     \end{split}
 \end{equation}
-The Radon point $\vect{\bar{\theta}}_{RAD}$ is a point where the convex combination of both index sets $I, J$ coincide, that is, the partition of $S$ is given by the set of positive and negative entries of $\vect{\lambda}$.
-As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries in $\vect{\lambda}$ equals the negative entries and therefore $A$ is the normalizer for both partition sets, which ensures that $\vect{\bar{\theta}}_{RAD}$ is a convex combination of both sets.
+The Radon point $\vect{\tilde{\theta}}_{RAD}$ is a point where the convex combination of both index sets $I, J$ coincide, that is, the partition of $S$ is given by the set of positive and negative entries of $\vect{\lambda}$.
+As $\sum_{i=1}^{2+d} \lambda_i = 0$ it must be that the sum of positive entries in $\vect{\lambda}$ equals the negative entries and therefore $A$ is the normalizer for both partition sets, which ensures that $\tilde{\vect{\theta}}_{RAD}$ is a convex combination of both sets.
 
-\begin{algo}{Radon Machine}
+\begin{algo}[float]{Radon Machine}
     \begin{algorithm}[H]
-    \caption[Radon Machine for parallelized model aggregation using exponential family models.]{Radon Machine for parallelized model aggregation for exponential family models. Each iteration consists of 1) Obtaining the coefficients for the convex combination of parameters and 2) computing the center point as the convex combination. In the last step, we only have a single set of $r$ parameter vectors that have to be aggregated to obtain the final result. In the case of linear dependencies between parameter vectors we use the least-squares optimization instead.}
+    \caption[Radon Machine for exponential family models]{Radon Machine for parallelized model aggregation for exponential family models. Each iteration consists of 1) Obtaining the coefficients for the convex combination of parameters and 2) computing the center point as the convex combination. In the last step, we only have a single set of $r$ parameter vectors that have to be aggregated to obtain the final result. In the case of linear dependencies between parameter vectors we use the least-squares optimization instead.}
         \begin{algorithmic}[1]
             \label{alg:radon}
             \REQUIRE Model Parameters $\vect{m} = \{\vect{\theta}^1, \ldots,\: \vect{\theta}^{r^{h}}\}$, Radon Number $r$, Aggregation Steps $h$ \\
@@ -389,7 +390,7 @@ This approach was originally introduced by Han and Liu~\cite{han2016bootstrap}, 
 However, for exponential families training $k$ models with average sufficient statistics $\vect{\mu}^k$ is equal to training a single model with the average over all sufficient statistics:
 \begin{equation}
     \begin{split}
-        \bar{\vect{\theta}}_{BS} &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \log f(\vect{\theta}; \hat{\vect{x}}^k) \\
+        \tilde{\vect{\theta}}_{BS} &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \log f(\vect{\theta}; \hat{\vect{x}}^k) \\
         &=  \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \inner{\phi(\hat{\vect{x}}^k)}{\vect{\theta}} - A(\vect{\theta}) \\
         &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \inner{\frac{1}{\abs{\mathcal{D}}_i} \sum_{\hat{\vect{x}}^k \in \mathcal{D}_i} \phi(\hat{\vect{x}}^k)}{\vect{\theta}} - A(\vect{\theta}) \\
         &= \arg\min_{\vect{\theta}} \frac{1}{k}\sum_{i=1}^k \inner{\vect{\mu}^k}{\vect{\theta}} - A(\vect{\theta}) \\

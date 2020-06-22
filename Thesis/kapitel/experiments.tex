@@ -133,7 +133,7 @@ and thus obtaining a distance function (\autoref{eq:regret})
 d_{\ell}(\vect{\theta}, \hat{\vect{\theta}}; \mathcal{D}) = \ell(\vect{\theta} ; \mathcal{D}) -    \ell(\hat{\vect{\theta}} ; \mathcal{D})
 \end{equation}
 
-To better capture the performance on unseen data we may also compute the relative average log likelihood \wrt the test data set $\mathcal{D}_{test}$:
+In order to better capture the performance on unseen data we may also compute the relative average log likelihood \wrt the test data set $\mathcal{D}_{test}$:
 \begin{equation}
     \label{eq:dist_ll_test}
     d_{\ell}(\vect{\theta}, \hat{\vect{\theta}}; \mathcal{D}_{test}) = \ell(\vect{\theta} ; \mathcal{D}_{test}) - \ell(\hat{\vect{\theta}} ; \mathcal{D}_{test}).
@@ -141,7 +141,7 @@ To better capture the performance on unseen data we may also compute the relativ
 For the plots and tables in this work we used the distance measure from \autoref{eq:dist_ll}.
 
 \paragraph*{Accuracy}
-Classification tasks require the prediction of a label from a given set of possible outcomes given some input data  $\mathcal{D} = \{(\vect{x}_1, y_1), (\vect{x}_2, y_2), \ldots, (\vect{x}_n, y_n)\}$.
+Classification tasks require the prediction of a label from a given set of possible outcomes given some input data  $\mathcal{D} = \{(\vect{x}^1, y^1), (\vect{x}^2, y^2), \ldots, (\vect{x}^n, y^n)\}$.
 %The data is usually divided into features and labels $\mathcal{D} = \{\mathcal{X}^m, \mathcal{Y}\} \subset \mathbb{R}^m \times \mathbb{N}$ , with features from $\mathcal{X}$ and labels from $\mathcal{Y}$.
 
 Predictions with probabilistic graphical models are obtained by maximizing the conditional probability
@@ -152,11 +152,16 @@ where the class $y$ with the highest probability condition on the fully observed
 
 The accuracy is then the positive predictive ratio, i.e., the ratio of correct predictions and the number of overall predictions $\vect{y}^* \in \mathbb{R}^n$.
 We obtain the relative accuracy as difference between global accuracy and aggregate or local accuracy:
-
 \begin{equation}
-    d_{acc}(\vect{\tilde{y}}, \vect{\hat{y}}, \vect{y}^*) =  \frac{\abs{\{i \lvert \tilde{y}_i = y^*_i, 0 \leq i \leq n\}}}{n} -  \frac{\abs{\{i \lvert \hat{y}_i = y^*_i, 0 \leq i \leq n\}}}{n},
+    d_{acc}(\vect{\tilde{y}}, \vect{\hat{y}}, \vect{y}^*) = \frac{1}{n} \sum_{i=1}^n \mathbbm{1}_{y_i^*}(\tilde{y}_i) - \frac{1}{n} \sum_{i=1}^n \mathbbm{1}_{y_i^*}(\hat{y}_i)
 \end{equation}
-where $\vect{\hat{y}}$ are the prediction obtained from the global model and $\tilde{\hat{y}}$ are predictions from a local model or aggregate.
+where $\vect{\hat{y}}$ are the prediction obtained from the global model, $\tilde{\hat{y}}$ are predictions from a local model or aggregate, and $\mathbbm{1}$ is the indicator function:
+\begin{equation}
+    \mathbbm{1}_{y}(x) := \begin{cases}
+        1 \quad \text{if}\; x = y\\
+        0 \quad \text{else}
+    \end{cases}.
+\end{equation}
 
 \paragraph*{F1-Score}
 The label distribution in multi-class classification tasks is often unbalanced, which requires different evaluation metrics.
@@ -202,12 +207,13 @@ The x-axes show the number of samples available on each device, and the y-axis s
 Positive values for the likelihood indicate the model being worse than the baseline, and negative values for accuracy and f1-score indicate worse performance when compared to the baseline.
 The average relative likelihood is shown in the log-scale for better comparability.
 
+
 \begin{landscape}
     \begin{figure}
         \centering
         \textbf{Susy, No regularization, Bound $\epsilon=0.1$}\par\medskip
         \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_None_0.1_neg_relative.pdf}
-        \caption[Susy plots without regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \caption[Susy plots without regularization and $\epsilon=0.1$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$  for each aggregate.}
         \label{fig:analysis4}
     \end{figure}
     \end{landscape}
@@ -216,7 +222,7 @@ The average relative likelihood is shown in the log-scale for better comparabili
         \centering
         \textbf{Susy, l2 regularization, Bound $\epsilon=0.05$}\par\medskip
         \includegraphics[height=\dimexpr \textheight - 1\baselineskip\relax]{kapitel/figures/susy_l2_0.05_neg_relative.pdf}
-        \caption[Susy plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D})$ for each aggregate.}
+        \caption[Susy plots with l2 regularization and $\epsilon=0.05$]{Experimental results on the Susy data set for $k=10$ distributed learners. Each plot represents a combination of metric and covariance matrix used for sampling. Values on the x-Axis are the number of samples available on each learner. The top row shows the relative negative average log likelihood $\ell(\tilde{\vect{\theta}}; \mathcal{D}) - \ell(\hat{\vect{\theta}}; \mathcal{D})$  for each aggregate.}
         \label{fig:analysis1}
     \end{figure}
     \end{landscape}

@@ -89,7 +89,7 @@ The experiments are ordered by data set, regularization and bound.
 \input{kapitel/figures/dota_independence.tex}
 
 \clearpage
-\section{Likelihood \& Variance Tables}
+\section{Parameter Variance Tables}
 The standard deviations in tables \ref{tab:avg_std_01},~\ref{tab:std_std_005},~\ref{tab:std_std_01},~\ref{tab_avg_std_005} are computed \wrt to each dimension and each set of local parameter vectors.
 We compute the mean of all variances for all experiments with the same regularization type and over all local model parameters with the same number of samples:
 \begin{equation}
@@ -106,9 +106,10 @@ where the inner variance is always taken \wrt to each dimension and the outer me
 
 \begin{table}[!htb]
     \centering
-    \caption[]{This table shows the total average standard deviation (\eq~\ref{eq:meanvar}) for $\epsilon=0.1$ across local model parameters from all splits, in ascending order \wrt the sample size. We observe that the std. steadily decreases, but does not achieve the same score as the global model. The std. is computed \wrt all models with the same number of samples and for each parameter dimension individually.
+    \caption[Average local parameter std. for $\epsilon=0.1$]{This table shows the total average standard deviation (\eq~\ref{eq:meanvar}) for $\epsilon=0.1$ across local model parameters $\vect{\theta}^i$ from all splits, in ascending order \wrt the sample size. We observe that the std. steadily decreases, but does not achieve the same score as the global model. The std. is computed \wrt all models with the same number of samples and for each parameter dimension individually.
     }
     \label{tab:avg_std_01}
+    \resizebox{\linewidth}{!}{%
     \begin{tabular}{l||rr|rr|rr}
     \toprule
     {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
@@ -132,13 +133,15 @@ where the inner variance is always taken \wrt to each dimension and the outer me
     Full Data       &         0.29 &      0.23 &             0.29 &          0.23 &        0.29 &     0.23 \\
     \bottomrule
     \end{tabular}
+    }
     \end{table}
 
     \begin{table}[!htb]
         \centering
-        \caption[]{This table shows the total average standard deviation(\eq~\ref{eq:varvar})for $\epsilon=0.05$ across local model parameters from all splits, in ascending order \wrt the sample size. We observe that the std. steadily decreases, but does not achieve the same score as the global model. The std. is computed \wrt all models with the same number of samples and for each parameter dimension individually.
+        \caption[Average local parameter standard deviation for $\epsilon=0.05$]{This table shows the total average standard deviation (\eq~\ref{eq:meanvar}) for $\epsilon=0.05$ across local model parameters $\vect{\theta}^i$  from all splits, in ascending order \wrt the sample size. We observe that the std. steadily decreases, but does not achieve the same score as the global model. The std. is computed \wrt all models with the same number of samples and for each parameter dimension individually.
         }
         \label{tab_avg_std_005}
+        \resizebox{\linewidth}{!}{%
         \begin{tabular}{l||rr|rr|rr}
         \toprule
         {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
@@ -162,13 +165,15 @@ where the inner variance is always taken \wrt to each dimension and the outer me
         Full Data       &         0.27 &      0.25 &             0.27 &          0.25 &        0.27 &     0.25 \\
         \bottomrule
         \end{tabular}
+        }
         \end{table}
+        
         
         \begin{table}[!htb]
             \centering
-            \caption[]{This table shows the total standard dev. of the standard deviation for $\epsilon=0.1$ across local model parameters from all splits, in ascending order \wrt the sample size. Intuitively this table shows the standard deviation across all standard deviations in each of the dimensions in $\vect{\theta}^i \in \mathbb{R}^d$.
-            }
+            \caption[Pooled standard deviation of local parameter vectors' standard deviation for $\epsilon=0.1$]{This table shows the standard deviation of the pooled standard deviation  (\eq~\ref{eq:varvar}) for $\epsilon=0.1$ across local model parameters $\vect{\theta}^i$  from all splits, in ascending order \wrt the sample size. Intuitively this table shows the average standard deviation across all standard deviations in each of the dimensions in $\vect{\theta}^i \in \mathbb{R}^d$.}
             \label{tab:std_std_01}
+            \resizebox{\linewidth}{!}{%
             \begin{tabular}{l||rr|rr|rr}
             \toprule
             {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
@@ -190,12 +195,14 @@ where the inner variance is always taken \wrt to each dimension and the outer me
             1980  &         6.46 &      4.58 &             6.46 &          4.58 &        6.46 &     4.58 \\
             Full Data &         0.65 &      0.54 &             0.65 &          0.54 &        0.65 &     0.54 \\
             \bottomrule
-            \end{tabular}
+            \end{tabular}%
+            }
             \end{table}
             \begin{table}[!htb]
                 \centering
-                \caption{}
+                \caption[Pooled standard deviation of local parameter vectors' standard deviation for $\epsilon=0.05$]{This table shows the standard deviation of the pooled standard deviation  (\eq~\ref{eq:varvar}) for $\epsilon=0.1$ across local model parameters $\vect{\theta}^i$  from all splits, in ascending order \wrt the sample size. Intuitively this table shows the average standard deviation across all standard deviations in each of the dimensions in $\vect{\theta}^i \in \mathbb{R}^d$.}
                 \label{tab:std_std_005}
+                \resizebox{\linewidth}{!}{%
                 \begin{tabular}{l||rr|rr|rr}
                 \toprule
                 {} &  Dota2 NoReg &  Dota2 l2 &  Covertype NoReg &  Covertype l2 &  Susy NoReg &  Susy l2 \\
@@ -217,7 +224,8 @@ where the inner variance is always taken \wrt to each dimension and the outer me
                 7439  &         5.04 &      4.38 &             5.04 &          4.38 &        5.04 &     4.38 \\
                 Full Data &         0.61 &      0.59 &             0.61 &          0.59 &        0.61 &     0.59 \\
                 \bottomrule
-                \end{tabular}
+                \end{tabular}%
+                }
                 \end{table}
                 
 \label{sec:apdx:table}

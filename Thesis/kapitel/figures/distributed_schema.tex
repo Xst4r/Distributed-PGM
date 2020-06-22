@@ -1,27 +1,31 @@
 \begin{figure}[!htb]
     \center
+    \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}
         \clip (0,-0.5) rectangle (16,12);
         \Vertex[x=8,y=5,color=tuorange,opacity=0.5,label=Coordinator, size=2, shape=rectangle]{c}
-        \Vertex[x=2,y=2,color=tugreen, opacity=0.5,label=$\mathcal{M}^1$, size=1, shape=circle]{d1}
-        \Vertex[x=6,y=2,color=tugreen, opacity=0.5,label=$\mathcal{M}^2$, size=1, shape=circle]{d2}
-        \Vertex[x=14,y=2,color=tugreen, opacity=0.5,label=$\mathcal{M}^k$, size=1, shape=circle]{dn}
+        \Vertex[x=2,y=2,color=tugreen, opacity=0.5,label=$m^1$, size=1, shape=circle]{d1}
+        \Vertex[x=6,y=2,color=tugreen, opacity=0.5,label=$m^2$, size=1, shape=circle]{d2}
+        \Vertex[x=14,y=2,color=tugreen, opacity=0.5,label=$m^k$, size=1, shape=circle]{dn}
         \Vertex[x=2,y=0,color=white, opacity=0, size=0, shape=diamond]{data1}
         \Vertex[x=6,y=0,color=white, opacity=0, size=0, shape=diamond]{data2}
         \Vertex[x=14,y=0,color=white, opacity=0, size=0, shape=diamond]{datan}
         \Vertex[x=5,y=9,color=tugray,opacity=0.5,label=Aggregate, size=1.7, shape=diamond]{a}
-        \Edge[Direct ,bend=-10, label=$\vect{\theta}^{1}$](d1)(c)
-        \Edge[Direct ,bend=-10, label=$\vect{\theta}^{2}$](d2)(c)
-        \Edge[Direct ,bend=-10, label=$\vect{\theta}^{n}$](dn)(c)
-        \Edge[Direct ,bend=-10, label=$[\vect{\theta}]$](c)(a)
-        \Edge[Direct,bend=-10](c)(d1)
-        \Edge[Direct,bend=-10](c)(d2)
-        \Edge[Direct,bend=-10](c)(dn)
-        \Edge[Direct, label=$\mathcal{D}_1$](data1)(d1)
-        \Edge[Direct, label=$\mathcal{D}_2$](data2)(d2)
-        \Edge[Direct, label=$\mathcal{D}_n$](datan)(dn)
-        \Edge[Direct ,bend=-10, label=$\hat{\vect{\theta}}$](a)(c)
-        \end{tikzpicture}
-    \caption[Implementation Chart]{Implementation of the continuous structure, which allows for communication between coordinator and all devices. The coordinator then computes the aggregate and may send feedback in form of the aggregate back to all devices. The devices themselves may be connected as well. First the local data $\mathcal{D}_i$ is collected on each device. Then each device obtains the local parameters $\vect{\theta}^i$, which it then sends to the coordinator. Once a sufficient number of parameter vectors have arrived the coordinator computes an aggregate and optionally provides feedback about the quality, e.g., the aggregate.}
+        \node[] at(10, 0) (dummy) {$\ldots$};
+
+        \Edge[color=black, Direct ,bend=-10, label=$\vect{\theta}^{1}$](d1)(c)
+        \Edge[color=black, Direct ,bend=-10, label=$\vect{\theta}^{2}$](d2)(c)
+        \Edge[color=black, Direct ,bend=-10, label=$\vect{\theta}^{k}$](dn)(c)
+        \Edge[color=black, Direct ,bend=-10, label=$[\vect{\theta}]$](c)(a)
+        \Edge[color=black, Direct,bend=-10](c)(d1)
+        \Edge[color=black, Direct,bend=-10](c)(d2)
+        \Edge[color=black, Direct,bend=-10](c)(dn)
+        \Edge[color=black, Direct, label=$\mathcal{D}_1$](data1)(d1)
+        \Edge[color=black, Direct, label=$\mathcal{D}_2$](data2)(d2)
+        \Edge[color=black, Direct, label=$\mathcal{D}_k$](datan)(dn)
+        \Edge[color=black, Direct ,bend=-10, label=$\tilde{\vect{\theta}}$](a)(c)
+        \end{tikzpicture}%
+    }
+    \caption[Run phase alternating between training and aggregation]{Implementation of the continuous structure, which allows for communication between the coordinator and all devices. The coordinator then computes the aggregate and may send feedback in the form of the aggregate back to all devices. The devices themselves may be connected as well. First, the local data $\mathcal{D}_i$ is collected on each device. Then each device obtains the local parameters $\vect{\theta}^i$, which it then sends to the coordinator. Once a sufficient number of parameter vectors have arrived, the coordinator computes an aggregate and optionally provides feedback about the quality, e.g., the aggregate.}
     \label{fig:dist}
 \end{figure}

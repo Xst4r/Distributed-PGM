@@ -13,7 +13,7 @@ However, let us first define some basic concepts and notations, which are going 
     \label{sec:nota}
     Let us start by introducing tools and notations encountered frequently in probability theory and machine learning.
     This includes the definition of random variables, probability distributions, data, and parameters.
-    A stochastic process is defined over random variables over a shared probability space, where expressions of random variables, the samples from a sample space, are associated with a probability distribution. 
+    A stochastic process is defined over a collection of random variables with a shared probability space, where expressions of random variables, the samples from a sample space, are associated with a probability distribution. 
     We write $\mathbb{P}(X = x)$ for the probability of a random variable $X$ taking on value $x$.
     \begin{definition}{Random Variable}
         \label{def:randvar}
@@ -25,9 +25,9 @@ However, let us first define some basic concepts and notations, which are going 
 
     Random vectors will be written in bold-faced letters $\vect{X} = (X_1, X_2, \ldots, X_m)$, where each entry in the vector is a random variable itself.
     The state-space of a random variable will be denoted as a cursive letter of that random variable, e.g., $\mathcal{X}$ and the range of a random vector likewise as $\vect{\mathcal{X}} = (\mathcal{X}_1, \mathcal{X}_2, \ldots, \mathcal{X}_m)$. 
-In this work, we only consider random variables $X$ with finite state-space $\mathcal{X}_i$.
+    In this work, we only consider random variables $\vect{X}$, whose entries $X_i$ have finite state-space $\mathcal{X}_i$.
     For example a six-sided die can be interpreted as univariate random variable with state-space $\mathcal{X} = \{1,2,3,4,5,6\}$, where each state has probability $\mathbb{P}(X=x) = 1/6$.
-    Samples from a random variable $\vect{X}$  with state-space $\vect{\mathcal{X}}$ are denoted as lower case letters, e.g. $\vect{x} \in \mathcal{X}^m$ over an m-dimensional state-space.
+    Samples from a distribution over random variable $\vect{X}$  with state-space $\vect{\mathcal{X}}$ are denoted as lower case letters, e.g. $\vect{x} \in \mathcal{X}^m$ over an m-dimensional state-space.
     We express elements of a random variable with a  subscript, e.g., $\vect{X}_i$ or $\vect{X}_A$, where $A \subset\{1, \ldots, m\} $ addresses a subset of the dimensions.
 
     Then, let $\mathcal{D} = \{(\vect{x}^1, y^1), \ldots, (\vect{x}^n, y^n)\} \subset \mathbb{R}^m \times \mathbb{N}$ be a data set containing samples $\vect{x}^i \in \mathcal{X}^m$ from a m-variate random variable $\vect{X}$ and label domain $y^i \in \mathcal{Y}$, which can simply be expressed as an additional random variable $\vect{Y}$.
@@ -36,13 +36,13 @@ In this work, we only consider random variables $X$ with finite state-space $\ma
     Furthermore let $\mathcal{D}_A$ denote a subset of samples for any indexing set $A\subset \{1, \ldots n\}$ and $\mathcal{D}_{\cdot B}$ be all samples from a subset of features indexed by $B \subset \{1, \ldots, m\}$.
     We can express the data as $n \times m$ matrix, where a collection of rows is a subset of samples, and a collection of columns is a subset of features.
 
-    Parameters of a parametrized probability density function for canonical exponential families are noted as $\vect{\theta} \in \mathbb{R}^n$, while additional parameters will be explicitly introduced if necessary.
-    Given a set of model parameters from distributed learners $\mathcal{M} = \{\vect{\theta}^1,  \ldots, \vect{\theta}^k\}$, each parameter vector $\vect{\theta}^i$ denotes the parameters obtained from the  $i^{th}$ learner, while $\vect{\theta_i}$ is the entry at position i$^{th}$ of a parameter vector.
+    Parameters of a parametrized probability density function for canonical exponential families are noted as $\vect{\theta} \in \mathbb{R}^d$, while additional parameters will be explicitly introduced if necessary.
+    Given a set of model parameters from distributed learners $\vect{m} = \{\vect{\theta}^1,  \ldots, \vect{\theta}^k\}$, each parameter vector $\vect{\theta}^i$ denotes the parameters obtained from the  $i^{th}$ learner, while $\vect{\theta_i}$ is the entry at position i$^{th}$ of a parameter vector.
     A multivariate gaussian normal distribution for example has parameters of the form $\vect{\theta} = (\vect{\mu}, \vect{\Sigma})$, with mean $\vect{\mu} \in \mathbb{R}^{n}$ and covariance matrix $\vect{\Sigma} \in \mathbb{R}^{n \times n}$.
     Additional notations for model parameters will be introduced if necessary.
     In the context of optimization and optimality, we assume $\vect{\theta}^*$ to be the true, unknown parameter vector.
     The global parameters vectors, i.e., the parameters obtained by a global model, which has access to all available data, is denoted as  $\vect{\hat{\theta}}$.
-    Finally, $\vect{\tilde{\theta}}$ denotes any local parameter vector and $\vect{\theta}^{i}$ the i$^{th}$ local parameter vector respectively.
+    Finally, $\vect{\tilde{\theta}}$ denotes aggregated parameter vectors, and $\vect{\theta}^{i}$ the i$^{th}$ local parameter vector respectively.
 
 \section{Probabilistic Graphical Models}
 \label{sec:pgm}
@@ -57,9 +57,9 @@ We assume that samples from features in $\mathcal{D}$ are realizations of random
 
         Given a vertex $v \in V$, $\mathcal{N}(v) = \{w \:\lvert\: w \in V, (v,w) \in E\}$ is the set of neighbors in G, i.e., all nodes w that have an edge between themselves and v.
 
-        A path $P = \{v_1, \ldots, v_p\}$ is a series of vertices, where two subsequent vertices in the set have an existing edge in G. 
-        A unique path is a path, where each vertex of G appears at most once in the path.
-        If $v_1 = v_p$, the path is not unique and P is called a cycle.
+        A walk $P = (v_1, \ldots, v_p)$ is a series of vertices, where two subsequent vertices in the set have an existing edge in G. 
+        A path is a walk, where each vertex of G appears at most once in the path, i.e., the vertices are unique in P.
+        If P is a path and $v_1 = v_p$, the path is called a cycle.
     \end{definition}
 In order to determine such a distribution and estimate its parameters, we first have to establish the structure of the model, i.e., perform feature selection and establish relationships between random variables.
 Our goal is to find a probability distribution $\mathbb{P}_{\vect{\theta}}$ and its parameters $\vect{\theta}$, such that the probability distribution $\mathbb{P}_{\vect{\theta}}$ is optimal \wrt to the observed data.
@@ -93,8 +93,7 @@ Hence, it is vital to properly capture dependencies between random variables, wh
     \input{kapitel/figures/condindep.tex}        
 
 \end{definition}
-
-%Intropducing conditional independencies increases the model's complexity up to a point where it is not computationally feasible anymore to perform parameter estimation.
+%Introducing conditional independencies increases the model's complexity up to a point where it is not computationally feasible anymore to perform parameter estimation.
 %For general graphs with arbitrary conditional independencies, no closed-form solution is known for inference tasks, which is required when estimating the parameters. 
 % Capturing Dependencies
 
@@ -135,12 +134,7 @@ A random variable $\vect{X}$ can be modeled as a Markov random field with a grap
 
 %MRF Properties
 \subsubsection*{Markov Properties}
-Probabilistic graphical models are considered Markov random fields if G is undirected, the three Markov properties hold for any set of random variables indexed by the vertices of G, $\vect{X} = \{X_v\}, v \in V$, and their distribution has the following form :
-
-\begin{equation}
-    \label{eq:probpot2}
-    \mathbb{P}(\vect{X} = \vect{x}) = \frac{1}{Z} \psi(\vect{x}),
-\end{equation}
+Probabilistic graphical models are considered Markov random fields if G is undirected, the three Markov properties hold for any set of random variables indexed by the vertices of G, $\vect{X} = \{X_v\}, v \in V$:
 
 \paragraph*{Pairwise Markov Property}
 Two random variables $X_u, X_v$ are independent given all other random variables if they are not adjacent, i.e. $\not\exists (u,v) \in E$ :
@@ -173,16 +167,16 @@ Now let $\mathcal{C}$ be set set of maximal cliques, i.e., the set of cliques th
     \forall C_i, C_j \in \mathcal{C},\; i \neq j  : C_i \not\subset C_j,\; C_j \not\subset C_i,\; C_i \neq C_j
 \end{equation}
 there exists no such pair of cliques in $\mathcal{C}$ such that either one is a true subset or the other.
-This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $\arg\max \mathcal{C} = \max \{\abs{\mathcal{C}_1}, \ldots, \abs{C_n}\}$ the clique with maximum cardinality.
+This is not to be confused with the maximum clique, which is the largest clique of the graph $G$, i.e. $C^* = \arg\max_{C \in \mathcal{C}} \; \abs{C}$ the clique with maximum cardinality.
 
-If the Markov properties hold for $\vect{X}$, we can express the joint probability distribution as factorization over the set of maximal cliques.
-This characteristic allows us to split the potentials into smaller clique-based terms and compute them individually and defined the joint probability density function with  potential functions$\psi_C: \mathcal{X}_C \rightarrow \mathbb{R}$ according to the Hammersly-Clifford theorem as follows:
+If the Markov properties hold for $\vect{X}$ and the probability density is positive, we can express the joint probability distribution as factorization over the set of maximal cliques.
+This characteristic allows us to split the potentials into smaller clique-based terms and compute them individually. 
+The joint probability density function with positive potential functions $\psi_C: \mathcal{X}_C \rightarrow \mathbb{R}_+$ then factorizes according to the Hammersley-Clifford theorem~\cite{hammersley1971markov} as follows:
 
 \begin{equation}
         \mathbb{P}(\vect{X}=\vect{x}) = \frac{1}{Z} \cdot \psi(\vect{x})= \frac{1}{Z} \cdot \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C),
 \end{equation}
 where $Z$ is the normalizer of the probability density function, which ensures that $\mathbb{P}$  properly normalizes:
-
 %\begin{equation}
 %    \frac{1}{Z} \sum_{\vect{x}\in \mathcal{X}} \prod_{C \in \mathcal{C}} \psi_C(\vect{x}_C) = 1. 
 %\end{equation}
@@ -471,7 +465,7 @@ Averaging with the sample size prevents this issue for first-order gradient meth
             \frac{1}{\sqrt{n}} ( -\tilde{\mathbb{E}}_{\mathcal{D}}[\phi(x)] + \mathbb{E}_{\mathbb{P}}[\phi(x)]) \rightarrow \mathcal{N}(0, i(\vect{\theta}^*))
         \end{equation}
         has mean zero with variance $i(\vect{\theta}^*)$.
-        Moreover, we already know that the denominator in \autoref{eq:asympnorm} converges in probability to the fisher information and thus according to Slutky's Theorem converges to a constant:
+        Moreover, we already know that the denominator in \autoref{eq:asympnorm} converges in probability to the fisher information and thus according to Slutsky's Theorem converges to a constant:
 
         \begin{threm}{Slutky's Theorem \cite{casella2002statistical}}
             Given two random elements $\vect{X}_n, \vect{Y}_n$, if $\vect{X}_n$ converges via Central Limit Theorem to a random variable $\vect{X}$ with some stationary distribution and $\vect{Y}$ converges in probability to a constant $c$ then 
@@ -728,7 +722,7 @@ In theory, it is also possible to combine both approaches, i.e., to allow commun
 Lastly, in the fully centralized approach, all data is kept on the server is then partitioned into chunks and sent to local devices, which then execute some tasks, which is, for example, the case in a Map and Reduce framework~\cite{dean2010mapreduce}.
 
 Employing a set of distributed learners is useful when the data is horizontally distributed and can not be reliably sent to a central server.
-This is the case when, for example, there is too much data to process relative to the available bandwidth or when the data contains private information.
+This is the case when, for example, when privacy concerns have to be taken into account.
 Generally, in such instances, it is a good idea to keep communication costs as low as possible as high communication costs only increase the complexity of the overall model.
 Statistical models allow for efficient communication as it is sufficient to send the estimated local model parameters $\vect{\theta}^i$ to the coordinator. 
 

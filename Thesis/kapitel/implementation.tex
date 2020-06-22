@@ -72,7 +72,7 @@ Then, the coordinator receives and aggregates parameters from the distributed le
 Optionally we return the aggregate to the distributed learners, using them as initial parameters for the upcoming round.
 
 In practice, we only have a fixed amount of data available for each learner.
-We simulate this by restricting access to the full local data, i.e., at each round t on the i-th learner  $n^{t}_{m^i}$ samples are available with $n^{t+1}_{m^i} = n^{t}_{m^i} + f(t+1)$, where $f(t)$ is a positive function or constant.
+We simulate this by restricting access to the full local data, i.e., at each round t on the i-th learner  $n^{t}_{m^i}$ samples are available with $n^{t}_{m^i} = n^{t-1}_{m^i} + f(t), \; t > 0$ and $n^{0}_{m^i} = f(0)$, where $f(t)$ is a positive function or constant.
 After each round we extend the local data set, i.e., given the full local data $\abs{\mathcal{D}_i} = n_{m^i}$  we choose the first  $ n^{t}_{m^i} \leq n_{m^i}$ elements from the data index $I^t =\{1, \ldots, n^{t}_{m^i}\} \subseteq I = \{1, \ldots, n_{m^i}\}$. 
 Note, we do not allow duplicates, i.e., each index added is unique, and only adding indices that are not yet in the index.
 
@@ -148,7 +148,7 @@ Before the aggregation, we may optionally choose to sample additional models, i.
 This is especially useful for radon machines when we have close to $ r^h << k < r^{h+1}$ models, but strictly less than required for aggregating $r^{h+1}$ models for an arbitrary $h$.
 
 Due to the asymptotic normality, we can center the sample distribution around $\vect{\theta}^i$ if we assume this to be the asymptotic result.
-In case, where it is not feasible to compute and store the Fisher information, we have to determine the covariance matrix for $\hat{\vect{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$ the asymptotic distribution.
+In case, where it is not feasible to compute and store the Fisher information, we have to determine the covariance matrix for $\bar{\vect{\theta}}^i \sim \mathcal{N}(\vect{\theta}^i, \cdot)$ the asymptotic distribution.
 The different choices for correlation matrices are derived from the results in \autoref{ssec:asymp} and \autoref{ssec:bounds}.
 %We could use Wasserstein-2 Distance to measure the distance between the local distribution and the true distribution
 

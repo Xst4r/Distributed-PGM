@@ -1,27 +1,29 @@
 \begin{table}
 \centering
-\caption{Relative Likelihood when compared to the baseline likelihood on the test split. This table shows the results for  covertype using  none sampling with epsilon  0.1 and  default regularization.}
+\caption[Covertype relative likelihood with $\epsilon=0.1$, without regularization]{Relative Likelihood when compared to the baseline likelihood on the test split. This table shows the results for  Covertype without sampling additional parameter vectors with epsilon $\epsilon= 0.1$, without regularization. The best performing aggregate is highlighted with bold-faced letters. The bootstrap aggregation performs well early on, while later dropping off when compared to the other aggregates.}
 \label{tab:1}
-\begin{tabular}{lrrrrrr}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l||r|rrrrr|}
 \toprule
 {} &  Local Average &  Average &  RadonMachine &  LL-Weighted &  Bootstrap &  Acc. Weighted \\
-n\_data &                &          &               &              &            &                \\
+Num Samples &                &          &               &              &            &                \\
 \midrule
-9      &          65.82 &    27.10 &           --- &        26.79 &      55.48 &          27.14 \\
-33     &          48.63 &    20.10 &           --- &        20.14 &      20.40 &          20.11 \\
-73     &          29.23 &    13.95 &           --- &        14.01 &       9.52 &          13.96 \\
-130    &          16.51 &     7.99 &           --- &         8.02 &       4.17 &           7.99 \\
-203    &           9.21 &     4.65 &           --- &         4.67 &       2.64 &           4.65 \\
-292    &           5.35 &     2.60 &           --- &         2.62 &       1.97 &           2.60 \\
-397    &           3.10 &     1.48 &           --- &         1.48 &       1.65 &           1.48 \\
-519    &           2.03 &     0.90 &           --- &         0.91 &       2.01 &           0.90 \\
-657    &           1.40 &     0.60 &           --- &         0.61 &       1.26 &           0.60 \\
-810    &           1.04 &     0.43 &           --- &         0.43 &       0.75 &           0.43 \\
-981    &           0.78 &     0.30 &           --- &         0.30 &       0.79 &           0.30 \\
-1167   &           0.62 &     0.23 &           --- &         0.23 &       0.86 &           0.23 \\
-1369   &           0.54 &     0.20 &           --- &         0.20 &       0.44 &           0.20 \\
-1588   &           0.45 &     0.16 &           --- &         0.16 &       1.09 &           0.16 \\
-1823   &           0.38 &     0.13 &           --- &         0.13 &       0.50 &           0.13 \\
+9      &          65.82 &    \textbf{27.10} &           --- &        26.79 &      55.48 &          27.14 \\
+33     &          48.63 &    \textbf{20.10} &           --- &        20.14 &      20.40 &          20.11 \\
+73     &          29.23 &    13.95 &           --- &        14.01 &       \textbf{9.52} &          13.96 \\
+130    &          16.51 &     7.99 &           --- &         8.02 &       \textbf{4.17} &           7.99 \\
+203    &           9.21 &     4.65 &           --- &         4.67 &       \textbf{2.64} &           4.65 \\
+292    &           5.35 &     2.60 &           --- &         2.62 &       \textbf{1.97} &           2.60 \\
+397    &           3.10 &     1.48 &           --- &         1.48 &       1.65 &           \textbf{1.48} \\
+519    &           2.03 &     0.90 &           --- &         0.91 &       2.01 &           \textbf{0.90} \\
+657    &           1.40 &     0.60 &           --- &         0.61 &       1.26 &           \textbf{0.60} \\
+810    &           1.04 &     0.43 &           --- &         0.43 &       0.75 &           \textbf{0.43} \\
+981    &           0.78 &     0.30 &           --- &         0.30 &       0.79 &           \textbf{0.30} \\
+1167   &           0.62 &     0.23 &           --- &         0.23 &       0.86 &           \textbf{0.23} \\
+1369   &           0.54 &     0.20 &           --- &         0.20 &       0.44 &           \textbf{0.20} \\
+1588   &           0.45 &     0.16 &           --- &         0.16 &       1.09 &           \textbf{0.16} \\
+1823   &           0.38 &     0.13 &           --- &         0.13 &       0.50 &           \textbf{0.13} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
