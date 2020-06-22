@@ -40,7 +40,7 @@ def plot_covs(groups, objs):
                 axs[np.unravel_index(i, axs.shape)].plot('n_data', 'normalized_obj', data=data, label=sample_parameters[j], marker='x', alpha=opac[j], linestyle=linestyle[j], color=color[j])
                 axs[np.unravel_index(i, axs.shape)].legend()
         plt.savefig(m + ".png")
-
+        plt.close(fig)
 
 def plot_obj(objs, accs, f1s):
     x = np.unique(objs[0]['n_data'])
@@ -53,13 +53,18 @@ def plot_obj(objs, accs, f1s):
     acc_names = [("mean_acc", "Average"),
              ("wa_acc", "LL-Weighted"),
              ("kl_acc", "Bootstrap"),
-             ("var_acc", "Acc. Weighted"),
-             ("radon_acc", "RadonMachine")
+            ("radon_acc", "RadonMachine"),
+             ("var_acc", "Acc. Weighted")
             ]
+    markers = {"Average": "o",
+     "LL-Weighted": "o",
+     "Bootstrap": "+",
+     "RadonMachine": "o",
+     "Acc. Weighted": "+"
+    }
     names = [obj_names, acc_names, acc_names]
     fig, axs = plt.subplots(nrows=3, ncols=len(objs), dpi=250, figsize=(16, 12), sharex=True, sharey="row")
     i = 0
-    local_avg = []
     ordered_objs = []
     for obj in objs:
         new_df = pd.DataFrame()
@@ -69,9 +74,12 @@ def plot_obj(objs, accs, f1s):
         if "RadonMachine" not in new_df.columns.str.strip():
             new_df.insert(loc=2, value=np.full(new_df.shape[0], fill_value=np.nan), column="RadonMachine")
         ordered_objs.append(new_df)
-    if np.max([np.nanmax(ords) for ords in ordered_objs]) / np.min([np.nanmax(ords) for ords in ordered_objs]) > 10:
+    if np.max([np.nanmax(ords) for ords in ordered_objs]) / np.min([np.nanmax(ords) for ords in ordered_objs]) > 100:
         axs[0,0].set_yscale('log')
-
+        tmp_a = np.min([np.nanmin(ords) for ords in ordered_objs if np.nanmin(ords) > 0])
+        axs[0,0].set_ylim(bottom=1*10**(np.floor(np.log10(np.abs(tmp_a)))), top=1e4)
+    else:
+        axs[0, 0].set_yscale('log')
     for acc, f1 in zip(accs,f1s):
         if "radon_acc" not in acc.columns.str.strip():
             acc.insert(loc=2, value=np.full(acc.shape[0], fill_value=np.nan), column="radon_acc")
@@ -87,22 +95,22 @@ def plot_obj(objs, accs, f1s):
                 data = rename_and_drop(data, old, new)
             tmp_average = None
             for name in [a[1] for a in data_names]:
-                ax.plot(name, data=data, label=name, marker="o", linestyle="--", alpha=0.7)
+                ax.plot(name, data=data, label=name, marker=markers[name], linestyle="--", alpha=0.7)
                 ax.legend()
 
+    local_avg = []
+    local_var = []
+    for j, row in enumerate([ordered_objs, accs, f1s]):
+        for i, data in enumerate(row):
+            local_avg.append(data[[col for col in data.columns if col.startswith("local")]].mean(axis=1))
+            local_var.append(data[[col for col in data.columns if col.startswith("local")]].var(axis=1))
 
-
-    for i in range(10):
-        tmp_average = elem['normalized_obj'].to_numpy() if local_avg is None else local_avg + elem[
-            'normalized_obj'].to_numpy()
-    local_avg.append(tmp_average)
-
-    local_avg = [a/10 for a in local_avg]
-    for i, ax in enumerate(axs):
-        ax.plot(x, local_avg[i], label="Local Average", linestyle="--", marker="o")
-        ax.legend()
-    axs[0].set_ylabel('- LogLikelihood')
-    plt.show()
+    for i, row in enumerate(axs):
+        for j, ax in enumerate(row):
+            ax.plot(x, local_avg[axs.shape[1] * i + j], label="Local Average", marker="x", c="black")
+            ax.grid(True, "major", "y")
+            ax.legend()
+    return fig, axs
 
 
 def rename_and_drop(df, col, new_col):
@@ -117,7 +125,7 @@ def reorder_df(df, order):
     return df[[df.columns[i] for i in order]]
 
 
-def write_tables(tables, stats, path):
+def write_tables(tables, stats, path, dataset):
     order = [1, 2, 0, 3, 4, 5]
     names = [("Local_Average", "Local Average"),
              ("Mean", "Average"),
@@ -143,7 +151,7 @@ def write_tables(tables, stats, path):
         tmp = reorder_df(tmp, order)
 
 
-        with open(os.path.join(path, "table_" + str(i) + ".tex"), "w+") as texfile:
+        with open(os.path.join(path, dataset + "_" + "table_" + str(i) + ".tex"), "w+") as texfile:
             texfile.write(tmp.to_latex(float_format="%.2f", label=label, caption=caption, na_rep="---"))
 
 
@@ -220,24 +228,42 @@ def load_results(experiment):
 def process_obj(norm_objs, col_name):
     avg_obj = None
     avg_norm_obj = None
+    var_obj = None
+    vars_norm = None
     for df in norm_objs:
+        if vars_norm is None:
+            var_obj = pd.DataFrame(df[col_name])
+            var_obj.index = df.index
+            vars_norm = pd.DataFrame(df['normalized_obj'])
+            vars_norm.index = df.index
+        else:
+            var_obj = pd.concat([var_obj, df[col_name]], axis=1)
+            vars_norm = pd.concat([vars_norm, df['normalized_obj']], axis=1)
         avg_obj = df[col_name].to_numpy() if avg_obj is None else avg_obj + df[col_name].to_numpy()
         avg_norm_obj = df['normalized_obj'].to_numpy() if avg_norm_obj is None else avg_norm_obj + df[
             'normalized_obj'].to_numpy()
     tmp = pd.concat([df['n_data'].reset_index(drop=True), df['name'].reset_index(drop=True),
-                     pd.Series(avg_obj / len(norm_objs)),
-                     pd.Series(avg_norm_obj / len(norm_objs))],
+                     var_obj.mean(axis=1).reset_index(drop=True),
+                     vars_norm.mean(axis=1).reset_index(drop=True)],
                     axis=1, keys=[n for n in df.columns])
     tmp.columns = df.columns
-
-    return tmp
+    tmp_std = pd.concat([df['n_data'].reset_index(drop=True), df['name'].reset_index(drop=True),
+                     var_obj.std(axis=1).reset_index(drop=True),
+                     vars_norm.std(axis=1).reset_index(drop=True)],
+                    axis=1, keys=[n for n in df.columns])
+    tmp_std.column = ['n_data', 'name', 'obj_std', 'obj_norm_std']
+    return tmp, tmp_std
 
 
 def normalize_obj(results):
     average_accuracy = []
+    var_accuracy = []
     average_f1 = []
+    var_f1 = []
     average_objs = []
+    var_objs = []
     average_test_objs = []
+    var_test_objs = []
     experiment_obj = []
     experiment_test_obj = []
     for stats, result in results:
@@ -248,23 +274,31 @@ def normalize_obj(results):
         normalized_test_objs = []
 
         for i, data in enumerate(local):
-            accs.append(data['acc'])
-            f1.append(data['f1'])
+            accs.append(pd.concat([data['acc']['n_local_data'],
+                                   data['acc'].iloc[:,1:].astype(np.float64) -  result[0]['baseline_metrics']['acc'][i]], axis=1))
+            f1.append(pd.concat([data['f1']['n_local_data'],
+                                data['f1'].iloc[:,1:].astype(np.float64) - result[0]['baseline_metrics']['f1'][i]], axis=1))
+            #accs.append(result[0]['baseline_metrics']['acc'][i] - data['acc'])
+            #f1.append(result[0]['baseline_metrics']['f1'][i] - data['f1'])
 
             baseline_obj = objs['obj'].iloc[i]
             test_obj = test_ll['test_ll'].iloc[i]
 
-            data['obj']['normalized_obj'] = data['obj']['obj'] - baseline_obj
-            data['test_ll']['normalized_obj'] = data['test_ll']['test_ll'] - test_obj
+            data['obj']['normalized_obj'] = data['obj']['obj'] - np.float64(baseline_obj)
+            data['test_ll']['normalized_obj'] = data['test_ll']['test_ll'] - np.float64(test_obj)
+            data['obj']['normalized_obj'][data['obj']['normalized_obj'] < 0] = np.nan
+            data['test_ll']['normalized_obj'][data['test_ll']['normalized_obj'] < 0] = np.nan
             norm_objs.append(data['obj'])
             normalized_test_objs.append(data['test_ll'])
 
         average_accuracy.append(pd.concat(accs).groupby(level=0).mean())
+        var_accuracy.append(pd.concat(accs).groupby(level=0).var())
         average_f1.append(pd.concat(f1).groupby(level=0).mean())
+        var_f1.append(pd.concat(f1).groupby(level=0).var())
 
-        tmp = process_obj(norm_objs, col_name='obj')
+        tmp, std = process_obj(norm_objs, col_name='obj')
         average_objs.append(tmp)
-        tmp = process_obj(normalized_test_objs, col_name='test_ll')
+        tmp, std = process_obj(normalized_test_objs, col_name='test_ll')
         average_test_objs.append(tmp)
         experiment_obj.append(norm_objs)
         experiment_test_obj.append(normalized_test_objs)
@@ -275,6 +309,59 @@ def normalize_obj(results):
             'avg_test_obj': average_test_objs,
             'baseline_ll': experiment_obj,
             'test_set_ll':experiment_test_obj}
+
+def color_tree(g, root, col1="red", col2="blue", labelcol="red"):
+    """
+    Easy two coloring of trees from chosen root.
+    Parameters
+    ----------
+    g :
+    root :
+    col1 :
+    col2 :
+    labelcol :
+
+    Returns
+    -------
+
+    """
+    from heapq import heappush, heappop
+    gc = {True: col1, False:col2}
+    rev_gc = {col1: True, col2:False}
+    cols = {i: None for i in range(len(g))}
+    current_color = True
+    q = []
+    heappush(q, root)
+    while q:
+        node = heappop(q)
+        for v in g.neighbors(node):
+            if cols[v] is None:
+                heappush(q, v)
+            else:
+                current_color = not rev_gc[cols[v]]
+        cols[node] = gc[current_color]
+    if labelcol:
+        cols[root] = labelcol
+    return cols
+
+
+def draw_graph(i, g, k, fname, node_size=500):
+    pos = nx.spring_layout(g, k=k * 1 / np.sqrt(len(g.nodes())), iterations=100)
+    res = color_tree(g, 0, "tugreen", "tuorange")
+    plt.figure(3, figsize=(17, 13))
+    nx.draw_networkx(g, node_size=node_size, pos=pos)
+    plt.savefig(fname + "_" + str(i))
+    plt.close()
+    visual_style = {}
+    visual_style['vertex_size'] = .5
+    visual_style['vertex_opacity'] = .7
+    visual_style['layout'] = pos
+    visual_style['canvas'] = (17, 15)
+    visual_style['margin'] = 1
+    visual_style['vertex_color'] = res
+    visual_style['edge_width'] = 0.1
+    visual_style['edge_color'] = 'black'
+    plot(g, fname + "_" + str(i) + '.tex', **visual_style)
 
 
 def main(path):
@@ -316,62 +403,47 @@ def main(path):
         table.columns = table.columns.str.strip()
         table = table.drop(['local_0','local_1','local_2','local_3','local_4','local_5','local_6','local_7','local_8','local_9'], axis=1)
         tables.append(table)
-    a = [stat.drop(0, axis=1) for stat in raw_stats]
-    b = [c.iloc[:,0].str.strip() for c in a]
-    obj_plot_idx = np.argwhere([c['reg'] == "None" and c['hoefd_eps'] == "0.1" for c in b]).flatten()
-    tmp_list = []
-    for i in obj_plot_idx:
-        tmp_list.append((cv_scores['avg_obj'][i], cv_scores['avg_acc'][i],  cv_scores['avg_f1'][i]))
-    plot_obj([a[0] for a in tmp_list], [a[1] for a in tmp_list], [a[2] for a in tmp_list])
+    figure_path = os.path.join(path, "..", ".." ,"Distributed-PGM", "Thesis", "kapitel" , "figures")
+    for reg, eps in configurations:
+        prepare_metrics(raw_stats, cv_scores, figure_path, path.split("\\")[-1] + "_" + reg + "_" + str(eps), reg, str(eps))
     plot_covs(grouped_by_cov, cv_scores['avg_obj'])
     for i, result in enumerate(results):
         g = nx.from_edgelist(result[1][-1][0])
-        draw_graph(i, g, k=3, fname=os.path.join(path, 'plots', 'graph_' + result[0][1]['data']))
-    write_tables(tables, raw_stats, path)
-
-
+        draw_graph(i, g, k=3, fname=os.path.join(os.path.join(figure_path, "graphs"),  result[0][1]['data'].strip() + "_" + 'graph'))
+    write_tables(tables, raw_stats, os.path.join(figure_path, "tables"), dataset=path.split("\\")[-1])
 
     return results
 
 
-def color_tree(g, root, col1="red", col2="blue", labelcol="red"):
-    from heapq import heappush, heappop
-    gc = {True: col1, False:col2}
-    rev_gc = {col1: True, col2:False}
-    cols = {i: None for i in range(len(g))}
-    current_color = True
-    q = []
-    heappush(q, root)
-    while q:
-        node = heappop(q)
-        for v in g.neighbors(node):
-            if cols[v] is None:
-                heappush(q, v)
-            else:
-                current_color = not rev_gc[cols[v]]
-        cols[node] = gc[current_color]
-    if labelcol:
-        cols[root] = labelcol
-    return cols
-
-def draw_graph(i, g, k, fname, node_size=500):
-    pos = nx.spring_layout(g, k=k * 1 / np.sqrt(len(g.nodes())), iterations=100)
-    res = color_tree(g, 0, "tugreen", "tuorange")
-    plt.figure(3, figsize=(17, 13))
-    nx.draw_networkx(g, node_size=node_size, pos=pos)
-    plt.savefig(fname + str(i))
-    plt.close()
-    visual_style = {}
-    visual_style['vertex_size'] = .5
-    visual_style['vertex_opacity'] = .7
-    visual_style['layout'] = pos
-    visual_style['canvas'] = (17, 15)
-    visual_style['margin'] = 1
-    visual_style['vertex_color'] = res
-    plot(g, fname + str(i) + '.tex', **visual_style)
-
+def prepare_metrics(stats, cv_scores, path, fname, reg="None", eps="0.05"):
+    x_titles = {"fish":"Diagonal Fisher Information", "none":"No Covariance", "unif":"Uniform", "random":"Davies&Higham Rnd. Corr"}
+    y_titles = ["Rel. Average LL", "Rel. Accuracy", "Rel. F1-Score"]
+    order = ["none", "unif", "random", "fish"]
+    a = [stat.drop(0, axis=1) for stat in stats]
+    b = [c.iloc[:, 0].str.strip() for c in a]
+    obj_plot_idx = np.argwhere([c['reg'] == reg and c['hoefd_eps'] == eps for c in b]).flatten()
+    tmp_a = [stats[i].loc['covtype', 1].strip() for i in obj_plot_idx]
+    obj_plot_idx = [{a:b for a,b in zip(tmp_a, obj_plot_idx)}[i] for i in order]
+    x_title = [x_titles[stats[i].loc['covtype', 1].strip()] for i in obj_plot_idx]
+    tmp_list = []
+    for i in obj_plot_idx:
+        tmp_list.append((cv_scores['avg_obj'][i], cv_scores['avg_acc'][i], cv_scores['avg_f1'][i]))
+    fig, axs = plot_obj([a[0] for a in tmp_list], [a[1] for a in tmp_list], [a[2] for a in tmp_list])
+    for i in range(4):
+        axs[0,i].set_title(str(x_title[i]))
+        axs[2,i].set_xlabel("Number of Samples per Learner")
+    for j in range(3):
+        axs[j,0].set_ylabel(y_titles[j])
+    #if reg.capitalize() == "None":
+    #    fig.suptitle("Results for the {} data set without regularization and {}  = {}".format(path.split("\\")[-1].capitalize(), r'$\epsilon$', str(eps)))
+    #else:
+    #    fig.suptitle("Results for the {} data set with {} regularization and {} = {}".format(path.split("\\")[-1].capitalize(), reg, r'$\epsilon$' ,str(eps)))
+    fig.tight_layout()
+    fig.savefig(os.path.join(path, fname + "_neg_relative.pdf"), bbox_inches="tight")
+    plt.close(fig)
 
 if __name__ == '__main__':
+    folders = ['dota2', "covertype", 'susy']
     for folder in os.listdir(EXPERIMENT_DIR):
-        if folder=='covertype':
+        if folder in folders:
             main(os.path.join(EXPERIMENT_DIR, folder))
