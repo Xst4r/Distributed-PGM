@@ -14,7 +14,7 @@ matplotlib==3.2.1
 more-itertools==8.0.2
 network2tikz==0.1.8
 networkx==2.4
-numpy==1.18.2
+numpy==1.22.0
 packaging==19.2
 pandas==1.0.3
 pluggy==0.13.1
